@@ -15,7 +15,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             GroupSeeder::class,
             StudentSeeder::class,
-            AyahSeeder::class,
+            // AyahSeeder::class,
             // ProgressSeeder::class,
         ]);
     }
