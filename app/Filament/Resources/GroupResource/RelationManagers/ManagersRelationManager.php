@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\GroupResource\RelationManagers;
 
+use App\Models\Student;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
@@ -22,7 +23,8 @@ class ManagersRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('name')
             ->columns([
-                TextColumn::make('name')->label('الاسم'),
+                TextColumn::make('name')
+                    ->label('الاسم'),
                 TextColumn::make('email')->label('البريد الإلكتروني'),
                 TextColumn::make('role')->label('الدور')
                     ->formatStateUsing(function ($state) {
@@ -52,5 +54,9 @@ class ManagersRelationManager extends RelationManager
                     Tables\Actions\DetachBulkAction::make(),
                 ]),
             ]);
+    }
+    public function isReadOnly(): bool
+    {
+        return auth()->user()->role === 'follower';
     }
 }

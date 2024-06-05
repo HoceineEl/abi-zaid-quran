@@ -83,6 +83,17 @@ class GroupResource extends Resource
                     ->searchable(),
                 TextColumn::make('created_at')->label('تاريخ الإنشاء')
                     ->date('Y-m-d H:i:s'),
+                TextColumn::make('manager_has_set_progress')
+                    ->label('تم تسجيل الحضور؟')
+                    ->getStateUsing(function (Group $record) {
+                        $students = $record->students;
+                        $progresses = $students->map(function ($student) {
+                            return $student->progresses->where('date', now()->format('Y-m-d'))->count();
+                        });
+                        // if some also handle it how many are egistred
+                        return  $progresses->sum() . '/' . $students->count() . ' من الطلاب مسجلين اليوم';
+                    })
+                    ->searchable(),
             ])
             ->filters([
                 //
@@ -90,16 +101,42 @@ class GroupResource extends Resource
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\Action::make('send_whatsapp_group')
-                    ->label('أرسل عبر الواتساب للغائبين')
+                    ->label('أرسل رسالة للغائبين')
                     ->icon('heroicon-o-users')
                     ->color('info')
                     ->action(function (Group $record) {
                         Core::sendMessageToAbsence($record);
                     }),
+                Tables\Actions\Action::make('remind_manager')
+                    ->label('تذكير المشرفين ')
+                    ->icon('heroicon-o-bell')
+                    ->visible(function (Group $record) {
+                        $one = auth()->user()->role === "admin";
+                        $students = $record->students;
+                        $progresses = $students->map(function ($student) {
+                            return $student->progresses->where('date', now()->format('Y-m-d'))->count();
+                        });
+                        $two = $progresses->sum() < $students->count();
+                        return $one && $two;
+                    })
+                    ->color('primary')
+                    ->form([
+                        Textarea::make('message')
+                            ->label('الرسالة')
+                            ->default('من فضلكم قوموا بتسجيل الحضور للطلاب اليوم.')
+                            ->rows(10)
+                            ->required(),
+                    ])
+                    ->action(function (array $data, Group $record) {
+                        $data['message'] = $data['message'] ?? 'من فضلكم قوموا بتسجيل الحضور للطلاب اليوم.';
+                        $data['students'] = $record->managers()->pluck('id')->toArray();
+                        $data['message_type'] = 'custom';
+                        Core::sendMessageToSpecific($data, 'manager');
+                    }),
             ])
             ->headerActions([
                 ActionsAction::make('send_whatsapp')
-                    ->label('أرسل عبر الواتساب للغائبين')
+                    ->label('أرسل رسالة للغائبين')
                     ->icon('heroicon-o-users')
                     ->action(function () {
                         Core::sendMessageToAbsence();
@@ -194,4 +231,5 @@ class GroupResource extends Resource
     {
         return [];
     }
+    
 }

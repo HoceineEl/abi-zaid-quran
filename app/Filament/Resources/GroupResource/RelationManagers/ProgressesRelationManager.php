@@ -75,6 +75,7 @@ class ProgressesRelationManager extends RelationManager
             ->headerActions([
                 Tables\Actions\CreateAction::make(),
                 Action::make('make_others_as_absent')
+                    ->visible(fn () => $this->ownerRecord->managers->contains(auth()->user()))
                     ->label('تسجيل البقية كغائبين اليوم')
                     ->color('danger')
                     ->action(function () {
@@ -102,6 +103,7 @@ class ProgressesRelationManager extends RelationManager
                     }),
                 Action::make('group')
                     ->label('تسجيل تقدم جماعي')
+                    ->visible(fn () => $this->ownerRecord->managers->contains(auth()->user()))
                     ->color(Color::Teal)
                     ->form(function (Get $get) {
                         $students = $this->ownerRecord->students->filter(function ($student) {
@@ -239,6 +241,7 @@ class ProgressesRelationManager extends RelationManager
             ->filters([
                 SelectFilter::make('date')
                     ->label('التاريخ')
+                    ->visible(fn () => $this->ownerRecord->managers->contains(auth()->user()))
                     ->options(function () {
                         return Progress::all()->pluck('date', 'date');
                     })
@@ -249,5 +252,9 @@ class ProgressesRelationManager extends RelationManager
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+    public function isReadOnly(): bool
+    {
+        return  !$this->ownerRecord->managers->contains(auth()->user());
     }
 }
