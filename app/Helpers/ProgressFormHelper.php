@@ -21,7 +21,7 @@ class ProgressFormHelper
 {
     public static function getProgressFormSchema(?Student $student = null, Group $group = null): array
     {
-        $progressData = $student ? self::calculateNextProgress($student) : null;
+        // $progressData = $student ? self::calculateNextProgress($student) : null;
         $students = $group ? $group->students : Student::all();
         return [
             Grid::make(2)
@@ -37,13 +37,13 @@ class ProgressFormHelper
                             return $student->progresses->where('date', $get('date'))->count() == 0;
                         })->mapWithKeys(fn (Student $student) => [$student->id => $student->name . ' - ' . $student->phone])->toArray())
                         ->preload()
-                        ->reactive()
-                        ->afterStateUpdated(function ($state, Set $set) {
-                            $progressData = $state ? ProgressFormHelper::calculateNextProgress(Student::find($state)) : null;
-                            $set('page_id', $progressData['page_id'] ?? null);
-                            $set('lines_from', $progressData['lines_from'] ?? 1);
-                            $set('lines_to', $progressData['lines_to'] ?? 1);
-                        })
+                        // ->reactive()
+                        // ->afterStateUpdated(function ($state, Set $set) {
+                        //     $progressData = $state ? ProgressFormHelper::calculateNextProgress(Student::find($state)) : null;
+                        //     $set('page_id', $progressData['page_id'] ?? null);
+                        //     $set('lines_from', $progressData['lines_from'] ?? 1);
+                        //     $set('lines_to', $progressData['lines_to'] ?? 1);
+                        // })
                         ->hidden(fn () => $student)
                         ->required(),
                     DatePicker::make('date')
@@ -88,47 +88,47 @@ class ProgressFormHelper
                             'call_made' => 'تم الاتصال',
                         ]),
                 ]),
-            Section::make()
-                ->columns(3)
-                ->hidden(fn (Get $get) => $get('status') !== 'memorized')
-                ->schema([
-                    Select::make('page_id')
-                        ->label('الصفحة')
-                        ->options(Page::all()->mapWithKeys(fn (Page $page) => [$page->id => "{$page->number} - {$page->surah_name}"])->toArray())
-                        ->getOptionLabelFromRecordUsing(fn (Model $record) => "{$record->number} - {$record->surah_name}")
-                        ->preload()
-                        ->default(fn () => $progressData['page_id'] ?? null)
-                        ->reactive()
-                        ->optionsLimit(700)
-                        ->searchable()
-                        ->required(),
-                    Select::make('lines_from')
-                        ->label('من السطر')
-                        ->reactive()
-                        ->default(fn () => $progressData['lines_from'] ?? 1)
-                        ->options(function (Get $get) {
-                            $page = Page::find($get('page_id'));
-                            if ($page) {
-                                return range(1, $page->lines_count);
-                            }
+            // Section::make()
+            //     ->columns(3)
+            //     ->hidden(fn (Get $get) => $get('status') !== 'memorized')
+            //     ->schema([
+            //         Select::make('page_id')
+            //             ->label('الصفحة')
+            //             ->options(Page::all()->mapWithKeys(fn (Page $page) => [$page->id => "{$page->number} - {$page->surah_name}"])->toArray())
+            //             ->getOptionLabelFromRecordUsing(fn (Model $record) => "{$record->number} - {$record->surah_name}")
+            //             ->preload()
+            //             ->default(fn () => $progressData['page_id'] ?? null)
+            //             ->reactive()
+            //             ->optionsLimit(700)
+            //             ->searchable()
+            //             ->required(),
+            //         Select::make('lines_from')
+            //             ->label('من السطر')
+            //             ->reactive()
+            //             ->default(fn () => $progressData['lines_from'] ?? 1)
+            //             ->options(function (Get $get) {
+            //                 $page = Page::find($get('page_id'));
+            //                 if ($page) {
+            //                     return range(1, $page->lines_count);
+            //                 }
 
-                            return range(1, 15);
-                        })
-                        ->required(),
-                    Select::make('lines_to')
-                        ->reactive()
-                        ->options(function (Get $get) {
-                            $page = Page::find($get('page_id'));
-                            if ($page) {
-                                return range(1, $page->lines_count);
-                            }
+            //                 return range(1, 15);
+            //             })
+            //             ->required(),
+            //         Select::make('lines_to')
+            //             ->reactive()
+            //             ->options(function (Get $get) {
+            //                 $page = Page::find($get('page_id'));
+            //                 if ($page) {
+            //                     return range(1, $page->lines_count);
+            //                 }
 
-                            return range(1, 15);
-                        })
-                        ->default(fn () => $progressData['lines_to'] ?? 1)
-                        ->label('إلى السطر')
-                        ->required(),
-                ]),
+            //                 return range(1, 15);
+            //             })
+            //             ->default(fn () => $progressData['lines_to'] ?? 1)
+            //             ->label('إلى السطر')
+            //             ->required(),
+            //     ]),
             MarkdownEditor::make('notes')
                 ->label('ملاحظات')
                 ->columnSpanFull()

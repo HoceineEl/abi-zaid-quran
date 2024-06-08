@@ -21,6 +21,7 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Support\Colors\Color;
 use Filament\Tables;
 use Filament\Tables\Actions\Action;
+use Filament\Tables\Columns\SelectColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\SelectFilter;
@@ -53,25 +54,19 @@ class ProgressesRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('date')->label('التاريخ'),
                 TextColumn::make('student.name')
                     ->label('الطالب'),
-                TextColumn::make('page.number')
-                    ->getStateUsing(fn (Progress $record) => $record->page !== null ? "{$record->page->number} - {$record->page->surah_name}" : 'غائب')
-                    ->label('الصفحة'),
                 TextColumn::make('status')
                     ->formatStateUsing(function ($state) {
                         return match ($state) {
-                            'memorized' => 'تم الحفظ',
+                            'memorized' => 'تم',
                             'absent' => 'غائب',
                         };
                     })
+                    ->badge()
+                    ->placeholder('تم التذكير')
                     ->label('الحالة'),
-                TextColumn::make('lines_from')
-                    ->getStateUsing(fn (Progress $record) => $record->lines_from !== null ? $record->lines_from + 1 : 'غائب')
-                    ->label('من'),
-                TextColumn::make('lines_to')
-                    ->getStateUsing(fn (Progress $record) => $record->lines_to !== null ? $record->lines_to + 1 : 'غائب')
-                    ->label('إلى'),
                 TextColumn::make('createdBy.name')->label('سجل بواسطة'),
             ])
+            ->paginated(false)
             ->headerActions([
                 Tables\Actions\CreateAction::make(),
                 Action::make('make_others_as_absent')
@@ -121,19 +116,6 @@ class ProgressesRelationManager extends RelationManager
                                             })->pluck('name', 'id');
                                         })
                                         ->required()
-                                        ->live(onBlur: true)
-                                        ->afterStateUpdated(function ($state, Set $set) {
-                                            $progressData = isset($state[0]) ? ProgressFormHelper::calculateNextProgress(Student::find($state[0])) : null;
-                                            $set('page_id', $progressData['page_id'] ?? null);
-                                            $set('lines_from', $progressData['lines_from'] ?? 1);
-                                            $set('lines_to', $progressData['lines_to'] ?? 1);
-                                        })
-                                        ->afterStateHydrated(function ($state, Set $set) {
-                                            $progressData = isset($state[0]) ? ProgressFormHelper::calculateNextProgress(Student::find($state[0])) : null;
-                                            $set('page_id', $progressData['page_id'] ?? null);
-                                            $set('lines_from', $progressData['lines_from'] ?? 1);
-                                            $set('lines_to', $progressData['lines_to'] ?? 1);
-                                        })
                                         ->default(fn () => $students->keys()->toArray())
                                         ->multiple(),
                                     DatePicker::make('date')
@@ -173,45 +155,6 @@ class ProgressesRelationManager extends RelationManager
                                             'call_made' => 'تم الاتصال',
                                         ]),
                                 ]),
-                            Grid::make()
-                                ->columns(3)
-                                ->hidden(fn (Get $get) => $get('status') !== 'memorized')
-                                ->schema([
-                                    Select::make('page_id')
-                                        ->label('الصفحة')
-                                        ->options(function () {
-                                            return Page::all()->mapWithKeys(fn (Page $page) => [$page->id => "{$page->number} - {$page->surah_name}"])->toArray();
-                                        })
-                                        ->preload()
-                                        ->reactive()
-                                        ->optionsLimit(700)
-                                        ->searchable()
-                                        ->required(),
-                                    Select::make('lines_from')
-                                        ->label('من السطر')
-                                        ->reactive()
-                                        ->options(function (Get $get) {
-                                            $page = Page::find($get('page_id'));
-                                            if ($page) {
-                                                return range(1, $page->lines_count);
-                                            }
-
-                                            return range(1, 15);
-                                        })
-                                        ->required(),
-                                    Select::make('lines_to')
-                                        ->reactive()
-                                        ->options(function (Get $get) {
-                                            $page = Page::find($get('page_id'));
-                                            if ($page) {
-                                                return range(1, $page->lines_count);
-                                            }
-
-                                            return range(1, 15);
-                                        })
-                                        ->label('إلى السطر')
-                                        ->required(),
-                                ]),
                             MarkdownEditor::make('notes')
                                 ->label('ملاحظات')
                                 ->columnSpanFull()
@@ -225,9 +168,9 @@ class ProgressesRelationManager extends RelationManager
                                 'date' => $data['date'],
                                 'status' => $data['status'],
                                 'comment' => $data['comment'],
-                                'page_id' => $data['page_id'],
-                                'lines_from' => $data['lines_from'],
-                                'lines_to' => $data['lines_to'],
+                                'page_id' => $data['page_id'] ?? null,
+                                'lines_from' => $data['lines_from'] ?? null,
+                                'lines_to' => $data['lines_to'] ?? null,
                                 'notes' => $data['notes'],
                             ]);
                         }
@@ -235,6 +178,7 @@ class ProgressesRelationManager extends RelationManager
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
+                    ->form(fn (Progress $record) => ProgressFormHelper::getProgressFormSchema(group: $this->ownerRecord, student: $record->student))
                     ->slideOver(),
                 Tables\Actions\DeleteAction::make(),
             ])

@@ -75,13 +75,13 @@ class StudentsRelationManager extends RelationManager
                     ->icon(function (Student $record) {
                         $ProgToday = $record->progresses->where('date', now()->format('Y-m-d'))->first();
                         if ($ProgToday) {
-                            return $ProgToday->status === 'memorized' ? 'heroicon-o-check-circle' : 'heroicon-o-x-circle';
+                            return $ProgToday->status === 'memorized' ? 'heroicon-o-check-circle' : ($ProgToday->status === 'absent' ? 'heroicon-o-exclamation-circle' : 'heroicon-o-information-circle');
                         }
                     })
                     ->color(function (Student $record) {
                         $ProgToday = $record->progresses()->where('date', now()->format('Y-m-d'))->first();
                         if ($ProgToday) {
-                            return $ProgToday->status === 'memorized' ? 'success' : 'danger';
+                            return $ProgToday->status === 'memorized' ? 'success' : ($ProgToday->status === 'absent' ? 'danger' : 'warning');
                         }
                     })
                     ->label('الاسم'),
@@ -99,9 +99,6 @@ class StudentsRelationManager extends RelationManager
                         };
                     }),
                 TextColumn::make('city')->label('المدينة'),
-            ])
-            ->filters([
-                //
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
@@ -142,6 +139,7 @@ class StudentsRelationManager extends RelationManager
                     }),
 
             ])
+            ->paginated(false)
             ->headerActions([
                 ActionsActionGroup::make([
                     ActionsCreateAction::make()
@@ -152,9 +150,10 @@ class StudentsRelationManager extends RelationManager
                     Action::make('make_others_as_absent')
                         ->label('تسجيل البقية كغائبين')
                         ->color('danger')
+                        ->icon('heroicon-o-exclamation-circle')
                         ->form([
                             Toggle::make('send_msg')
-                                ->label('إرسال رسالة تذكير')
+                                ->label('تأكيد إرسال رسالة تذكير')
                                 ->reactive()
                                 ->default(false),
                             Textarea::make('message')
@@ -165,20 +164,28 @@ class StudentsRelationManager extends RelationManager
                                 ->label('الرسالة')
                                 ->required()
                         ])
-                        ->visible(fn () => Progress::where('date', now()->format('Y-m-d'))->count() !== $this->ownerRecord->students->count() && $this->ownerRecord->managers->contains(auth()->user()))
+                        ->visible(fn () => $this->ownerRecord->managers->contains(auth()->user()))
                         ->action(function (array $data) {
                             $selectedDate = $this->tableFilters['date']['value'] ?? now()->format('Y-m-d');
                             $this->ownerRecord->students->filter(function ($student) use ($selectedDate) {
-                                return $student->progresses->where('date', $selectedDate)->count() == 0;
+                                return $student->progresses->where('date', $selectedDate)
+                                    ->count() == 0;
                             })->each(function ($student) use ($selectedDate, $data) {
-                                $student->progresses()->create([
-                                    'date' => $selectedDate,
-                                    'status' => 'absent',
-                                    'comment' => 'message_sent',
-                                    'page_id' => null,
-                                    'lines_from' => null,
-                                    'lines_to' => null,
-                                ]);
+                                if ($student->progresses->where('date', $selectedDate)->count() == 0) {
+                                    $student->progresses()->create([
+                                        'date' => $selectedDate,
+                                        'status' => 'absent',
+                                        'comment' => 'message_sent',
+                                        'page_id' => null,
+                                        'lines_from' => null,
+                                        'lines_to' => null,
+                                    ]);
+                                } else {
+                                    $student->progresses()->where('date', $selectedDate)->update([
+                                        'status' => 'absent',
+                                        'comment' => 'message_sent',
+                                    ]);
+                                }
                                 if ($data['send_msg']) {
                                     $msg = $data['message'];
                                     Core::sendSpecifMessageToStudent($student, $msg);
@@ -207,6 +214,14 @@ class StudentsRelationManager extends RelationManager
                             $this->ownerRecord->students->filter(function ($student) use ($selectedDate) {
                                 return $student->progresses->where('date', $selectedDate)->count() == 0;
                             })->each(function ($student) use ($selectedDate, $data) {
+                                $student->progresses()->create([
+                                    'date' => $selectedDate,
+                                    'status' => null,
+                                    'comment' => 'message_sent',
+                                    'page_id' => null,
+                                    'lines_from' => null,
+                                    'lines_to' => null,
+                                ]);
                                 if ($selectedDate == now()->format('Y-m-d')) {
                                     $msg = $data['message'];
                                     Core::sendSpecifMessageToStudent($student, $msg);
@@ -274,6 +289,17 @@ class StudentsRelationManager extends RelationManager
                                     Notification::make('added')
                                         ->title("أضيف $student->name")
                                         ->success();
+                                } else {
+                                    $progress = $student->progresses->where('date', now()->format('Y-m-d'))->first();
+                                    $progress->update([
+                                        'page_id' => $data['page_id'],
+                                        'lines_from' => $data['lines_from'],
+                                        'lines_to' => $data['lines_to'],
+                                        'status' => 'memorized',
+                                    ]);
+                                    Notification::make('updated')
+                                        ->title("تم تحديث تقدم $student->name")
+                                        ->success();
                                 }
                             }
                         }),
@@ -297,6 +323,55 @@ class StudentsRelationManager extends RelationManager
                                 Core::sendSpecifMessageToStudent($student, $msg);
                                 Notification::make()
                                     ->title('تم إرسال رسالة للطالب ' . $student->name . ' بنجاح')
+                                    ->color('success')
+                                    ->icon('heroicon-o-check-circle')
+                                    ->send();
+                            }
+                        })->deselectRecordsAfterCompletion(),
+                    BulkAction::make('set_as_absent')
+                        ->label('تسجيلهم كغائبين')
+                        ->color('danger')
+                        ->icon('heroicon-o-exclamation-circle')
+                        ->form([
+                            Toggle::make('send_msg')
+                                ->label('تأكيد إرسال رسالة تذكير')
+                                ->reactive()
+                                ->default(false),
+                            Textarea::make('message')
+                                ->hint('السلام عليكم وإسم الطالب سيتم إضافته تلقائياً في  الرسالة.')
+                                ->reactive()
+                                ->hidden(fn (Get $get) => !$get('send_msg'))
+                                ->default('لم ترسلوا الواجب المقرر اليوم، لعل المانع خير.')
+                                ->label('الرسالة')
+                                ->required()
+                        ])
+                        ->visible(fn () => $this->ownerRecord->managers->contains(auth()->user()))
+                        ->action(function (array $data) {
+                            $students = $this->selectedTableRecords;
+                            foreach ($students as $studentId) {
+                                $student = Student::find($studentId);
+                                $selectedDate = now()->format('Y-m-d');
+                                if ($student->progresses->where('date', $selectedDate)->count() == 0) {
+                                    $student->progresses()->create([
+                                        'date' => $selectedDate,
+                                        'status' => 'absent',
+                                        'comment' => $data['send_msg'] ? 'message_sent' : null,
+                                        'page_id' => null,
+                                        'lines_from' => null,
+                                        'lines_to' => null,
+                                    ]);
+                                } else {
+                                    $student->progresses()->where('date', $selectedDate)->update([
+                                        'status' => 'absent',
+                                        'comment' => 'message_sent',
+                                    ]);
+                                }
+                                if ($data['send_msg']) {
+                                    $msg = $data['message'];
+                                    Core::sendSpecifMessageToStudent($student, $msg);
+                                }
+                                Notification::make()
+                                    ->title('تم تسجيل الطالب ' . $student->name . ' كغائب اليوم')
                                     ->color('success')
                                     ->icon('heroicon-o-check-circle')
                                     ->send();
