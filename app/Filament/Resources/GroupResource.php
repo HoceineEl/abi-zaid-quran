@@ -13,9 +13,11 @@ use App\Models\Student;
 use Filament\Actions\Action;
 use Filament\Forms;
 use Filament\Forms\Components\Actions\Action as FormAction;
+use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
@@ -45,14 +47,32 @@ class GroupResource extends Resource
                 Forms\Components\TextInput::make('name')
                     ->label('الاسم')
                     ->required(),
-                Forms\Components\ToggleButtons::make('type')
-                    ->label('نوع الحفظ')
-                    ->inline()
-                    ->options([
-                        'two_lines' => 'سطران',
-                        'half_page' => 'نصف صفحة',
+                Grid::make(3)
+                    ->schema([
+                        Toggle::make('custom_type')
+                            ->label('نوع الحفظ خاص')
+                            ->formatStateUsing(function ($record) {
+                                if ($record?->type === 'half_page' || $record?->type === 'two_lines') {
+                                    return false;
+                                }
+                                return true;
+                            })
+                            ->reactive()
+                            ->default(false),
+                        Forms\Components\ToggleButtons::make('type')
+                            ->label('نوع المجموعة')
+                            ->inline()
+                            ->hidden(fn (Get $get) => $get('custom_type') === true)
+                            ->options([
+                                'two_lines' => 'سطران',
+                                'half_page' => 'نصف صفحة',
+                            ]),
+
+                        TextInput::make('type')
+                            ->label('نوع المجموعة')
+                            ->reactive()
+                            ->hidden(fn (Get $get) => $get('custom_type') === false)
                     ])
-                    ->default('two_lines'),
             ])
             ->disabled(!Core::canChange());
     }
@@ -72,6 +92,7 @@ class GroupResource extends Resource
                             return match ($state) {
                                 'two_lines' => 'سطران',
                                 'half_page' => 'نصف صفحة',
+                                default => $state,
                             };
                         },
                     )
@@ -90,7 +111,6 @@ class GroupResource extends Resource
                         $progresses = $students->map(function ($student) {
                             return $student->progresses->where('date', now()->format('Y-m-d'))->count();
                         });
-                        // if some also handle it how many are egistred
                         return  $progresses->sum() . '/' . $students->count() . ' من الطلاب مسجلين اليوم';
                     })
                     ->searchable(),
@@ -138,12 +158,14 @@ class GroupResource extends Resource
                 ActionsAction::make('send_whatsapp')
                     ->label('أرسل رسالة للغائبين')
                     ->icon('heroicon-o-users')
+                    ->visible(fn () => auth()->user()->role === "admin")
                     ->action(function () {
                         Core::sendMessageToAbsence();
                     }),
                 ActionsAction::make('send_to_specific')
                     ->color('info')
                     ->icon('heroicon-o-cube')
+                    ->visible(fn () => auth()->user()->role === "admin")
                     ->label('أرسل لطلبة محددين')
                     ->form([
                         Select::make('students')
@@ -201,10 +223,19 @@ class GroupResource extends Resource
                         Core::sendMessageToSpecific($data);
                     }),
             ])
+            ->modifyQueryUsing(function ($query) {
+                if (auth()->user()->role !== "admin") {
+                    $query->whereHas('managers', function ($query) {
+                        $query->where('manager_id', auth()->id());
+                    });
+                } else {
+                    $query;
+                }
+            })
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()
-                        ->disabled(Core::canChange()),
+                        ->disabled(!Core::canChange()),
                 ]),
             ]);
     }
@@ -231,5 +262,4 @@ class GroupResource extends Resource
     {
         return [];
     }
-    
 }

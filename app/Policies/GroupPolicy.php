@@ -4,12 +4,9 @@ namespace App\Policies;
 
 use App\Models\Group;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
 
 class GroupPolicy
 {
-
-
     /**
      * Determine whether the user can delete the model.
      */
@@ -17,8 +14,6 @@ class GroupPolicy
     {
         return auth()->user()->role === 'admin';
     }
-
-
 
     /**
      * Determine whether the user can permanently delete the model.

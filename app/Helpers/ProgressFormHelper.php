@@ -19,10 +19,11 @@ use Illuminate\Database\Eloquent\Model;
 
 class ProgressFormHelper
 {
-    public static function getProgressFormSchema(?Student $student = null, Group $group = null): array
+    public static function getProgressFormSchema(?Student $student = null, ?Group $group = null): array
     {
         // $progressData = $student ? self::calculateNextProgress($student) : null;
         $students = $group ? $group->students : Student::all();
+
         return [
             Grid::make(2)
                 ->schema([
@@ -37,13 +38,6 @@ class ProgressFormHelper
                             return $student->progresses->where('date', $get('date'))->count() == 0;
                         })->mapWithKeys(fn (Student $student) => [$student->id => $student->name . ' - ' . $student->phone])->toArray())
                         ->preload()
-                        // ->reactive()
-                        // ->afterStateUpdated(function ($state, Set $set) {
-                        //     $progressData = $state ? ProgressFormHelper::calculateNextProgress(Student::find($state)) : null;
-                        //     $set('page_id', $progressData['page_id'] ?? null);
-                        //     $set('lines_from', $progressData['lines_from'] ?? 1);
-                        //     $set('lines_to', $progressData['lines_to'] ?? 1);
-                        // })
                         ->hidden(fn () => $student)
                         ->required(),
                     DatePicker::make('date')
@@ -169,6 +163,7 @@ class ProgressFormHelper
             $nextPageNumber += 1;
             $page = Page::where('number', $nextPageNumber)->first();
         }
+
         return [
             'page_id' => $page->id ?? null,
             'lines_from' => $nextLinesFrom - 1,

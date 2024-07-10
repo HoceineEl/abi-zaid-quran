@@ -18,6 +18,7 @@ return new class extends Migration
             $table->enum('sex', ['male', 'female'])->default('male');
             $table->foreignId('group_id')->constrained()->onDelete('cascade');
             $table->string('city')->nullable();
+            $table->integerIncrements('order')->default(1);
             $table->timestamps();
         });
     }

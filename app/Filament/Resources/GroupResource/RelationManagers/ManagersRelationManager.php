@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\GroupResource\RelationManagers;
 
-use App\Models\Student;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
@@ -11,6 +10,8 @@ use Filament\Tables\Table;
 class ManagersRelationManager extends RelationManager
 {
     protected static string $relationship = 'managers';
+
+    protected static bool $isLazy = false;
 
     protected static ?string $title = 'المشرفون';
 
@@ -55,6 +56,7 @@ class ManagersRelationManager extends RelationManager
                 ]),
             ]);
     }
+
     public function isReadOnly(): bool
     {
         return auth()->user()->role === 'follower';

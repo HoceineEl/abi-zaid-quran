@@ -66,6 +66,7 @@ class StudentResource extends Resource
                         return match ($state) {
                             'two_lines' => 'سطران',
                             'half_page' => 'نصف صفحة',
+                            default => $state,
                         };
                     }),
                 TextColumn::make('phone')->label('رقم الهاتف'),
@@ -91,7 +92,10 @@ class StudentResource extends Resource
                 Tables\Actions\DeleteBulkAction::make(),
             ]);
     }
-
+    public static function canAccess(): bool
+    {
+        return auth()->user()->role === 'admin';
+    }
     public static function getRelations(): array
     {
         return [

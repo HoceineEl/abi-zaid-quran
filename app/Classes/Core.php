@@ -12,7 +12,7 @@ use Filament\Notifications\Notification;
 
 class Core
 {
-    public static function sendMessageToAbsence(Group $group = null): void
+    public static function sendMessageToAbsence(?Group $group = null): void
     {
         $whatsAppService = new WhatsAppService();
         if ($group !== null) {
@@ -44,13 +44,13 @@ class Core
             if ($absentCount >= 3) {
                 $res = $whatsAppService->sendMessage($student);
             }
-            if (isset($res['contacts'])) {
-                Notification::make()
-                    ->title('تم إرسال رسالة واتساب للطالب ' . $student->name)
-                    ->color('success')
-                    ->icon('heroicon-o-check-circle')
-                    ->send();
-            }
+            // if (isset($res['contacts'])) {
+            //     Notification::make()
+            //         ->title('تم إرسال رسالة واتساب للطالب '.$student->name)
+            //         ->color('success')
+            //         ->icon('heroicon-o-check-circle')
+            //         ->send();
+            // }
         }
         if (!$res) {
             Notification::make()
@@ -73,11 +73,11 @@ class Core
             }
             $res = $whatsAppService->sendCustomMessage($user, $message);
             if (isset($res['contacts'])) {
-                Notification::make()
-                    ->title('تم إرسال رسالة واتساب  ل' . $user->name)
-                    ->color('success')
-                    ->icon('heroicon-o-check-circle')
-                    ->send();
+                // Notification::make()
+                //     ->title('تم إرسال رسالة واتساب  ل'.$user->name)
+                //     ->color('success')
+                //     ->icon('heroicon-o-check-circle')
+                //     ->send();
             } else {
                 Notification::make()
                     ->title('حدث خطأ أثناء إرسال رسالة واتساب ل ' . $user->name)
@@ -88,17 +88,16 @@ class Core
         }
     }
 
-
     public static function sendMessageToStudent(Student $student)
     {
         $whatsAppService = new WhatsAppService();
         $res = $whatsAppService->sendMessage($student);
         if (isset($res['contacts'])) {
-            Notification::make()
-                ->title('تم إرسال رسالة واتساب للطالب ' . $student->name)
-                ->color('success')
-                ->icon('heroicon-o-check-circle')
-                ->send();
+            // Notification::make()
+            //     ->title('تم إرسال رسالة واتساب للطالب ' . $student->name)
+            //     ->color('success')
+            //     ->icon('heroicon-o-check-circle')
+            //     ->send();
         } else {
             Notification::make()
                 ->title('حدث خطأ أثناء إرسال رسالة واتساب للطالب ' . $student->name)
@@ -107,16 +106,17 @@ class Core
                 ->send();
         }
     }
+
     public static function sendSpecifMessageToStudent(Student $student, $message)
     {
         $whatsAppService = new WhatsAppService();
         $res = $whatsAppService->sendCustomMessage($student, $message);
         if (isset($res['contacts'])) {
-            Notification::make()
-                ->title('تم إرسال رسالة واتساب للطالب ' . $student->name)
-                ->color('success')
-                ->icon('heroicon-o-check-circle')
-                ->send();
+            // Notification::make()
+            //     ->title('تم إرسال رسالة واتساب للطالب ' . $student->name)
+            //     ->color('success')
+            //     ->icon('heroicon-o-check-circle')
+            //     ->send();
         } else {
             Notification::make()
                 ->title('حدث خطأ أثناء إرسال رسالة واتساب للطالب ' . $student->name)
@@ -125,6 +125,7 @@ class Core
                 ->send();
         }
     }
+
     public static function canChange(): bool
     {
         return auth()->user()->role === 'admin';

@@ -3,12 +3,10 @@
 namespace Database\Seeders;
 
 use App\Helpers\ProgressFormHelper;
-use App\Models\Progress;
 use App\Models\Student;
 use App\Models\User;
 use Carbon\Carbon;
 use Faker\Factory as Faker;
-use Filament\Facades\Filament;
 use Illuminate\Database\Seeder;
 
 class ProgressSeeder extends Seeder

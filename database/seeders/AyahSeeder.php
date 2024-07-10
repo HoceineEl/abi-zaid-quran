@@ -35,10 +35,9 @@ class AyahSeeder extends Seeder
             $linesCount = $maxLine - (2 * $ayah1Count);
             if ($maxLine == 15) {
                 $nexPageMinOne = false;
-            } else if ($maxLine == 14) {
+            } elseif ($maxLine == 14) {
                 $nexPageMinOne = true;
             }
-
 
             // Create the Page record
             $page = Page::create([

@@ -47,19 +47,11 @@ class ProgressResource extends Resource
                 TextColumn::make('status')->label('الحالة')
                     ->formatStateUsing(function ($state) {
                         return match ($state) {
-                            'memorized' => 'محفوظ',
-                            'not_memorized' => 'غير محفوظ',
+                            'memorized' => 'تم',
                             'absent' => 'غائب',
+                            default => $state,
                         };
                     })->sortable(),
-                // TextColumn::make('page.number')->label('الصفحة')->sortable(),
-                // TextColumn::make('lines_from')
-                //     ->getStateUsing(fn ($record) => $record->lines_from + 1)
-                //     ->label('من السطر'),
-                // TextColumn::make('lines_to')
-                //     ->getStateUsing(fn ($record) => $record->lines_to + 1)
-                //     ->label('إلى السطر'),
-                // TextColumn::make('page.surah_name')->label('اسم السورة')->toggleable()->sortable(),
                 SelectColumn::make('comment')
                     ->options([
                         'message_sent' => 'تم إرسال الرسالة',
@@ -93,7 +85,10 @@ class ProgressResource extends Resource
             //
         ];
     }
-
+    public static function canAccess(): bool
+    {
+        return auth()->user()->role === 'admin';
+    }
     public static function getPages(): array
     {
         return [

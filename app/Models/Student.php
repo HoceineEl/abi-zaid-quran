@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -32,12 +31,13 @@ class Student extends Model
     {
         $page = $this->progresses->last()->page->number ?? 0;
         $progress = $page * 100 / 604;
+
         return round($progress, 2);
     }
 
     public function needsCall(): bool
     {
-        $recentProgresses = $this->progresses()->latest()->take(3)->get();
+        $recentProgresses = $this->progresses()->latest()->limit(3)->get();
 
         $absentCount = $recentProgresses->where('status', 'absent')->count();
 
