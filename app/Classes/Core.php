@@ -52,7 +52,7 @@ class Core
             //         ->send();
             // }
         }
-        if (!$res) {
+        if (! $res) {
             Notification::make()
                 ->title('ليس هناك طلاب غائبين اليوم ولله الحمد')
                 ->color('info')
@@ -80,7 +80,7 @@ class Core
                 //     ->send();
             } else {
                 Notification::make()
-                    ->title('حدث خطأ أثناء إرسال رسالة واتساب ل ' . $user->name)
+                    ->title('حدث خطأ أثناء إرسال رسالة واتساب ل '.$user->name)
                     ->color('danger')
                     ->icon('heroicon-o-x-circle')
                     ->send();
@@ -100,7 +100,7 @@ class Core
             //     ->send();
         } else {
             Notification::make()
-                ->title('حدث خطأ أثناء إرسال رسالة واتساب للطالب ' . $student->name)
+                ->title('حدث خطأ أثناء إرسال رسالة واتساب للطالب '.$student->name)
                 ->color('danger')
                 ->icon('heroicon-o-x-circle')
                 ->send();
@@ -119,7 +119,7 @@ class Core
             //     ->send();
         } else {
             Notification::make()
-                ->title('حدث خطأ أثناء إرسال رسالة واتساب للطالب ' . $student->name)
+                ->title('حدث خطأ أثناء إرسال رسالة واتساب للطالب '.$student->name)
                 ->color('danger')
                 ->icon('heroicon-o-x-circle')
                 ->send();

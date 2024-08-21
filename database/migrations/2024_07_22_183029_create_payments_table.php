@@ -11,8 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('students', function (Blueprint $table) {
-            $table->integer('order_no')->after('id')->default(1);
+        Schema::create('payments', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('memorizer_id')->constrained()->cascadeOnDelete();
+            $table->decimal('amount', 8, 2);
+            $table->date('payment_date');
+            $table->timestamps();
         });
     }
 
@@ -21,8 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('students', function (Blueprint $table) {
-            //
-        });
+        Schema::dropIfExists('payments');
     }
 };

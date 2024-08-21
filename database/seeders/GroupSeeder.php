@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Group;
+use App\Models\MemoGroup;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Arr;
@@ -22,6 +23,12 @@ class GroupSeeder extends Seeder
                 'type' => rand(0, 1) ? 'half_page' : 'two_lines',
             ]);
             $group->managers()->attach(Arr::random($managers, rand(1, 1)));
+        }
+        for ($i = 0; $i < 3; $i++) {
+            $group = MemoGroup::create([
+                'name' => 'المجموعة ' . $i + 1,
+                'price' => rand(50, 110)
+            ]);
         }
     }
 }

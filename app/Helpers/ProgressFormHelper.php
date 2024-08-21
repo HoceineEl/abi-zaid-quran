@@ -14,7 +14,6 @@ use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Forms\Get;
-use Filament\Forms\Set;
 use Illuminate\Database\Eloquent\Model;
 
 class ProgressFormHelper
@@ -29,14 +28,14 @@ class ProgressFormHelper
                 ->schema([
                     Placeholder::make('student_name')
                         ->label('الطالب')
-                        ->hidden(fn () => !$student)
-                        ->content($student ? $student->name . ' - ' . $student->phone : ''),
+                        ->hidden(fn () => ! $student)
+                        ->content($student ? $student->name.' - '.$student->phone : ''),
 
                     Select::make('student_id')
                         ->label('الطالب')
                         ->options(fn (Get $get) => $students->filter(function ($student) use ($get) {
                             return $student->progresses->where('date', $get('date'))->count() == 0;
-                        })->mapWithKeys(fn (Student $student) => [$student->id => $student->name . ' - ' . $student->phone])->toArray())
+                        })->mapWithKeys(fn (Student $student) => [$student->id => $student->name.' - '.$student->phone])->toArray())
                         ->preload()
                         ->hidden(fn () => $student)
                         ->required(),
@@ -159,7 +158,7 @@ class ProgressFormHelper
 
         $page = Page::where('number', $nextPageNumber)->first();
         $maxPage = Page::max('number');
-        while (!$page && $nextPageNumber <= $maxPage) {
+        while (! $page && $nextPageNumber <= $maxPage) {
             $nextPageNumber += 1;
             $page = Page::where('number', $nextPageNumber)->first();
         }

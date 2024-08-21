@@ -72,7 +72,6 @@ class StudentResource extends Resource
                 TextColumn::make('phone')->label('رقم الهاتف'),
                 TextColumn::make('group.name')->label('المجموعة')
                     ->badge(),
-                StudentProgress::make('progress')->label('التقدم'),
                 TextColumn::make('sex')->label('الجنس')
                     ->formatStateUsing(function ($state) {
                         return match ($state) {
@@ -92,10 +91,12 @@ class StudentResource extends Resource
                 Tables\Actions\DeleteBulkAction::make(),
             ]);
     }
+
     public static function canAccess(): bool
     {
         return auth()->user()->role === 'admin';
     }
+
     public static function getRelations(): array
     {
         return [

@@ -6,13 +6,10 @@ use App\Classes\Core;
 use App\Helpers\ProgressFormHelper;
 use App\Models\Progress;
 use App\Models\Student;
-use Filament\Forms\Components\Builder;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Split;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
@@ -25,13 +22,8 @@ use Filament\Tables\Actions\ActionGroup;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\IconColumn\IconColumnSize;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
-use Filament\Tables\Filters\QueryBuilder;
-use Filament\Tables\Filters\QueryBuilder\Constraints\DateConstraint;
-use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Illuminate\Support\Collection;
 
 class ProgressesRelationManager extends RelationManager
 {
@@ -48,6 +40,7 @@ class ProgressesRelationManager extends RelationManager
     protected static ?string $pluralModelLabel = 'تقدمات';
 
     public $dateFrom;
+
     public $dateTo;
 
     public function form(Form $form): Form
@@ -56,7 +49,6 @@ class ProgressesRelationManager extends RelationManager
             ProgressFormHelper::getProgressFormSchema(group: $this->ownerRecord)
         );
     }
-
 
     public function table(Table $table): Table
     {
@@ -70,7 +62,7 @@ class ProgressesRelationManager extends RelationManager
                     ->groupBy('date')
                     ->map(function ($group) {
                         return $group->groupBy('status');
-                    })
+                    }),
             ];
         });
         // dd($statusPerDay);
@@ -91,8 +83,10 @@ class ProgressesRelationManager extends RelationManager
                     ->getStateUsing(function ($record) use ($statusPerDay, $formattedDate) {
                         if ($record->id && isset($statusPerDay[$record->id][$formattedDate])) {
                             $status = $statusPerDay[$record->id][$formattedDate]->first()[0]->status;
+
                             return $status;
                         }
+
                         return null;
                     })
                     ->color(function ($state) {
@@ -124,15 +118,17 @@ class ProgressesRelationManager extends RelationManager
                         ->getStateUsing(function ($record) {
                             $owner = $this->ownerRecord;
                             $number = $owner->students->search(fn ($student) => $student->id == $record->id) + 1;
-                            return  $number . '. ' . $record->name;
+
+                            return $number.'. '.$record->name;
                         })
                         ->label('الطالب'),
-                    ...$statusColumns->toArray()
+                    ...$statusColumns->toArray(),
                 ]
             )
             ->paginated(false)
             ->modifyQueryUsing(function ($query) {
                 $query = $this->ownerRecord->students()->getQuery();
+
                 return $query;
             })
             ->filters([
@@ -148,7 +144,7 @@ class ProgressesRelationManager extends RelationManager
                             ->label('إلى تاريخ')
                             ->afterStateUpdated(fn ($state) => $this->dateTo = $state ?? now()->format('Y-m-d'))
                             ->default(now()->format('Y-m-d')),
-                    ])
+                    ]),
             ])
             // ->headerActions([
             //     ActionGroup::make($this->headerActions())
@@ -168,7 +164,7 @@ class ProgressesRelationManager extends RelationManager
 
     public function isReadOnly(): bool
     {
-        return !$this->ownerRecord->managers->contains(auth()->user());
+        return ! $this->ownerRecord->managers->contains(auth()->user());
     }
 
     public function getDateFrom(): string
@@ -191,7 +187,7 @@ class ProgressesRelationManager extends RelationManager
         $this->dateTo = $dateTo;
     }
 
-    public  function headerActions(): array
+    public function headerActions(): array
     {
         return [
             Tables\Actions\CreateAction::make(),
@@ -213,7 +209,7 @@ class ProgressesRelationManager extends RelationManager
                             'lines_to' => null,
                         ]);
                         Notification::make()
-                            ->title('تم تسجيل الطالب ' . $student->name . ' كغائب اليوم')
+                            ->title('تم تسجيل الطالب '.$student->name.' كغائب اليوم')
                             ->color('success')
                             ->icon('heroicon-o-check-circle')
                             ->send();

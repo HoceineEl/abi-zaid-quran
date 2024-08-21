@@ -13,7 +13,6 @@ use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Support\Enums\FontWeight;
 use Filament\Tables;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\ActionGroup as ActionsActionGroup;
@@ -78,6 +77,7 @@ class StudentsRelationManager extends RelationManager
                             $record->update(['order_no' => $idInGroup + 1]);
                             $record->save();
                         }
+
                         return $record->order_no;
                     })
                     ->label('الرقم'),
@@ -88,6 +88,8 @@ class StudentsRelationManager extends RelationManager
                             return $ProgToday->status === 'memorized' ? 'heroicon-o-check-circle' : ($ProgToday->status === 'absent' ? 'heroicon-o-exclamation-circle' : 'heroicon-o-information-circle');
                         }
                     })
+                    ->searchable()
+                    ->sortable()
                     ->color(function (Student $record) {
                         $ProgToday = $record->progresses()->where('date', now()->format('Y-m-d'))->first();
                         if ($ProgToday) {
@@ -96,10 +98,12 @@ class StudentsRelationManager extends RelationManager
                     })
                     ->label('الاسم'),
                 TextColumn::make('phone')
-                    ->url(fn ($record) => "tel:{$record->phone}")
+                    ->url(fn($record) => "tel:{$record->phone}")
                     ->badge()
-                    ->icon(fn ($record) => $record->needsCall() ? 'heroicon-o-exclamation-circle' : 'heroicon-o-check-circle')
-                    ->color(fn (Student $record) => $record->needsCall() ? 'danger' : 'success')
+                    ->icon(fn($record) => $record->needsCall() ? 'heroicon-o-exclamation-circle' : 'heroicon-o-check-circle')
+                    ->searchable()
+                    ->sortable()
+                    ->color(fn(Student $record) => $record->needsCall() ? 'danger' : 'success')
                     ->label('رقم الهاتف'),
                 TextColumn::make('sex')->label('الجنس')
                     ->formatStateUsing(function ($state) {
@@ -113,7 +117,7 @@ class StudentsRelationManager extends RelationManager
             ->headerActions([
                 Tables\Actions\CreateAction::make()
                     ->slideOver()
-                    ->visible(fn () => $this->ownerRecord->managers->contains(auth()->user()))
+                    ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
                     ->modalWidth('4xl'),
             ])
             ->reorderable('order_no', true)
@@ -137,10 +141,13 @@ class StudentsRelationManager extends RelationManager
                         $message = "السلام عليكم ورحمة الله وبركاته أخي الطالب {$record->name}، نذكرك بالواجب المقرر اليوم، لعل المانع خير.";
 
                         if (str_contains($this->ownerRecord->type, 'سرد')) {
-                            $message = "السلام عليكم ورحمة الله وبركاته أخي الطالب {$record->name}،  ,عن المشرف عن مجموعة (السرد),نذكرك بالواجب المقرر اليوم، لعل المانع خير.";
+                            $message = "السلام عليكم ورحمة الله وبركاته،
+أخي الطالب **student_name**،
+نذكرك بواجب اليوم من السرد، المرجو المبادرة قبل غلق المجموعة زادكم الله حرصا";
+                            $message = str_replace('student_name', $record->name, $message);
                         }
 
-                        return   "https://wa.me/{$number}?text=" . urlencode($message);
+                        return "https://wa.me/{$number}?text=" . urlencode($message);
                     }, true),
                 // Tables\Actions\Action::make('progress')
                 //     ->icon('heroicon-o-chart-pie')
@@ -169,7 +176,7 @@ class StudentsRelationManager extends RelationManager
                     ActionsCreateAction::make()
                         ->label('إضافة طالب')
                         ->icon('heroicon-o-plus-circle')
-                        ->visible(fn () => $this->ownerRecord->managers->contains(auth()->user()))
+                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
                         ->slideOver(),
                     Action::make('make_others_as_absent')
                         ->label('تسجيل البقية كغائبين')
@@ -183,13 +190,13 @@ class StudentsRelationManager extends RelationManager
                             Textarea::make('message')
                                 ->hint('السلام عليكم وإسم الطالب سيتم إضافته تلقائياً في  الرسالة.')
                                 ->reactive()
-                                ->hidden(fn (Get $get) => !$get('send_msg'))
+                                ->hidden(fn(Get $get) => !$get('send_msg'))
                                 ->default('لم ترسلوا الواجب المقرر اليوم، لعل المانع خير.')
                                 ->label('الرسالة')
                                 ->required(),
                         ])
                         ->modalSubmitActionLabel('تأكيد')
-                        ->visible(fn () => $this->ownerRecord->managers->contains(auth()->user()))
+                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
                         ->action(function (array $data) {
                             $selectedDate = $this->tableFilters['date']['value'] ?? now()->format('Y-m-d');
                             $this->ownerRecord->students->filter(function ($student) use ($selectedDate) {
@@ -228,7 +235,7 @@ class StudentsRelationManager extends RelationManager
                                 ->label('الرسالة')
                                 ->required(),
                         ])
-                        ->visible(fn () => $this->ownerRecord->managers->contains(auth()->user()))
+                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
                         ->action(function (array $data) {
                             $selectedDate = $this->tableFilters['date']['value'] ?? now()->format('Y-m-d');
                             $this->ownerRecord->students->filter(function ($student) use ($selectedDate) {
@@ -259,7 +266,7 @@ class StudentsRelationManager extends RelationManager
                                 ->label('الرسالة')
                                 ->required(),
                         ])
-                        ->visible(fn () => $this->ownerRecord->managers->contains(auth()->user()))
+                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
                         ->action(function (array $data) {
                             $selectedDate = $this->tableFilters['date']['value'] ?? now()->format('Y-m-d');
                             $this->ownerRecord->students->filter(function ($student) use ($selectedDate) {
@@ -280,7 +287,7 @@ class StudentsRelationManager extends RelationManager
                         ->label('تسجيلهم كحاضرين')
                         ->icon('heroicon-o-check-circle')
                         ->color('success')
-                        ->visible(fn () => $this->ownerRecord->managers->contains(auth()->user()))
+                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
                         ->deselectRecordsAfterCompletion()
                         ->action(function () {
                             $students = $this->selectedTableRecords;
@@ -318,7 +325,7 @@ class StudentsRelationManager extends RelationManager
                                 ->label('الرسالة')
                                 ->required(),
                         ])
-                        ->visible(fn () => $this->ownerRecord->managers->contains(auth()->user()))
+                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
                         ->action(function (array $data) {
                             $students = $this->selectedTableRecords;
                             foreach ($students as $studentId) {
@@ -340,12 +347,12 @@ class StudentsRelationManager extends RelationManager
                             Textarea::make('message')
                                 ->hint('السلام عليكم وإسم الطالب سيتم إضافته تلقائياً في  الرسالة.')
                                 ->reactive()
-                                ->hidden(fn (Get $get) => !$get('send_msg'))
+                                ->hidden(fn(Get $get) => !$get('send_msg'))
                                 ->default('لم ترسلوا الواجب المقرر اليوم، لعل المانع خير.')
                                 ->label('الرسالة')
                                 ->required(),
                         ])
-                        ->visible(fn () => $this->ownerRecord->managers->contains(auth()->user()))
+                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
                         ->action(function (array $data) {
                             $students = $this->selectedTableRecords;
                             foreach ($students as $studentId) {

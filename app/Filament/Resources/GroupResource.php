@@ -10,7 +10,6 @@ use App\Filament\Resources\GroupResource\RelationManagers\StudentsRelationManage
 use App\Models\Group;
 use App\Models\Message;
 use App\Models\Student;
-use Filament\Actions\Action;
 use Filament\Forms;
 use Filament\Forms\Components\Actions\Action as FormAction;
 use Filament\Forms\Components\Grid;
@@ -55,6 +54,7 @@ class GroupResource extends Resource
                                 if ($record?->type === 'half_page' || $record?->type === 'two_lines') {
                                     return false;
                                 }
+
                                 return true;
                             })
                             ->reactive()
@@ -71,10 +71,10 @@ class GroupResource extends Resource
                         TextInput::make('type')
                             ->label('نوع المجموعة')
                             ->reactive()
-                            ->hidden(fn (Get $get) => $get('custom_type') === false)
-                    ])
+                            ->hidden(fn (Get $get) => $get('custom_type') === false),
+                    ]),
             ])
-            ->disabled(!Core::canChange());
+            ->disabled(! Core::canChange());
     }
 
     public static function table(Table $table): Table
@@ -111,7 +111,8 @@ class GroupResource extends Resource
                         $progresses = $students->map(function ($student) {
                             return $student->progresses->where('date', now()->format('Y-m-d'))->count();
                         });
-                        return  $progresses->sum() . '/' . $students->count() . ' من الطلاب مسجلين اليوم';
+
+                        return $progresses->sum().'/'.$students->count().' من الطلاب مسجلين اليوم';
                     })
                     ->searchable(),
             ])
@@ -131,12 +132,13 @@ class GroupResource extends Resource
                     ->label('تذكير المشرفين ')
                     ->icon('heroicon-o-bell')
                     ->visible(function (Group $record) {
-                        $one = auth()->user()->role === "admin";
+                        $one = auth()->user()->role === 'admin';
                         $students = $record->students;
                         $progresses = $students->map(function ($student) {
                             return $student->progresses->where('date', now()->format('Y-m-d'))->count();
                         });
                         $two = $progresses->sum() < $students->count();
+
                         return $one && $two;
                     })
                     ->color('primary')
@@ -158,14 +160,14 @@ class GroupResource extends Resource
                 ActionsAction::make('send_whatsapp')
                     ->label('أرسل رسالة للغائبين')
                     ->icon('heroicon-o-users')
-                    ->visible(fn () => auth()->user()->role === "admin")
+                    ->visible(fn () => auth()->user()->role === 'admin')
                     ->action(function () {
                         Core::sendMessageToAbsence();
                     }),
                 ActionsAction::make('send_to_specific')
                     ->color('info')
                     ->icon('heroicon-o-cube')
-                    ->visible(fn () => auth()->user()->role === "admin")
+                    ->visible(fn () => auth()->user()->role === 'admin')
                     ->label('أرسل لطلبة محددين')
                     ->form([
                         Select::make('students')
@@ -224,18 +226,18 @@ class GroupResource extends Resource
                     }),
             ])
             ->modifyQueryUsing(function ($query) {
-                if (auth()->user()->role !== "admin") {
+                if (auth()->user()->role !== 'admin') {
                     $query->whereHas('managers', function ($query) {
                         $query->where('manager_id', auth()->id());
                     });
                 } else {
-                    $query;
+
                 }
             })
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()
-                        ->disabled(!Core::canChange()),
+                        ->disabled(! Core::canChange()),
                 ]),
             ]);
     }
