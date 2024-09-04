@@ -63,18 +63,16 @@ class ProgressesRelationManager extends RelationManager
         $dateFrom = $this->dateFrom ?? now()->subDays(4)->format('Y-m-d');
         $dateTo = $this->dateTo ?? now()->format('Y-m-d');
         // Calculate status per day for each student
-        $statusPerDay = $this->ownerRecord->students
-
-            ->mapWithKeys(function ($student) use ($dateFrom, $dateTo) {
-                return [
-                    $student->id => $student->progresses
-                        ->whereBetween('date', [$dateFrom, $dateTo])
-                        ->groupBy('date')
-                        ->map(function ($group) {
-                            return $group->groupBy('status');
-                        })
-                ];
-            });
+        $statusPerDay = $this->ownerRecord->students->mapWithKeys(function ($student) use ($dateFrom, $dateTo) {
+            return [
+                $student->id => $student->progresses
+                    ->whereBetween('date', [$dateFrom, $dateTo])
+                    ->groupBy('date')
+                    ->map(function ($group) {
+                        return $group->groupBy('status');
+                    })
+            ];
+        });
         // dd($statusPerDay);
         // Prepare columns for each date within the range
         $dateRange = new \DatePeriod(
@@ -125,7 +123,7 @@ class ProgressesRelationManager extends RelationManager
                     TextColumn::make('name')
                         ->getStateUsing(function ($record) {
                             $owner = $this->ownerRecord;
-                            $number = $owner->students->search(fn($student) => $student->id == $record->id) + 1;
+                            $number = $owner->students->search(fn ($student) => $student->id == $record->id) + 1;
                             return  $number . '. ' . $record->name;
                         })
                         ->label('الطالب'),
@@ -133,13 +131,8 @@ class ProgressesRelationManager extends RelationManager
                 ]
             )
             ->paginated(false)
-            ->query(function () use ($dateFrom, $dateTo) {
-                $query = $this->ownerRecord->students()
-                    ->withCount(['progresses as attendance_count' => function ($query) use ($dateFrom, $dateTo) {
-                        $query->whereBetween('date', [$dateFrom, $dateTo])
-                            ->where('status', 'memorized');
-                    }])
-                    ->orderByDesc('attendance_count');
+            ->modifyQueryUsing(function ($query) {
+                $query = $this->ownerRecord->students()->getQuery();
                 return $query;
             })
             ->filters([
@@ -148,12 +141,12 @@ class ProgressesRelationManager extends RelationManager
                         DatePicker::make('date_from')
                             ->label('من تاريخ')
                             ->reactive()
-                            ->afterStateUpdated(fn($state) => $this->dateFrom = $state ?? now()->subDays(4)->format('Y-m-d'))
+                            ->afterStateUpdated(fn ($state) => $this->dateFrom = $state ?? now()->subDays(4)->format('Y-m-d'))
                             ->default(now()->subDays(4)->format('Y-m-d')),
                         DatePicker::make('date_to')
                             ->reactive()
                             ->label('إلى تاريخ')
-                            ->afterStateUpdated(fn($state) => $this->dateTo = $state ?? now()->format('Y-m-d'))
+                            ->afterStateUpdated(fn ($state) => $this->dateTo = $state ?? now()->format('Y-m-d'))
                             ->default(now()->format('Y-m-d')),
                     ])
             ])
@@ -203,7 +196,7 @@ class ProgressesRelationManager extends RelationManager
         return [
             Tables\Actions\CreateAction::make(),
             Action::make('make_others_as_absent')
-                ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
+                ->visible(fn () => $this->ownerRecord->managers->contains(auth()->user()))
                 ->label('تسجيل البقية كغائبين اليوم')
                 ->color('danger')
                 ->action(function () {
@@ -231,7 +224,7 @@ class ProgressesRelationManager extends RelationManager
                 }),
             Action::make('group')
                 ->label('تسجيل تقدم جماعي')
-                ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
+                ->visible(fn () => $this->ownerRecord->managers->contains(auth()->user()))
                 ->color(Color::Teal)
                 ->form(function (Get $get) {
                     $students = $this->ownerRecord->students->filter(function ($student) {
@@ -249,7 +242,7 @@ class ProgressesRelationManager extends RelationManager
                                         })->pluck('name', 'id');
                                     })
                                     ->required()
-                                    ->default(fn() => $students->keys()->toArray())
+                                    ->default(fn () => $students->keys()->toArray())
                                     ->multiple(),
                                 DatePicker::make('date')
                                     ->label('التاريخ')

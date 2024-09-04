@@ -69,8 +69,18 @@ class StudentsRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('name')
             ->columns([
+                TextColumn::make('order_no')
+                    ->getStateUsing(function ($record) {
+                        $id = $record->id;
+                        $idInGroup = $this->ownerRecord->students->pluck('id')->search($id);
+                        if ($record->order_no != ($idInGroup + 1)) {
+                            $record->update(['order_no' => $idInGroup + 1]);
+                            $record->save();
+                        }
 
-
+                        return $record->order_no;
+                    })
+                    ->label('الرقم'),
                 TextColumn::make('name')
                     ->icon(function (Student $record) {
                         $ProgToday = $record->progresses->where('date', now()->format('Y-m-d'))->first();
@@ -86,10 +96,10 @@ class StudentsRelationManager extends RelationManager
                     })
                     ->label('الاسم'),
                 TextColumn::make('phone')
-                    ->url(fn($record) => "tel:{$record->phone}")
+                    ->url(fn ($record) => "tel:{$record->phone}")
                     ->badge()
-                    ->icon(fn($record) => $record->needsCall() ? 'heroicon-o-exclamation-circle' : 'heroicon-o-check-circle')
-                    ->color(fn(Student $record) => $record->needsCall() ? 'danger' : 'success')
+                    ->icon(fn ($record) => $record->needsCall() ? 'heroicon-o-exclamation-circle' : 'heroicon-o-check-circle')
+                    ->color(fn (Student $record) => $record->needsCall() ? 'danger' : 'success')
                     ->label('رقم الهاتف'),
                 TextColumn::make('sex')->label('الجنس')
                     ->formatStateUsing(function ($state) {
@@ -100,7 +110,12 @@ class StudentsRelationManager extends RelationManager
                     }),
                 TextColumn::make('city')->label('المدينة'),
             ])
-
+            ->headerActions([
+                Tables\Actions\CreateAction::make()
+                    ->slideOver()
+                    ->visible(fn () => $this->ownerRecord->managers->contains(auth()->user()))
+                    ->modalWidth('4xl'),
+            ])
             ->reorderable('order_no', true)
             ->defaultSort('order_no')
             ->actions([
@@ -130,71 +145,34 @@ class StudentsRelationManager extends RelationManager
 
                         return "https://wa.me/{$number}?text=" . urlencode($message);
                     }, true),
-
+                // Tables\Actions\Action::make('progress')
+                //     ->icon('heroicon-o-chart-pie')
+                //     ->color('success')
+                //     ->modal()
+                //     ->disabled(fn ($record) => Progress::where('student_id', $record->id)->whereDate('date', now()->format('Y-m-d'))->exists())
+                //     ->color(fn ($record) => Progress::where('student_id', $record->id)->whereDate('date', now()->format('Y-m-d'))->exists() ? 'gray' : 'success')
+                //     ->label(fn ($record) => Progress::where('student_id', $record->id)->whereDate('date', now()->format('Y-m-d'))->exists() ? 'تم إضافة التقدم' : 'إضافة التقدم')
+                //     ->slideOver()
+                //     ->form(function (Model $student) {
+                //         return ProgressFormHelper::getProgressFormSchema($student);
+                //     })
+                //     ->action(function (array $data, Model $student) {
+                //         $data['created_by'] = auth()->id();
+                //         $data['student_id'] = $student->id;
+                //         Progress::create($data);
+                //         Notification::make('added')
+                //             ->title('تم إضافة التقدم بنجاح')
+                //             ->success()->send();
+                //     }),
 
             ], ActionsPosition::BeforeColumns)
             ->paginated(false)
             ->headerActions([
-                Action::make('copy_students_from_other_groups')
-                    ->label('نسخ الطلاب من مجموعات أخرى')
-                    ->icon('heroicon-o-document-duplicate')
-                    ->color('primary')
-                    ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
-
-                    ->form([
-                        Forms\Components\Select::make('source_group_id')
-                            ->label('المجموعة المصدر')
-                            ->options(fn() => \App\Models\Group::where('id', '!=', $this->ownerRecord->id)->pluck('name', 'id'))
-                            ->required()
-                            ->reactive(),
-                        Forms\Components\CheckboxList::make('student_ids')
-                            ->label('الطلاب')
-                            ->reactive()
-                            ->options(function (Get $get) {
-                                $groupId = $get('source_group_id');
-                                if (!$groupId) return [];
-
-                                $currentGroupPhones = $this->ownerRecord->students()->pluck('phone');
-
-                                return \App\Models\Student::without(['progresses', 'group', 'progresses.page', 'group.managers'])
-                                    ->where('group_id', $groupId)
-                                    ->whereNotIn('phone', $currentGroupPhones)
-                                    ->pluck('name', 'id');
-                            })
-                            ->required()
-                            ->bulkToggleable(),
-                    ])
-                    ->action(function (array $data) {
-                        $studentsToCreate = \App\Models\Student::without(['progresses', 'group', 'progresses.page', 'group.managers'])
-                            ->whereIn('id', $data['student_ids'])
-                            ->get();
-
-                        $createdCount = 0;
-                        foreach ($studentsToCreate as $student) {
-                            if (!$this->ownerRecord->students()->where('phone', $student->phone)->exists()) {
-                                $newStudentData = $student->only([
-                                    'name',
-                                    'phone',
-                                    'sex',
-                                    'city',
-                                    // Add any other fields you want to copy here
-                                ]);
-
-                                $this->ownerRecord->students()->create($newStudentData);
-                                $createdCount++;
-                            }
-                        }
-
-                        Notification::make()
-                            ->title("تم نسخ {$createdCount} طالب بنجاح")
-                            ->success()
-                            ->send();
-                    }),
                 ActionsActionGroup::make([
                     ActionsCreateAction::make()
                         ->label('إضافة طالب')
                         ->icon('heroicon-o-plus-circle')
-                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
+                        ->visible(fn () => $this->ownerRecord->managers->contains(auth()->user()))
                         ->slideOver(),
                     Action::make('make_others_as_absent')
                         ->label('تسجيل البقية كغائبين')
@@ -208,13 +186,13 @@ class StudentsRelationManager extends RelationManager
                             Textarea::make('message')
                                 ->hint('السلام عليكم وإسم الطالب سيتم إضافته تلقائياً في  الرسالة.')
                                 ->reactive()
-                                ->hidden(fn(Get $get) => !$get('send_msg'))
+                                ->hidden(fn (Get $get) => !$get('send_msg'))
                                 ->default('لم ترسلوا الواجب المقرر اليوم، لعل المانع خير.')
                                 ->label('الرسالة')
                                 ->required(),
                         ])
                         ->modalSubmitActionLabel('تأكيد')
-                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
+                        ->visible(fn () => $this->ownerRecord->managers->contains(auth()->user()))
                         ->action(function (array $data) {
                             $selectedDate = $this->tableFilters['date']['value'] ?? now()->format('Y-m-d');
                             $this->ownerRecord->students->filter(function ($student) use ($selectedDate) {
@@ -253,7 +231,7 @@ class StudentsRelationManager extends RelationManager
                                 ->label('الرسالة')
                                 ->required(),
                         ])
-                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
+                        ->visible(fn () => $this->ownerRecord->managers->contains(auth()->user()))
                         ->action(function (array $data) {
                             $selectedDate = $this->tableFilters['date']['value'] ?? now()->format('Y-m-d');
                             $this->ownerRecord->students->filter(function ($student) use ($selectedDate) {
@@ -284,7 +262,7 @@ class StudentsRelationManager extends RelationManager
                                 ->label('الرسالة')
                                 ->required(),
                         ])
-                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
+                        ->visible(fn () => $this->ownerRecord->managers->contains(auth()->user()))
                         ->action(function (array $data) {
                             $selectedDate = $this->tableFilters['date']['value'] ?? now()->format('Y-m-d');
                             $this->ownerRecord->students->filter(function ($student) use ($selectedDate) {
@@ -305,7 +283,7 @@ class StudentsRelationManager extends RelationManager
                         ->label('تسجيلهم كحاضرين')
                         ->icon('heroicon-o-check-circle')
                         ->color('success')
-                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
+                        ->visible(fn () => $this->ownerRecord->managers->contains(auth()->user()))
                         ->deselectRecordsAfterCompletion()
                         ->action(function () {
                             $students = $this->selectedTableRecords;
@@ -343,7 +321,7 @@ class StudentsRelationManager extends RelationManager
                                 ->label('الرسالة')
                                 ->required(),
                         ])
-                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
+                        ->visible(fn () => $this->ownerRecord->managers->contains(auth()->user()))
                         ->action(function (array $data) {
                             $students = $this->selectedTableRecords;
                             foreach ($students as $studentId) {
@@ -365,12 +343,12 @@ class StudentsRelationManager extends RelationManager
                             Textarea::make('message')
                                 ->hint('السلام عليكم وإسم الطالب سيتم إضافته تلقائياً في  الرسالة.')
                                 ->reactive()
-                                ->hidden(fn(Get $get) => !$get('send_msg'))
+                                ->hidden(fn (Get $get) => !$get('send_msg'))
                                 ->default('لم ترسلوا الواجب المقرر اليوم، لعل المانع خير.')
                                 ->label('الرسالة')
                                 ->required(),
                         ])
-                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
+                        ->visible(fn () => $this->ownerRecord->managers->contains(auth()->user()))
                         ->action(function (array $data) {
                             $students = $this->selectedTableRecords;
                             foreach ($students as $studentId) {
@@ -398,15 +376,7 @@ class StudentsRelationManager extends RelationManager
                             }
                         })->deselectRecordsAfterCompletion(),
                 ]),
-            ])
-            ->query(function () {
-                $query = $this->ownerRecord->students()
-                    ->withCount(['progresses as attendance_count' => function ($query) {
-                        $query->where('date', now()->format('Y-m-d'));
-                    }])
-                    ->orderByDesc('attendance_count');
-                return $query;
-            });
+            ]);
     }
 
     public function isReadOnly(): bool
