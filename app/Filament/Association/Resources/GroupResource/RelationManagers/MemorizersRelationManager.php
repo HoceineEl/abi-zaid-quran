@@ -4,8 +4,15 @@ namespace App\Filament\Association\Resources\GroupResource\RelationManagers;
 
 use App\Filament\Association\Resources\MemorizerResource;
 use App\Helpers\ProgressFormHelper;
+use App\Models\Attendance;
 use App\Models\Memorizer;
 use App\Models\Student;
+use BaconQrCode\Encoder\QrCode;
+use BaconQrCode\Renderer\Image\SvgImageBackEnd;
+use BaconQrCode\Renderer\ImageRenderer;
+use BaconQrCode\Renderer\RendererStyle\RendererStyle;
+use BaconQrCode\Writer;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Forms;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -15,6 +22,8 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\ActionGroup;
+use Filament\Tables\Actions\BulkAction;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\ActionsPosition;
 use Filament\Tables\Table;
@@ -22,6 +31,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Pagination\UrlWindow;
+use Illuminate\Support\Facades\Storage;
 
 class MemorizersRelationManager extends RelationManager
 {
@@ -51,16 +61,20 @@ class MemorizersRelationManager extends RelationManager
                         return  $this->ownerRecord->memorizers->pluck('id')->search($id) + 1;
                     })
                     ->label('الرقم'),
+                IconColumn::make('attendance_today')
+                    ->label('حاضر')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-x-circle')
+                    ->getStateUsing(fn(Memorizer $record) => $record->attendances()->whereDate('date', now())->exists()),
                 TextColumn::make('name')
                     ->searchable()
+                    ->url(fn(Memorizer $record) => "tel:{$record->phone}")
+                    ->description(fn(Memorizer $record) => $record->phone)
+                    ->color(fn(Memorizer $record) => $record->attendances()->whereDate('date', now())->exists() ? 'success' : 'default')
                     ->label('الإسم')
                     ->sortable(),
-                TextColumn::make('phone')
-                    ->url(fn($record) => "tel:{$record->phone}", true)
-                    ->badge()
-                    ->searchable()
-                    ->sortable()
-                    ->label('رقم الهاتف'),
+
             ])
             ->filters([])
             ->headerActions([
@@ -72,6 +86,35 @@ class MemorizersRelationManager extends RelationManager
                     Tables\Actions\DeleteAction::make(),
                     Tables\Actions\ViewAction::make(),
                 ]),
+                Action::make('generate_badge')
+                    ->label('إنشاء بطاقة')
+                    ->icon('heroicon-o-identification')
+                    ->action(function (Memorizer $record) {
+                        // Generate QR Code
+                        $data = json_encode(['memorizer_id' => $record->id]);
+                        $renderer = new ImageRenderer(
+                            new RendererStyle(400),
+                            new SvgImageBackEnd
+                        );
+                        $writer = new Writer($renderer);
+                        $svg = $writer->writeString($data);
+                        $qrCode = 'data:image/svg+xml;base64,' . base64_encode($svg);
+
+                        // Generate Badge HTML
+                        $badgeHtml = view('badges.student', [
+                            'memorizer' => $record,
+                            'qrCode' => $qrCode,
+                        ])->render();
+                        // Generate PDF
+                        $pdf = Pdf::loadHtml($badgeHtml);
+                        $pdf->setPaper([0, 0, 300, 450], 'portrait');
+                        $pdf->getDomPDF()->set_option("isPhpEnabled", true);
+                        $pdf->setOption(['dpi' => 150, 'defaultFont' => 'Cairo']);
+                        // Stream PDF to browser
+                        return response()->streamDownload(function () use ($pdf) {
+                            echo $pdf->output();
+                        }, "badge_{$record->id}.pdf");
+                    }),
                 Tables\Actions\Action::make('send_whatsapp_msg')
                     ->color('success')
                     ->iconButton()
@@ -108,17 +151,18 @@ class MemorizersRelationManager extends RelationManager
                         $whatsappUrl = "https://wa.me/{$number}?text=" . urlencode($message);
                         redirect($whatsappUrl);
                     }),
-                Action::make('pay_this_month')
-                    ->label('الدفع لهذا الشهر')
+                Action::make('pay_monthly_fee')
+                    ->label('تسديد الرسوم الشهرية')
                     ->requiresConfirmation()
-                    ->icon('tabler-cash')
+                    ->icon('heroicon-o-currency-dollar')
                     ->color('indigo')
-                    ->hidden(fn(Memorizer $record) =>  $record->hasPaymentThisMonth())
-                    ->modalDescription('هل أنت متأكد من الدفع؟')
-                    ->modalHeading('دفع الشهر')
+                    ->hidden(fn(Memorizer $record) => $record->hasPaymentThisMonth())
+                    ->modalDescription('هل أنت متأكد من تسجيل دفع الرسوم الشهرية لهذا الطالب؟')
+                    ->modalHeading('تأكيد تسديد الرسوم')
+                    ->modalSubmitActionLabel('تأكيد الدفع')
                     ->action(function (Memorizer $record) {
                         $record->payments()->create([
-                            'amount' => 100,
+                            'amount' => $record->exempt ? 0 : $this->ownerRecord->price,
                             'payment_date' => now(),
                         ]);
 
@@ -127,29 +171,52 @@ class MemorizersRelationManager extends RelationManager
                             ->success()
                             ->send();
                     }),
-            ], ActionsPosition::BeforeColumns)
+            ])
             ->bulkActions([
-                Tables\Actions\BulkAction::make('pay_this_month')
-                    ->label('دفع الشهر')
+                BulkAction::make('pay_monthly_fee_bulk')
+                    ->label('تسديد الرسوم للمحددين')
                     ->requiresConfirmation()
-                    ->color('success')
-                    ->icon('tabler-cash')
-                    ->modalDescription('هل أنت متأكد من دفع الشهر للطلاب المحددين؟')
-                    ->modalHeading('دفع الشهر')
+                    ->color('indigo')
+                    ->icon('heroicon-o-currency-dollar')
+                    ->modalDescription('هل أنت متأكد من تسجيل دفع الرسوم الشهرية للطلاب المحددين؟')
+                    ->modalHeading('تأكيد تسديد الرسوم الجماعي')
+                    ->modalSubmitActionLabel('تأكيد الدفع للجميع')
                     ->action(function ($livewire) {
                         $records = $livewire->getSelectedTableRecords();
                         $records = Memorizer::find($records);
-                        foreach ($records as $record) {
-                            if (!$record->hasPaymentThisMonth()) {
-                                $record->payments()->create([
-                                    'amount' => $record->exempt ? 0 : $this->ownerRecord->price,
+                        $records->each(function (Memorizer $memorizer) {
+                            if (!$memorizer->hasPaymentThisMonth()) {
+                                $memorizer->payments()->create([
+                                    'amount' => $memorizer->exempt ? 0 : $this->ownerRecord->price,
                                     'payment_date' => now(),
                                 ]);
                             }
-                        }
+                        });
+
 
                         Notification::make()
                             ->title('تم الدفع بنجاح')
+                            ->success()
+                            ->send();
+                    }),
+                BulkAction::make('mark_attendance_bulk')
+                    ->label('تسجيل الحضور للمحددين')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->action(function ($livewire) {
+                        $records = $livewire->getSelectedTableRecords();
+                        $records = Memorizer::find($records);
+                        $records->each(function (Memorizer $memorizer) {
+                            Attendance::firstOrCreate([
+                                'memorizer_id' => $memorizer->id,
+                                'date' => now()->toDateString(),
+                            ], [
+                                'check_in_time' => now()->toTimeString(),
+                            ]);
+                        });
+
+                        Notification::make()
+                            ->title('تم تسجيل الحضور بنجاح للطلاب المحددين')
                             ->success()
                             ->send();
                     }),

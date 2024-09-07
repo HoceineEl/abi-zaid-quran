@@ -4,6 +4,7 @@ namespace App\Filament\Association\Resources;
 
 use App\Filament\Association\Resources\GroupResource\Pages;
 use App\Filament\Association\Resources\GroupResource\RelationManagers;
+use App\Filament\Association\Resources\GroupResource\RelationManagers\AttendancesRelationManager;
 use App\Filament\Association\Resources\GroupResource\RelationManagers\MemorizersRelationManager;
 use App\Models\Group;
 use App\Models\MemoGroup;
@@ -78,6 +79,7 @@ class GroupResource extends Resource
     {
         return [
             MemorizersRelationManager::class,
+            AttendancesRelationManager::class,
         ];
     }
 

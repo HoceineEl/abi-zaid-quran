@@ -3,69 +3,86 @@ import QrScanner from 'qr-scanner';
 let scanner = null;
 
 function initQrScanner() {
+  console.log('Initializing QR Scanner');
   const video = document.getElementById('qr-video');
   const camList = document.getElementById('cam-list');
   const inversionModeSelect = document.getElementById('inversion-mode-select');
   const startButton = document.getElementById('start-button');
   const stopButton = document.getElementById('stop-button');
 
-  if (!video || scanner) return;
-
-  function setResult(result) {
-    try {
-      const data = JSON.parse(result.data);
-      if (data && data.memorizer_id) {
-        Livewire.dispatch('set-scanned-memorizer-id', { id: data.memorizer_id });
-      }
-    } catch (error) {
-      console.error('Invalid QR Code', error);
-    }
+  if (!video) {
+    console.error('Video element not found');
+    return;
   }
 
-  // Create QR scanner instance
-  scanner = new QrScanner(video, result => setResult(result), {
-    onDecodeError: error => {
-      console.error(error);
-    },
-    highlightScanRegion: true,
-    highlightCodeOutline: true,
-  });
+  if (scanner) {
+    console.log('Scanner already initialized');
+    return;
+  }
 
-  // Start scanner
-  scanner.start().then(() => {
-    updateScannerState(true);
-  });
+  QrScanner.hasCamera().then(hasCamera => {
+    Livewire.dispatch('camera-availability', { available: hasCamera });
 
-  // Set up camera list
-  QrScanner.listCameras(true).then(cameras => {
-    cameras.forEach(camera => {
-      const option = document.createElement('option');
-      option.value = camera.id;
-      option.text = camera.label;
-      camList.add(option);
+    if (!hasCamera) {
+      console.error('No camera found on this device');
+      return;
+    }
+
+    scanner = new QrScanner(video, result => setResult(result), {
+      onDecodeError: error => {
+        console.warn('QR code scan error:', error);
+      },
+      highlightScanRegion: true,
+      highlightCodeOutline: true,
     });
-  });
 
-  // Event listeners
-  startButton.addEventListener('click', () => {
     scanner.start().then(() => {
+      console.log('Scanner started');
       updateScannerState(true);
+    }).catch(err => {
+      console.error('Failed to start scanner:', err);
+      // Display a user-friendly error message on the page
+      document.getElementById('video-container').innerHTML = `<p>Failed to start the scanner. Error: ${err.message}</p>`;
     });
-  });
 
-  stopButton.addEventListener('click', () => {
-    scanner.stop();
-    updateScannerState(false);
-  });
+    QrScanner.listCameras(true).then(cameras => {
+      console.log('Available cameras:', cameras);
+      camList.innerHTML = '';
+      cameras.forEach(camera => {
+        const option = document.createElement('option');
+        option.value = camera.id;
+        option.text = camera.label;
+        camList.add(option);
+      });
+    });
 
-  camList.addEventListener('change', event => {
-    scanner.setCamera(event.target.value);
-  });
+    startButton.addEventListener('click', () => {
+      console.log('Start button clicked');
+      scanner.start().then(() => {
+        updateScannerState(true);
+      }).catch(err => {
+        console.error('Failed to start scanner:', err);
+      });
+    });
 
-  inversionModeSelect.addEventListener('change', event => {
-    scanner.setInversionMode(event.target.value);
+    stopButton.addEventListener('click', () => {
+      console.log('Stop button clicked');
+      scanner.stop();
+      updateScannerState(false);
+    });
+
+    camList.addEventListener('change', event => {
+      console.log('Camera changed:', event.target.value);
+      scanner.setCamera(event.target.value);
+    });
+
+    inversionModeSelect.addEventListener('change', event => {
+      console.log('Inversion mode changed:', event.target.value);
+      scanner.setInversionMode(event.target.value);
+    });
   });
 }
+
 
 function updateScannerState(isScanning) {
   const startButton = document.getElementById('start-button');
@@ -76,6 +93,7 @@ function updateScannerState(isScanning) {
 }
 
 function destroyQrScanner() {
+  console.log('Destroying QR Scanner');
   if (scanner) {
     scanner.stop();
     scanner.destroy();
@@ -83,23 +101,24 @@ function destroyQrScanner() {
   }
 }
 
-// Initialize scanner when the component is loaded
-document.addEventListener('livewire:initialized', () => {
-  initQrScanner();
+document.addEventListener('livewire:init', () => {
+  Livewire.on('qr-scanner-mounted', () => {
+    console.log('QR Scanner component mounted');
+    initQrScanner();
+  });
 });
 
-// Reinitialize scanner when Livewire updates the component
 document.addEventListener('livewire:navigated', () => {
+  console.log('Page navigated');
   destroyQrScanner();
   initQrScanner();
 });
 
-// Cleanup when the component is removed
 document.addEventListener('livewire:disconnected', () => {
+  console.log('Livewire disconnected');
   destroyQrScanner();
 });
 
-// Expose functions to window for potential external use
 window.qrScanner = {
   init: initQrScanner,
   destroy: destroyQrScanner

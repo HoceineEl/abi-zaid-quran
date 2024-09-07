@@ -34,6 +34,7 @@ class AssociationPanelProvider extends PanelProvider
             ->topNavigation()
             ->font('Cairo')
             ->login()
+            ->viteTheme('resources/css/filament/association/theme.css')
             ->defaultThemeMode(ThemeMode::Light)
             ->brandName('مدرسة إبن أبي زيد القيرواني')
             ->brandLogo(asset('logo.jpg'))

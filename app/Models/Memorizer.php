@@ -11,7 +11,6 @@ class Memorizer extends Model
     use HasFactory;
 
 
-    protected $with = ['payments'];
 
 
     public function payments(): HasMany
@@ -28,5 +27,10 @@ class Memorizer extends Model
     public function group(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(MemoGroup::class, 'memo_group_id');
+    }
+
+    public function  attendances(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Attendance::class);
     }
 }

@@ -157,15 +157,7 @@ class ProgressesRelationManager extends RelationManager
                             ->default(now()->format('Y-m-d')),
                     ])
             ])
-            // ->headerActions([
-            //     ActionGroup::make($this->headerActions())
-            // ])
-            // ->actions([
-            //     Tables\Actions\EditAction::make()
-            //         ->form(fn (Progress $record) => ProgressFormHelper::getProgressFormSchema(group: $this->ownerRecord, student: $record->student))
-            //         ->slideOver(),
-            //     Tables\Actions\DeleteAction::make(),
-            // ])
+
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),

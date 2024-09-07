@@ -7,9 +7,11 @@
     "require": {
         "php": "^8.2",
         "bacon/bacon-qr-code": "^3.0",
+        "barryvdh/laravel-dompdf": "*",
         "filament/filament": "3.2.57",
         "laravel/framework": "^11.0",
         "laravel/tinker": "^2.9",
+        "mpdf/mpdf": "*",
         "ryangjchandler/blade-tabler-icons": "^2.3",
         "twilio/sdk": "^8.0"
     },
