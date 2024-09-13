@@ -2,21 +2,22 @@
 
 namespace App\Filament\Pages;
 
-use App\Models\Memorizer;
 use App\Models\Attendance;
+use App\Models\Memorizer;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Filament\Support\Enums\MaxWidth;
 use Illuminate\Contracts\Support\Htmlable;
-use Livewire\Attributes\On;
 
 class ScanAttendance extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-camera';
 
     protected static string $view = 'filament.association.pages.scan-attendance';
+
     public $scannedMemorizerId = '';
+
     public $message = '';
+
     public ?Memorizer $memorizer = null;
 
     public function mount(): void
@@ -26,14 +27,14 @@ class ScanAttendance extends Page
 
     public function updatedScannedMemorizerId($value): void
     {
-        dd($this->scannedMemorizerId);
         $this->memorizer = Memorizer::with(['memoGroup'])->find($value);
     }
 
     public function processScannedData(): void
     {
-        if (!$this->memorizer) {
+        if (! $this->memorizer) {
             $this->message = 'رمز QR غير صالح';
+
             return;
         }
 
@@ -65,8 +66,18 @@ class ScanAttendance extends Page
             ->send();
     }
 
-    public function getTitle(): string
+    public function getTitle(): string|Htmlable
     {
-        return 'مسح رمز QR للحافظ';
+        return 'مسح رمز QR للطلاب';
+    }
+
+    public function getHeading(): string
+    {
+        return 'مسح رمز QR للطلاب';
+    }
+
+    public static function getNavigationLabel(): string
+    {
+        return 'مسح رمز QR للطلاب';
     }
 }

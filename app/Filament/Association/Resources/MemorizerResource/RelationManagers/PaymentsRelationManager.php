@@ -7,12 +7,11 @@ use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class PaymentsRelationManager extends RelationManager
 {
     protected static string $relationship = 'payments';
+    protected static ?string $label = 'الدفعات';
 
     public function form(Form $form): Form
     {
@@ -24,10 +23,15 @@ class PaymentsRelationManager extends RelationManager
             ]);
     }
 
+
+
     public function table(Table $table): Table
     {
         return $table
             ->recordTitleAttribute('payment_date')
+            ->modelLabel('دفعة')
+            ->heading('الدفعات')
+            ->pluralModelLabel('الدفعات')
             ->columns([
                 Tables\Columns\TextColumn::make('payment_date'),
             ])

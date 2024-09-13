@@ -10,10 +10,8 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
-use Filament\Tables\Actions\CreateAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-use GuzzleHttp\Promise\Create;
 
 class PaymentResource extends Resource
 {
@@ -24,6 +22,7 @@ class PaymentResource extends Resource
     protected static ?string $modelLabel = 'دفعة';
 
     protected static ?string $pluralModelLabel = 'الدفعات';
+
     public static function form(Form $form): Form
     {
         return $form

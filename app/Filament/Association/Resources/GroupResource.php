@@ -3,19 +3,15 @@
 namespace App\Filament\Association\Resources;
 
 use App\Filament\Association\Resources\GroupResource\Pages;
-use App\Filament\Association\Resources\GroupResource\RelationManagers;
 use App\Filament\Association\Resources\GroupResource\RelationManagers\AttendancesRelationManager;
 use App\Filament\Association\Resources\GroupResource\RelationManagers\MemorizersRelationManager;
-use App\Models\Group;
+use App\Filament\Association\Resources\GroupResource\RelationManagers\PaymentsRelationManager;
 use App\Models\MemoGroup;
-use Filament\Forms;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class GroupResource extends Resource
 {
@@ -80,6 +76,8 @@ class GroupResource extends Resource
         return [
             MemorizersRelationManager::class,
             AttendancesRelationManager::class,
+            PaymentsRelationManager::class,
+
         ];
     }
 

@@ -85,10 +85,12 @@ class ProgressResource extends Resource
             //
         ];
     }
+
     public static function canAccess(): bool
     {
         return auth()->user()->role === 'admin';
     }
+
     public static function getPages(): array
     {
         return [

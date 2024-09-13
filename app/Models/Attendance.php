@@ -20,6 +20,6 @@ class Attendance extends Model
 
     public function memorizer(): BelongsTo
     {
-        return $this->belongsTo(Memorizer::class , 'memorizer_id');
+        return $this->belongsTo(Memorizer::class, 'memorizer_id');
     }
 }

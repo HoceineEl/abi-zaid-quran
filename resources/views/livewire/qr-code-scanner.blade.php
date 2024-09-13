@@ -33,6 +33,14 @@
                         إيقاف
                     </button>
                 </div>
+
+                <div class="flex items-center">
+                    <input type="checkbox" id="auto-register" wire:model.live="autoRegister"
+                        class="rounded border-gray-300 text-primary-600 shadow-sm focus:border-primary-300 focus:ring focus:ring-primary-200 focus:ring-opacity-50">
+                    <label for="auto-register" class="mr-2 text-sm text-gray-700 dark:text-gray-300">
+                        تسجيل تلقائي
+                    </label>
+                </div>
             @else
                 <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4" role="alert">
                     <p class="font-bold">تنبيه</p>
@@ -72,7 +80,7 @@
                                 <div>
                                     <p class="text-sm font-medium text-gray-500 dark:text-gray-400">المجموعة</p>
                                     <p class="text-base font-semibold text-gray-900 dark:text-white">
-                                        {{ $memorizer->memoGroup->name }}
+                                        {{ $memorizer->group->name }}
                                     </p>
                                 </div>
                             </div>
@@ -92,12 +100,14 @@
                             </div>
                         </div>
                     </div>
-                    <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3">
-                        <button wire:click="processScannedData"
-                            class="w-full bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 text-white px-4 py-2 rounded-md text-sm transition duration-300 ease-in-out">
-                            تسجيل الحضور
-                        </button>
-                    </div>
+                    @if (!$autoRegister)
+                        <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3">
+                            <button wire:click="processScannedData"
+                                class="w-full bg-primary-600  hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 text-white px-4 py-2 rounded-md text-sm transition duration-300 ease-in-out">
+                                تسجيل الحضور
+                            </button>
+                        </div>
+                    @endif
                 </div>
             @else
                 <div class="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg text-center text-gray-600 dark:text-gray-300">

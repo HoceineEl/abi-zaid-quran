@@ -2,19 +2,24 @@
 
 namespace App\Livewire;
 
-use App\Models\Memorizer;
 use App\Models\Attendance;
+use App\Models\Memorizer;
 use Filament\Notifications\Notification;
 use Illuminate\Contracts\View\View;
-use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Component;
 
 class QrCodeScanner extends Component
 {
     public ?string $scannedMemorizerId = null;
+
     public ?Memorizer $memorizer = null;
+
     public ?string $message = null;
+
     public bool $cameraAvailable = true;
+
+    public bool $autoRegister = true;
 
     public function mount(): void
     {
@@ -26,8 +31,13 @@ class QrCodeScanner extends Component
     #[On('set-scanned-memorizer-id')]
     public function setScannedMemorizerId($id): void
     {
+        $id = json_decode($id, true)['memorizer_id'];
         $this->scannedMemorizerId = $id;
-        $this->memorizer = Memorizer::with(['memoGroup'])->find($id);
+        $this->memorizer = Memorizer::with(['group'])->find($id);
+
+        if ($this->autoRegister) {
+            $this->processScannedData();
+        }
     }
 
     #[On('camera-availability')]
@@ -35,10 +45,12 @@ class QrCodeScanner extends Component
     {
         $this->cameraAvailable = $available;
     }
+
     public function processScannedData(): void
     {
-        if (!$this->memorizer) {
+        if (! $this->memorizer) {
             $this->message = 'رمز QR غير صالح';
+
             return;
         }
 
@@ -52,22 +64,13 @@ class QrCodeScanner extends Component
         if ($attendance->wasRecentlyCreated) {
             $this->message = 'تم تسجيل الحضور بنجاح';
             $notificationType = 'success';
-        } elseif (!$attendance->check_out_time) {
-            $attendance->update(['check_out_time' => now()->toTimeString()]);
-            $this->message = 'تم تسجيل الخروج بنجاح';
-            $notificationType = 'success';
-        } else {
-            $this->message = 'تم تسجيل الحضور والخروج مسبقاً';
-            $notificationType = 'warning';
+
+            Notification::make('attendance_notification')
+                ->title($this->message)
+                ->body(fn() => $this->memorizer->name)
+                ->success()
+                ->send();
         }
-
-        $this->scannedMemorizerId = null;
-        $this->memorizer = null;
-
-        Notification::make()
-            ->title($this->message)
-            ->$notificationType()
-            ->send();
     }
 
     public function render(): View

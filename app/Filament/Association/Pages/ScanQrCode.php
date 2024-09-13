@@ -2,7 +2,6 @@
 
 namespace App\Filament\Pages;
 
-use App\Livewire\QrCodeScanner;
 use Filament\Pages\Page;
 use Filament\Support\Enums\MaxWidth;
 use Illuminate\Contracts\Support\Htmlable;
@@ -18,19 +17,19 @@ class ScanQrCode extends Page
         return MaxWidth::Full;
     }
 
-    public function getTitle(): string | Htmlable
+    public function getTitle(): string|Htmlable
     {
-        return 'مسح رمز QR للحافظ';
+        return 'مسح رمز QR للطلاب';
     }
 
     public function getHeading(): string
     {
-        return 'مسح رمز QR للحافظ';
+        return 'مسح رمز QR للطلاب';
     }
 
     public static function getNavigationLabel(): string
     {
-        return 'مسح رمز QR للحافظ';
+        return 'مسح رمز QR للطلاب';
     }
 
     public static function getNavigationGroup(): ?string

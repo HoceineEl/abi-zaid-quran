@@ -4,7 +4,6 @@ namespace App\Filament\Resources\GroupResource\RelationManagers;
 
 use App\Classes\Core;
 use App\Helpers\ProgressFormHelper;
-use App\Models\Progress;
 use App\Models\Student;
 use Filament\Forms;
 use Filament\Forms\Components\Textarea;
@@ -22,7 +21,6 @@ use Filament\Tables\Actions\CreateAction as ActionsCreateAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\ActionsPosition;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Model;
 
 class StudentsRelationManager extends RelationManager
 {
@@ -69,8 +67,13 @@ class StudentsRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('name')
             ->columns([
-
-
+                TextColumn::make('number')
+                    ->label('الرقم')
+                    ->getStateUsing(function ($record) {
+                        $number = $this->getTable()->getQuery()->get()->search(fn($student) => $student->id == $record->id) + 1;
+                        return $number;
+                    })
+                    ->sortable(),
                 TextColumn::make('name')
                     ->icon(function (Student $record) {
                         $ProgToday = $record->progresses->where('date', now()->format('Y-m-d'))->first();
@@ -122,15 +125,14 @@ class StudentsRelationManager extends RelationManager
                         $message = "السلام عليكم ورحمة الله وبركاته أخي الطالب {$record->name}، نذكرك بالواجب المقرر اليوم، لعل المانع خير.";
 
                         if (str_contains($this->ownerRecord->type, 'سرد')) {
-                            $message = "السلام عليكم ورحمة الله وبركاته،
+                            $message = 'السلام عليكم ورحمة الله وبركاته،
 أخي الطالب **student_name**،
-نذكرك بواجب اليوم من السرد، المرجو المبادرة قبل غلق المجموعة زادكم الله حرصا";
+نذكرك بواجب اليوم من السرد، المرجو المبادرة قبل غلق المجموعة زادكم الله حرصا';
                             $message = str_replace('student_name', $record->name, $message);
                         }
 
                         return "https://wa.me/{$number}?text=" . urlencode($message);
                     }, true),
-
 
             ], ActionsPosition::BeforeColumns)
             ->paginated(false)
@@ -139,7 +141,7 @@ class StudentsRelationManager extends RelationManager
                     ->label('نسخ الطلاب من مجموعات أخرى')
                     ->icon('heroicon-o-document-duplicate')
                     ->color('primary')
-                    ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
+                    ->visible(fn() => auth()->user()->isAdministrator())
 
                     ->form([
                         Forms\Components\Select::make('source_group_id')
@@ -152,7 +154,9 @@ class StudentsRelationManager extends RelationManager
                             ->reactive()
                             ->options(function (Get $get) {
                                 $groupId = $get('source_group_id');
-                                if (!$groupId) return [];
+                                if (! $groupId) {
+                                    return [];
+                                }
 
                                 $currentGroupPhones = $this->ownerRecord->students()->pluck('phone');
 
@@ -171,7 +175,7 @@ class StudentsRelationManager extends RelationManager
 
                         $createdCount = 0;
                         foreach ($studentsToCreate as $student) {
-                            if (!$this->ownerRecord->students()->where('phone', $student->phone)->exists()) {
+                            if (! $this->ownerRecord->students()->where('phone', $student->phone)->exists()) {
                                 $newStudentData = $student->only([
                                     'name',
                                     'phone',
@@ -194,7 +198,7 @@ class StudentsRelationManager extends RelationManager
                     ActionsCreateAction::make()
                         ->label('إضافة طالب')
                         ->icon('heroicon-o-plus-circle')
-                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
+                        ->visible(fn() => auth()->user()->isAdministrator())
                         ->slideOver(),
                     Action::make('make_others_as_absent')
                         ->label('تسجيل البقية كغائبين')
@@ -208,7 +212,7 @@ class StudentsRelationManager extends RelationManager
                             Textarea::make('message')
                                 ->hint('السلام عليكم وإسم الطالب سيتم إضافته تلقائياً في  الرسالة.')
                                 ->reactive()
-                                ->hidden(fn(Get $get) => !$get('send_msg'))
+                                ->hidden(fn(Get $get) => ! $get('send_msg'))
                                 ->default('لم ترسلوا الواجب المقرر اليوم، لعل المانع خير.')
                                 ->label('الرسالة')
                                 ->required(),
@@ -365,7 +369,7 @@ class StudentsRelationManager extends RelationManager
                             Textarea::make('message')
                                 ->hint('السلام عليكم وإسم الطالب سيتم إضافته تلقائياً في  الرسالة.')
                                 ->reactive()
-                                ->hidden(fn(Get $get) => !$get('send_msg'))
+                                ->hidden(fn(Get $get) => ! $get('send_msg'))
                                 ->default('لم ترسلوا الواجب المقرر اليوم، لعل المانع خير.')
                                 ->label('الرسالة')
                                 ->required(),
@@ -405,12 +409,13 @@ class StudentsRelationManager extends RelationManager
                         $query->where('date', now()->format('Y-m-d'));
                     }])
                     ->orderByDesc('attendance_count');
+
                 return $query;
             });
     }
 
     public function isReadOnly(): bool
     {
-        return !$this->ownerRecord->managers->contains(auth()->user());
+        return ! $this->ownerRecord->managers->contains(auth()->user());
     }
 }

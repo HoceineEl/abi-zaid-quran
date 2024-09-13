@@ -47,6 +47,7 @@ class AdminPanelProvider extends PanelProvider
                 Widgets\AccountWidget::class,
             ])
             ->topNavigation()
+            ->databaseNotifications()
             ->font('Cairo')
             ->defaultThemeMode(ThemeMode::Light)
             ->brandName('مشروع حفظ القرآن الكريم')

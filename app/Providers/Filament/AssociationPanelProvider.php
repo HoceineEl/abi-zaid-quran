@@ -29,13 +29,15 @@ class AssociationPanelProvider extends PanelProvider
             ->path('association')
             ->colors([
                 'primary' => Color::Emerald,
-                'indigo' => Color::Indigo
+                'indigo' => Color::Indigo,
             ])
             ->topNavigation()
             ->font('Cairo')
             ->login()
             ->viteTheme('resources/css/filament/association/theme.css')
             ->defaultThemeMode(ThemeMode::Light)
+            ->databaseNotifications()
+            ->databaseNotificationsPolling("10s")
             ->brandName('مدرسة إبن أبي زيد القيرواني')
             ->brandLogo(asset('logo.jpg'))
             ->brandLogoHeight('3.5rem')

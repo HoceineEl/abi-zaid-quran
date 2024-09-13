@@ -5,8 +5,10 @@ namespace App\Filament\Association\Resources;
 use App\Filament\Association\Resources\GroupResource\RelationManagers\MemorizersRelationManager;
 use App\Filament\Association\Resources\MemorizerResource\Pages;
 use App\Filament\Association\Resources\MemorizerResource\RelationManagers\PaymentsRelationManager;
+use App\Filament\Exports\MemorizerExporter;
+use App\Filament\Imports\MemorizerImporter;
 use App\Models\Memorizer;
-use Filament\Forms\Components\Checkbox;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -17,11 +19,15 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\BulkAction;
-use Filament\Tables\Actions\CreateAction;
+use Filament\Tables\Actions\ExportAction;
+use Filament\Tables\Actions\ExportBulkAction;
+use Filament\Tables\Actions\ImportAction;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\ActionsPosition;
 use Filament\Tables\Table;
+use Illuminate\Validation\Rules\File;
 
 class MemorizerResource extends Resource
 {
@@ -52,6 +58,10 @@ class MemorizerResource extends Resource
                             ->hiddenOn(MemorizersRelationManager::class)
                             ->relationship('group', 'name')
                             ->required(),
+                        Select::make('teacher_id')
+                            ->label('المعلم')
+                            ->relationship('teacher', 'name')
+                            ->required(),
                         ToggleButtons::make('sex')
                             ->inline()
                             ->options([
@@ -63,10 +73,18 @@ class MemorizerResource extends Resource
                         TextInput::make('city')
                             ->label('المدينة')
                             ->default('أسفي'),
+                        FileUpload::make('photo')
+                            ->image()
+                            ->avatar()
+                            ->directory('memorizers-photos')
+                            ->maxSize(1024)
+                            ->maxFiles(1)
+                            ->imageEditor()
+                            ->label('الصورة'),
                         Toggle::make('exempt')
                             ->label('معفى من الدفع')
                             ->default(false),
-                    ])->columns()
+                    ])->columns(),
             ]);
     }
 
@@ -74,6 +92,10 @@ class MemorizerResource extends Resource
     {
         return $table
             ->columns([
+                ImageColumn::make('photo')
+                    ->label('الصورة')
+                    ->circular()
+                    ->size(50),
                 TextColumn::make('name')
                     ->color(fn(Memorizer $record) => $record->hasPaymentThisMonth() ? 'success' : 'default')
                     ->weight(fn(Memorizer $record) => $record->hasPaymentThisMonth() ? 'bold' : 'normal')
@@ -90,19 +112,34 @@ class MemorizerResource extends Resource
                     ->label('المدينة'),
                 TextColumn::make('group.name')
                     ->label('المجموعة'),
-                TextColumn::make('exempt')
+                TextColumn::make('teacher.name')
+                    ->label('المعلم'),
+
+                IconColumn::make('exempt')
                     ->label('معفي')
+                    ->boolean(),
             ])
             ->filters([
                 //
             ])
+            ->headerActions([
+                ExportAction::make()
+                    ->label('تصدير البيانات')
+                    ->icon('heroicon-o-arrow-up-tray')
+                    ->exporter(MemorizerExporter::class),
 
+                ImportAction::make()
+                    ->label('استيراد البيانات')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->importer(MemorizerImporter::class),
+            ])
             ->actions([
+
                 Tables\Actions\EditAction::make()->slideOver(),
                 Action::make('pay_this_month')
                     ->label('دفع الشهر')
                     ->requiresConfirmation()
-                    ->hidden(fn(Memorizer $record) =>  $record->hasPaymentThisMonth())
+                    ->hidden(fn(Memorizer $record) => $record->hasPaymentThisMonth())
                     ->modalDescription('هل أنت متأكد من دفع الشهر؟')
                     ->modalHeading('دفع الشهر')
                     ->action(function (Memorizer $record) {
@@ -118,6 +155,10 @@ class MemorizerResource extends Resource
                     }),
             ], ActionsPosition::BeforeColumns)
             ->bulkActions([
+                ExportBulkAction::make()
+                    ->label('تصدير البيانات')
+                    ->icon('heroicon-o-arrow-up-tray')
+                    ->exporter(MemorizerExporter::class),
                 Tables\Actions\BulkAction::make('pay_this_month')
                     ->label('دفع الشهر')
                     ->requiresConfirmation()
@@ -147,7 +188,7 @@ class MemorizerResource extends Resource
     public static function getRelations(): array
     {
         return [
-            PaymentsRelationManager::class
+            PaymentsRelationManager::class,
         ];
     }
 

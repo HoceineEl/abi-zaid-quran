@@ -92,10 +92,12 @@ class StudentResource extends Resource
                 Tables\Actions\DeleteBulkAction::make(),
             ]);
     }
+
     public static function canAccess(): bool
     {
         return auth()->user()->role === 'admin';
     }
+
     public static function getRelations(): array
     {
         return [

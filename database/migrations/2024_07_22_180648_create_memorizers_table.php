@@ -14,14 +14,15 @@ return new class extends Migration
         Schema::create('memorizers', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('phone');
+            $table->string('phone')->nullable();
             $table->string('password')->default(12345678);
-            $table->rememberToken();
             $table->enum('sex', ['male', 'female'])->default('male');
             $table->string('city')->nullable();
             $table->foreignId('memo_group_id')->constrained()->cascadeOnDelete();
             $table->integer('order')->default(1);
             $table->boolean('exempt')->default(false);
+            $table->string('photo')->nullable();
+            $table->foreignId('teacher_id')->nullable()->constrained()->nullOnDelete();
             $table->timestamps();
         });
     }

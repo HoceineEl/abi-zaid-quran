@@ -20,6 +20,19 @@ function initQrScanner() {
     return;
   }
 
+  function setResult(result) {
+    console.log('QR code scanned:', result.data);
+    try {
+      const data = JSON.parse(result.data);
+      if (data && data.memorizer_id) {
+        console.log('Dispatching set-scanned-data event');
+        Livewire.dispatch('set-scanned-memorizer-id', { id: result.data });
+      }
+    } catch (error) {
+      console.error('Invalid QR Code', error);
+    }
+  }
+
   QrScanner.hasCamera().then(hasCamera => {
     Livewire.dispatch('camera-availability', { available: hasCamera });
 
@@ -28,7 +41,7 @@ function initQrScanner() {
       return;
     }
 
-    scanner = new QrScanner(video, result => setResult(result), {
+    scanner = new QrScanner(video, setResult, {
       onDecodeError: error => {
         console.warn('QR code scan error:', error);
       },
@@ -41,7 +54,6 @@ function initQrScanner() {
       updateScannerState(true);
     }).catch(err => {
       console.error('Failed to start scanner:', err);
-      // Display a user-friendly error message on the page
       document.getElementById('video-container').innerHTML = `<p>Failed to start the scanner. Error: ${err.message}</p>`;
     });
 
@@ -83,7 +95,6 @@ function initQrScanner() {
   });
 }
 
-
 function updateScannerState(isScanning) {
   const startButton = document.getElementById('start-button');
   const stopButton = document.getElementById('stop-button');
@@ -110,7 +121,6 @@ document.addEventListener('livewire:init', () => {
 
 document.addEventListener('livewire:navigated', () => {
   console.log('Page navigated');
-  destroyQrScanner();
   initQrScanner();
 });
 

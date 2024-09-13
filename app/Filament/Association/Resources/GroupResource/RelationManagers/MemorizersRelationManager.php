@@ -3,19 +3,14 @@
 namespace App\Filament\Association\Resources\GroupResource\RelationManagers;
 
 use App\Filament\Association\Resources\MemorizerResource;
-use App\Helpers\ProgressFormHelper;
 use App\Models\Attendance;
 use App\Models\Memorizer;
-use App\Models\Student;
-use BaconQrCode\Encoder\QrCode;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Filament\Forms;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -24,18 +19,15 @@ use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\ActionGroup;
 use Filament\Tables\Actions\BulkAction;
 use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Enums\ActionsPosition;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Illuminate\Pagination\UrlWindow;
-use Illuminate\Support\Facades\Storage;
+use Mpdf\Mpdf;
 
 class MemorizersRelationManager extends RelationManager
 {
     protected static string $relationship = 'memorizers';
+
     protected static bool $isLazy = false;
 
     protected static ?string $title = 'الطلبة';
@@ -45,6 +37,7 @@ class MemorizersRelationManager extends RelationManager
     protected static ?string $modelLabel = 'طالب';
 
     protected static ?string $pluralModelLabel = 'الطلبة';
+
     public function form(Form $form): Form
     {
         return MemorizerResource::form($form);
@@ -58,7 +51,8 @@ class MemorizersRelationManager extends RelationManager
                 TextColumn::make('order_no')
                     ->getStateUsing(function ($record) {
                         $id = $record->id;
-                        return  $this->ownerRecord->memorizers->pluck('id')->search($id) + 1;
+
+                        return $this->ownerRecord->memorizers->pluck('id')->search($id) + 1;
                     })
                     ->label('الرقم'),
                 IconColumn::make('attendance_today')
@@ -66,12 +60,12 @@ class MemorizersRelationManager extends RelationManager
                     ->boolean()
                     ->trueIcon('heroicon-o-check-circle')
                     ->falseIcon('heroicon-o-x-circle')
-                    ->getStateUsing(fn(Memorizer $record) => $record->attendances()->whereDate('date', now())->exists()),
+                    ->getStateUsing(fn(Memorizer $record) => $record->present_today),
                 TextColumn::make('name')
                     ->searchable()
                     ->url(fn(Memorizer $record) => "tel:{$record->phone}")
                     ->description(fn(Memorizer $record) => $record->phone)
-                    ->color(fn(Memorizer $record) => $record->attendances()->whereDate('date', now())->exists() ? 'success' : 'default')
+                    ->color(fn(Memorizer $record) => $record->present_today ? 'success' : ($record->absent_today ? 'danger' : 'default'))
                     ->label('الإسم')
                     ->sortable(),
 
@@ -105,14 +99,26 @@ class MemorizersRelationManager extends RelationManager
                             'memorizer' => $record,
                             'qrCode' => $qrCode,
                         ])->render();
-                        // Generate PDF
-                        $pdf = Pdf::loadHtml($badgeHtml);
-                        $pdf->setPaper([0, 0, 300, 450], 'portrait');
-                        $pdf->getDomPDF()->set_option("isPhpEnabled", true);
-                        $pdf->setOption(['dpi' => 150, 'defaultFont' => 'Cairo']);
-                        // Stream PDF to browser
-                        return response()->streamDownload(function () use ($pdf) {
-                            echo $pdf->output();
+
+                        // Generate PDF with mpdf
+                        $mpdf = new Mpdf([
+                            'mode' => 'utf-8',
+                            'format' => 'A4',
+                            'orientation' => 'P',
+                            'margin_left' => 0,
+                            'margin_right' => 0,
+                            'margin_top' => 0,
+                            'margin_bottom' => 0,
+                        ]);
+
+                        $mpdf->SetDirectionality('rtl');
+                        $mpdf->autoScriptToLang = true;
+                        $mpdf->autoLangToFont = true;
+
+                        $mpdf->WriteHTML($badgeHtml);
+
+                        return response()->streamDownload(function () use ($mpdf) {
+                            echo $mpdf->Output('', 'S');
                         }, "badge_{$record->id}.pdf");
                     }),
                 Tables\Actions\Action::make('send_whatsapp_msg')
@@ -185,14 +191,13 @@ class MemorizersRelationManager extends RelationManager
                         $records = $livewire->getSelectedTableRecords();
                         $records = Memorizer::find($records);
                         $records->each(function (Memorizer $memorizer) {
-                            if (!$memorizer->hasPaymentThisMonth()) {
+                            if (! $memorizer->hasPaymentThisMonth()) {
                                 $memorizer->payments()->create([
                                     'amount' => $memorizer->exempt ? 0 : $this->ownerRecord->price,
                                     'payment_date' => now(),
                                 ]);
                             }
                         });
-
 
                         Notification::make()
                             ->title('تم الدفع بنجاح')
@@ -220,9 +225,38 @@ class MemorizersRelationManager extends RelationManager
                             ->success()
                             ->send();
                     }),
+                BulkAction::make('mark_absence_bulk')
+                    ->label('تسجيل الغياب للمحددين')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading('تأكيد تسجيل الغياب الجماعي')
+                    ->modalDescription('هل أنت متأكد من تسجيل الغياب للطلاب المحددين؟')
+                    ->modalSubmitActionLabel('تأكيد الغياب للجميع')
+                    ->action(function ($livewire) {
+                        $records = $livewire->getSelectedTableRecords();
+                        $records = Memorizer::find($records);
+                        $records->each(function (Memorizer $memorizer) {
+                            Attendance::updateOrCreate(
+                                [
+                                    'memorizer_id' => $memorizer->id,
+                                    'date' => now()->toDateString(),
+                                ],
+                                [
+                                    'check_in_time' => null,
+                                ]
+                            );
+                        });
+
+                        Notification::make()
+                            ->title('تم تسجيل الغياب بنجاح للطلاب المحددين')
+                            ->success()
+                            ->send();
+                    }),
+
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])->paginated(false);
     }
 }

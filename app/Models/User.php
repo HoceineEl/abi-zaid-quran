@@ -60,4 +60,9 @@ class User extends Authenticatable implements FilamentUser
     {
         return $this->belongsToMany(Group::class, 'group_manager', 'manager_id', 'group_id');
     }
+
+    public function isAdministrator(): bool
+    {
+        return $this->role === 'admin';
+    }
 }
