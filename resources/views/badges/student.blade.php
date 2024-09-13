@@ -131,9 +131,7 @@
         </div>
         <div class="badge-body">
             <div>
-                <div class="student-photo">
-                    <img src="{{ $memorizer->photo_url }}" alt="صورة الطالب">
-                </div>
+
                 <div class="student-name">{{ $memorizer->name }}</div>
             </div>
             <div>

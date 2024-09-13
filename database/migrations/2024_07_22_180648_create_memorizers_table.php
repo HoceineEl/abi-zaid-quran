@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('phone')->nullable();
             $table->string('password')->default(12345678);
-            $table->enum('sex', ['male', 'female'])->default('male');
+            $table->enum('sex', ['male', 'female'])->nullable();
             $table->string('city')->nullable();
             $table->foreignId('memo_group_id')->constrained()->cascadeOnDelete();
             $table->integer('order')->default(1);
