@@ -9,6 +9,7 @@ export default defineConfig({
                 'resources/css/filament/association/theme.css',
                 'resources/js/app.js',
                 'resources/js/qr-scanner.js',
+                'resources/js/snapshot.js',
             ],
             refresh: true,
         }),

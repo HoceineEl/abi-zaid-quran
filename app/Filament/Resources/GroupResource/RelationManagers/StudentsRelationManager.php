@@ -69,9 +69,8 @@ class StudentsRelationManager extends RelationManager
             ->columns([
                 TextColumn::make('number')
                     ->label('الرقم')
-                    ->getStateUsing(function ($record) {
-                        $number = $this->getTable()->getQuery()->get()->search(fn($student) => $student->id == $record->id) + 1;
-                        return $number;
+                    ->state(function ($record, $rowLoop) {
+                        return $rowLoop->iteration;
                     })
                     ->sortable(),
                 TextColumn::make('name')

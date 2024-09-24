@@ -29,7 +29,10 @@ class ScanAttendance extends Page
     {
         $this->memorizer = Memorizer::with(['memoGroup'])->find($value);
     }
-
+    public static function shouldRegisterNavigation(): bool
+    {
+        return \Filament\Facades\Filament::getCurrentPanel()->getId() === 'association';
+    }
     public function processScannedData(): void
     {
         if (! $this->memorizer) {

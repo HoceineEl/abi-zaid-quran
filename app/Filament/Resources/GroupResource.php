@@ -57,6 +57,7 @@ class GroupResource extends Resource
 
                                 return true;
                             })
+                            ->dehydrated(false)
                             ->reactive()
                             ->default(false),
                         Forms\Components\ToggleButtons::make('type')

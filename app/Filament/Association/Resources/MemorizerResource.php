@@ -8,6 +8,7 @@ use App\Filament\Association\Resources\MemorizerResource\RelationManagers\Paymen
 use App\Filament\Exports\MemorizerExporter;
 use App\Filament\Imports\MemorizerImporter;
 use App\Models\Memorizer;
+use Filament\Actions\Action as ActionsAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
@@ -17,6 +18,8 @@ use Filament\Forms\Components\ToggleButtons;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Support\Assets\Js;
+use Filament\Support\Facades\FilamentAsset;
 use Filament\Tables;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\ExportAction;
@@ -28,6 +31,9 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\ActionsPosition;
 use Filament\Tables\Table;
 use Illuminate\Validation\Rules\File;
+use Livewire\Component;
+
+use function GuzzleHttp\default_ca_bundle;
 
 class MemorizerResource extends Resource
 {
@@ -90,32 +96,58 @@ class MemorizerResource extends Resource
 
     public static function table(Table $table): Table
     {
+
         return $table
             ->columns([
                 ImageColumn::make('photo')
                     ->label('الصورة')
                     ->circular()
+                    ->searchable()
+                    ->toggleable()
+                    ->sortable()
                     ->size(50),
                 TextColumn::make('name')
                     ->color(fn(Memorizer $record) => $record->hasPaymentThisMonth() ? 'success' : 'default')
+                    ->searchable()
+                    ->toggleable()
+                    ->sortable()
                     ->weight(fn(Memorizer $record) => $record->hasPaymentThisMonth() ? 'bold' : 'normal')
                     ->label('الإسم'),
                 TextColumn::make('phone')
+                    ->searchable()
+                    ->toggleable()
+                    ->sortable()
                     ->label('الهاتف'),
                 TextColumn::make('sex')
                     ->getStateUsing(fn(Memorizer $record) => match ($record->sex) {
                         'male' => 'ذكر',
-                        'female' => 'أنثى'
+                        'female' => 'أنثى',
+                        default => 'ذكر',
                     })
+                    ->searchable()
+                    ->toggleable()
+                    ->sortable()
                     ->label('الجنس'),
                 TextColumn::make('city')
+                    ->searchable()
+                    ->toggleable()
+                    ->sortable()
                     ->label('المدينة'),
                 TextColumn::make('group.name')
+                    ->searchable()
+                    ->toggleable()
+                    ->sortable()
                     ->label('المجموعة'),
                 TextColumn::make('teacher.name')
+                    ->searchable()
+                    ->toggleable()
+                    ->sortable()
                     ->label('المعلم'),
 
                 IconColumn::make('exempt')
+                    ->searchable()
+                    ->toggleable()
+                    ->sortable()
                     ->label('معفي')
                     ->boolean(),
             ])
@@ -123,6 +155,7 @@ class MemorizerResource extends Resource
                 //
             ])
             ->headerActions([
+
                 ExportAction::make()
                     ->label('تصدير البيانات')
                     ->icon('heroicon-o-arrow-up-tray')
@@ -134,6 +167,19 @@ class MemorizerResource extends Resource
                     ->importer(MemorizerImporter::class),
             ])
             ->actions([
+
+                Action::make('snapshotto')
+                    ->label('Take Snapshot')
+                    ->icon('heroicon-o-camera')
+                    ->action(function (Component $livewire) {
+                        $livewire->dispatch('takeTableSnapshot');
+                    })
+                    ->after(function () {
+                        Notification::make()
+                            ->title('Snapshot taken')
+                            ->success()
+                            ->send();
+                    }),
 
                 Tables\Actions\EditAction::make()->slideOver(),
                 Action::make('pay_this_month')
@@ -182,9 +228,45 @@ class MemorizerResource extends Resource
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
+            ])->filters([
+                Tables\Filters\SelectFilter::make('memo_group_id')
+                    ->label('المجموعة')
+                    ->relationship('group', 'name')
+                    ->multiple()
+                    ->preload(),
+
+                Tables\Filters\SelectFilter::make('teacher_id')
+                    ->label('المعلم')
+                    ->relationship('teacher', 'name')
+                    ->multiple()
+                    ->preload(),
+
+
+
             ]);
     }
+    protected function getHeaderActions(): array
+    {
+        FilamentAsset::register([
+            Js::make('https://html2canvas.hertzen.com/dist/html2canvas.min.js'),
+        ]);
 
+        return [
+            ActionsAction::make('snapshot')
+                ->label('Take Snapshot')
+                ->icon('heroicon-o-camera')
+                ->action(function (Component $livewire) {
+                    // This will be called when the action is triggered
+                    $livewire->dispatch('takeSnapshot');
+                })
+                ->after(function () {
+                    Notification::make()
+                        ->title('Snapshot taken')
+                        ->success()
+                        ->send();
+                })
+        ];
+    }
     public static function getRelations(): array
     {
         return [

@@ -48,13 +48,12 @@ class MemorizersRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('name')
             ->columns([
-                TextColumn::make('order_no')
-                    ->getStateUsing(function ($record) {
-                        $id = $record->id;
-
-                        return $this->ownerRecord->memorizers->pluck('id')->search($id) + 1;
+                TextColumn::make('number')
+                    ->label('الرقم')
+                    ->state(function ($record, $rowLoop) {
+                        return $rowLoop->iteration;
                     })
-                    ->label('الرقم'),
+                    ->sortable(),
                 IconColumn::make('attendance_today')
                     ->label('حاضر')
                     ->boolean()

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use Filament\Facades\Filament;
 use Filament\Pages\Page;
 use Filament\Support\Enums\MaxWidth;
 use Illuminate\Contracts\Support\Htmlable;
@@ -21,7 +22,10 @@ class ScanQrCode extends Page
     {
         return 'مسح رمز QR للطلاب';
     }
-
+    public static function shouldRegisterNavigation(): bool
+    {
+        return \Filament\Facades\Filament::getCurrentPanel()->getId() === 'association';
+    }
     public function getHeading(): string
     {
         return 'مسح رمز QR للطلاب';

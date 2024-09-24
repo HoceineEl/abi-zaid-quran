@@ -121,11 +121,9 @@ class ProgressesRelationManager extends RelationManager
             ->columns(
                 [
                     TextColumn::make('name')
-                        ->getStateUsing(function ($record) {
-                            $owner = $this->ownerRecord;
-                            $number = $owner->students->search(fn($student) => $student->id == $record->id) + 1;
+                        ->getStateUsing(function ($record, $rowLoop) {
 
-                            return $number . '. ' . $record->name;
+                            return $rowLoop->iteration . '. ' . $record->name;
                         })
                         ->label('الطالب'),
                     ...$statusColumns->toArray(),
