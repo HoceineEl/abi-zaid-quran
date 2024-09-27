@@ -197,7 +197,7 @@ class StudentsRelationManager extends RelationManager
                     ActionsCreateAction::make()
                         ->label('إضافة طالب')
                         ->icon('heroicon-o-plus-circle')
-                        ->visible(fn() => auth()->user()->isAdministrator())
+                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
                         ->slideOver(),
                     Action::make('make_others_as_absent')
                         ->label('تسجيل البقية كغائبين')
@@ -405,7 +405,7 @@ class StudentsRelationManager extends RelationManager
             ->query(function () {
                 $query = $this->ownerRecord->students()
                     ->withCount(['progresses as attendance_count' => function ($query) {
-                        $query->where('date', now()->format('Y-m-d'));
+                        $query->where('date', now()->format('Y-m-d'))->where('status', 'memorized');
                     }])
                     ->orderByDesc('attendance_count');
 
