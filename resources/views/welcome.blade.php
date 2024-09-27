@@ -28,7 +28,7 @@
                 </a>
                 <a href="{{ url('/quran-program') }}"
                     class="w-full sm:w-1/3 p-6 bg-green-500 hover:bg-green-600 text-white text-2xl font-semibold rounded-lg shadow-lg transition duration-300">
-                    برامج القرآن الرقمية
+                    إدارة البرامج العلمية الرقمية
                 </a>
             </div>
         </div>
