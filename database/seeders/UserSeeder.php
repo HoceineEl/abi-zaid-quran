@@ -8,15 +8,27 @@ use Illuminate\Support\Facades\Hash;
 
 class UserSeeder extends Seeder
 {
-    public function run()
+    public function run(): void
     {
-        // Create an admin user
+        // Create admin user
         User::create([
-            'name' => 'مشرف',
+            'name' => 'Admin User',
             'email' => 'admin@admin.com',
             'password' => Hash::make('password'),
             'role' => 'admin',
             'phone' => '1234567890',
         ]);
+
+        // Create association user
+        User::create([
+            'name' => 'Association User',
+            'email' => 'admin@association.com',
+            'password' => Hash::make('password'),
+            'role' => 'admin',
+            'phone' => '0987654321',
+        ]);
+
+        // Create additional users
+        User::factory(10)->create();
     }
 }
