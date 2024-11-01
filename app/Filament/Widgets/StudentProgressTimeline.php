@@ -8,7 +8,7 @@ use Illuminate\Support\Carbon;
 
 class StudentProgressTimeline extends ChartWidget
 {
-    protected static ?string $heading = 'تطور حفظ الطلاب';
+    protected static ?string $heading = 'تطور الحضور والغياب';
     protected static ?string $maxHeight = '300px';
 
     protected function getData(): array
