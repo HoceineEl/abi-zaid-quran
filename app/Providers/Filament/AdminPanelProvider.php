@@ -18,6 +18,10 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use App\Filament\Widgets\QuranProgramStatsOverview;
+use App\Filament\Widgets\UserActivityStats;
+use App\Filament\Widgets\GroupProgressChart;
+use App\Filament\Widgets\StudentProgressTimeline;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -44,7 +48,10 @@ class AdminPanelProvider extends PanelProvider
             ->spa()
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
-                Widgets\AccountWidget::class,
+                QuranProgramStatsOverview::class,
+                UserActivityStats::class,
+                GroupProgressChart::class,
+                StudentProgressTimeline::class,
             ])
             ->topNavigation()
             ->databaseNotifications()

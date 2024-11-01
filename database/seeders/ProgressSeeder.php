@@ -2,43 +2,46 @@
 
 namespace Database\Seeders;
 
-use App\Helpers\ProgressFormHelper;
+use App\Models\Progress;
 use App\Models\Student;
 use App\Models\User;
 use Carbon\Carbon;
-use Faker\Factory as Faker;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Log;
 
 class ProgressSeeder extends Seeder
 {
-    public function run()
+    public function run(): void
     {
-        $faker = Faker::create('ar_SA');
-        $students = Student::all();
+        // First create a fallback user if needed
+        $fallbackUser = User::factory()->create();
+
+
+
+        $students = Student::with(['group.managers'])->get();
+        $dates = collect(range(0, 30))->map(fn($daysAgo) => Carbon::now()->subDays($daysAgo));
 
         foreach ($students as $student) {
-            $managers = $student->group->managers->pluck('id')->toArray();
 
-            if (empty($managers)) {
-                // Fallback to a default user ID if no managers are found
-                $managers = [User::first()->id];
+            $manager = $student->group->managers()->first() ?? $fallbackUser;
+            if (!$student->group->managers->contains($manager)) {
+                $student->group->managers()->attach($manager);
             }
 
-            for ($j = 0; $j < 30; $j++) { // Loop for the last 30 days
-                // $pageData = ProgressFormHelper::calculateNextProgress($student);
+            foreach ($dates as $date) {
+                $isPresent = rand(1, 100) <= 80;
 
-                $createdBy = $faker->randomElement($managers);
+                $progressData = [
+                    'student_id' => $student->id,
+                    'date' => $date,
+                    'status' => $isPresent ? 'memorized' : 'absent',
+                    'created_by' => $manager->id,
+                    'created_at' => $date,
+                    'updated_at' => $date,
+                ];
 
-                $progress = $student->progresses()->create([
-                    'created_by' => $createdBy,
-                    'date' => Carbon::now()->subDays($j)->toDateString(),
-                    'status' => $faker->randomElement(['memorized', 'absent']),
-                    'page_id' => $j + 1,
-                    'comment' => $faker->sentence,
-                    'lines_from' => null,
-                    'lines_to' => null,
-                    'notes' => $faker->sentence,
-                ]);
+
+                Progress::create($progressData);
             }
         }
     }

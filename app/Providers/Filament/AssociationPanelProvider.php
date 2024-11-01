@@ -21,6 +21,11 @@ use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use App\Filament\Association\Widgets\AssociationStatsOverview;
+use App\Filament\Association\Widgets\DetailedStatsOverview;
+use App\Filament\Association\Widgets\AttendanceChart;
+use App\Filament\Association\Widgets\GroupsStatsChart;
+use App\Filament\Association\Widgets\PaymentsChart;
 
 class AssociationPanelProvider extends PanelProvider
 {
@@ -52,7 +57,11 @@ class AssociationPanelProvider extends PanelProvider
             ])
             ->discoverWidgets(in: app_path('Filament/Association/Widgets'), for: 'App\\Filament\\Association\\Widgets')
             ->widgets([
-                Widgets\AccountWidget::class,
+                AssociationStatsOverview::class,
+                DetailedStatsOverview::class,
+                AttendanceChart::class,
+                GroupsStatsChart::class,
+                PaymentsChart::class,
             ])
             ->middleware([
                 EncryptCookies::class,

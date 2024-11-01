@@ -6,29 +6,28 @@ use App\Models\Group;
 use App\Models\MemoGroup;
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Arr;
 
 class GroupSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
+        // Create Quran Program Groups
+        $managers = User::where('role', '!=', 'admin')->get();
+        foreach ($managers as $manager) {
+            $groups = Group::factory()
+                ->count(rand(1, 3))
+                ->create();
 
-        $managers = User::all()->pluck('id')->toArray();
-        for ($i = 0; $i < 3; $i++) {
-            $group = Group::create([
-                'name' => 'المجموعة '.$i + 1,
-                'type' => rand(0, 1) ? 'half_page' : 'two_lines',
-            ]);
-            $group->managers()->attach(Arr::random($managers, rand(1, 1)));
+            foreach ($groups as $group) {
+                $group->managers()->attach($manager->id);
+            }
         }
-        for ($i = 0; $i < 3; $i++) {
-            $group = MemoGroup::create([
-                'name' => 'المجموعة '.$i + 1,
-                'price' => rand(50, 110),
+
+        // Create Association Groups (MemoGroups)
+        MemoGroup::factory()
+            ->count(5)
+            ->create([
+                'price' => rand(50, 150),
             ]);
-        }
     }
 }
