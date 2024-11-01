@@ -10,6 +10,8 @@ class StudentProgressTimeline extends ChartWidget
 {
     protected static ?string $heading = 'تطور الحضور والغياب';
     protected static ?string $maxHeight = '300px';
+    protected static ?int $sort = 2;
+    protected int | string | array $columnSpan = 'full';
 
     protected function getData(): array
     {

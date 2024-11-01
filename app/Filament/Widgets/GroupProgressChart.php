@@ -13,6 +13,10 @@ class GroupProgressChart extends ChartWidget
     protected static ?string $heading = 'إحصائيات المجموعات اليومية';
     protected static ?string $maxHeight = '400px';
     protected static ?string $pollingInterval = '30s';
+    protected static ?int $sort = 1;
+    protected int | string | array $columnSpan = 'full';
+
+
 
     protected function getFilters(): ?array
     {
