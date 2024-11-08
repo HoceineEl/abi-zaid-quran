@@ -97,12 +97,10 @@ class GroupResource extends Resource
                             };
                         },
                     )
-                    ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('managers.name')
                     ->label('المشرفون')
-                    ->badge()
-                    ->searchable(),
+                    ->badge(),
                 TextColumn::make('created_at')->label('تاريخ الإنشاء')
                     ->date('Y-m-d H:i:s'),
                 TextColumn::make('manager_has_set_progress')
