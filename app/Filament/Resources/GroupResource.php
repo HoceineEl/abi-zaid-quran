@@ -115,7 +115,7 @@ class GroupResource extends Resource
 
                         return $progresses->sum() . '/' . $students->count() . ' من الطلاب مسجلين اليوم';
                     })
-                    ->searchable(),
+                    ->searchable(false),
             ])
             ->filters([
                 //
