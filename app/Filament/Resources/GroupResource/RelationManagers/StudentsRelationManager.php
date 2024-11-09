@@ -80,6 +80,7 @@ class StudentsRelationManager extends RelationManager
                             return $ProgToday->status === 'memorized' ? 'heroicon-o-check-circle' : ($ProgToday->status === 'absent' ? 'heroicon-o-exclamation-circle' : 'heroicon-o-information-circle');
                         }
                     })
+                    ->searchable()
                     ->color(function (Student $record) {
                         $ProgToday = $record->progresses()->where('date', now()->format('Y-m-d'))->first();
                         if ($ProgToday) {
@@ -90,6 +91,7 @@ class StudentsRelationManager extends RelationManager
                 TextColumn::make('phone')
                     ->url(fn($record) => "tel:{$record->phone}")
                     ->badge()
+                    ->searchable()
                     ->icon(fn($record) => $record->needsCall() ? 'heroicon-o-exclamation-circle' : 'heroicon-o-check-circle')
                     ->color(fn(Student $record) => $record->needsCall() ? 'danger' : 'success')
                     ->label('رقم الهاتف'),
