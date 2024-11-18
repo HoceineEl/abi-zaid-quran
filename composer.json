@@ -14,6 +14,7 @@
         "livewire/livewire": "^3.5",
         "mpdf/mpdf": "^8.2",
         "ryangjchandler/blade-tabler-icons": "^2.3",
+        "silviolleite/laravelpwa": "^2.0",
         "twilio/sdk": "^8.0"
     },
     "require-dev": {

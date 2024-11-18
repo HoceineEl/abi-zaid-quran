@@ -44,10 +44,11 @@
     40 => 'Pest\\Laravel\\PestServiceProvider',
     41 => 'RyanChandler\\BladeCaptureDirective\\BladeCaptureDirectiveServiceProvider',
     42 => 'RyanChandler\\TablerIcons\\BladeTablerIconsServiceProvider',
-    43 => 'Spatie\\LaravelIgnition\\IgnitionServiceProvider',
-    44 => 'App\\Providers\\AppServiceProvider',
-    45 => 'App\\Providers\\Filament\\AdminPanelProvider',
-    46 => 'App\\Providers\\Filament\\AssociationPanelProvider',
+    43 => 'LaravelPWA\\Providers\\LaravelPWAServiceProvider',
+    44 => 'Spatie\\LaravelIgnition\\IgnitionServiceProvider',
+    45 => 'App\\Providers\\AppServiceProvider',
+    46 => 'App\\Providers\\Filament\\AdminPanelProvider',
+    47 => 'App\\Providers\\Filament\\AssociationPanelProvider',
   ),
   'eager' => 
   array (
@@ -80,10 +81,11 @@
     26 => 'Pest\\Laravel\\PestServiceProvider',
     27 => 'RyanChandler\\BladeCaptureDirective\\BladeCaptureDirectiveServiceProvider',
     28 => 'RyanChandler\\TablerIcons\\BladeTablerIconsServiceProvider',
-    29 => 'Spatie\\LaravelIgnition\\IgnitionServiceProvider',
-    30 => 'App\\Providers\\AppServiceProvider',
-    31 => 'App\\Providers\\Filament\\AdminPanelProvider',
-    32 => 'App\\Providers\\Filament\\AssociationPanelProvider',
+    29 => 'LaravelPWA\\Providers\\LaravelPWAServiceProvider',
+    30 => 'Spatie\\LaravelIgnition\\IgnitionServiceProvider',
+    31 => 'App\\Providers\\AppServiceProvider',
+    32 => 'App\\Providers\\Filament\\AdminPanelProvider',
+    33 => 'App\\Providers\\Filament\\AssociationPanelProvider',
   ),
   'deferred' => 
   array (

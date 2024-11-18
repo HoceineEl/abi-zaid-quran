@@ -166,6 +166,13 @@
       0 => 'RyanChandler\\TablerIcons\\BladeTablerIconsServiceProvider',
     ),
   ),
+  'silviolleite/laravelpwa' => 
+  array (
+    'providers' => 
+    array (
+      0 => 'LaravelPWA\\Providers\\LaravelPWAServiceProvider',
+    ),
+  ),
   'spatie/laravel-ignition' => 
   array (
     'providers' => 
