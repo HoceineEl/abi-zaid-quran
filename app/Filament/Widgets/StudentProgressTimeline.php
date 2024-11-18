@@ -18,14 +18,21 @@ class StudentProgressTimeline extends ChartWidget
         $data = collect(range(29, 0))->map(function ($daysAgo) {
             $date = now()->subDays($daysAgo);
 
+            $query = Progress::whereDate('date', $date);
+
+            // Filter by managed groups if not admin
+            if (!auth()->user()->isAdministrator()) {
+                $query->whereIn('student_id', function ($q) {
+                    $q->select('id')
+                        ->from('students')
+                        ->whereIn('group_id', auth()->user()->managedGroups()->pluck('groups.id'));
+                });
+            }
+
             return [
                 'date' => $date->format('Y-m-d'),
-                'memorized' => Progress::whereDate('date', $date)
-                    ->where('status', 'memorized')
-                    ->count(),
-                'absent' => Progress::whereDate('date', $date)
-                    ->where('status', 'absent')
-                    ->count(),
+                'memorized' => (clone $query)->where('status', 'memorized')->count(),
+                'absent' => (clone $query)->where('status', 'absent')->count(),
             ];
         });
 

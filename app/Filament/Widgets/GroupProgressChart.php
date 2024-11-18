@@ -45,8 +45,16 @@ class GroupProgressChart extends ChartWidget
             ->leftJoin('progress', function ($join) use ($selectedDate) {
                 $join->on('students.id', '=', 'progress.student_id')
                     ->whereDate('progress.date', $selectedDate);
-            })
-            ->groupBy('groups.id', 'groups.name')
+            });
+
+        // Filter by managed groups if not admin
+        if (!auth()->user()->isAdministrator()) {
+            $query->whereHas('managers', function ($q) {
+                $q->where('manager_id', auth()->id());
+            });
+        }
+
+        $query->groupBy('groups.id', 'groups.name')
             ->having('total_students', '>', 0)
             ->orderBy('groups.name');
 

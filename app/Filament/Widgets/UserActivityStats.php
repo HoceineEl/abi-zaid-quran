@@ -14,14 +14,20 @@ class UserActivityStats extends BaseWidget
 
     protected function getStats(): array
     {
-        // Get active managers (those who recorded progress today)
-
-        // Calculate average records per manager
-        $averageRecordsPerManager = Progress::whereDate('date', today())
+        $query = Progress::whereDate('date', today())
             ->selectRaw('created_by, COUNT(*) as count')
-            ->groupBy('created_by')
-            ->get()
-            ->average('count') ?? 0;
+            ->groupBy('created_by');
+
+        // Filter by managed groups if not admin
+        if (!auth()->user()->isAdministrator()) {
+            $query->whereIn('student_id', function ($q) {
+                $q->select('id')
+                    ->from('students')
+                    ->whereIn('group_id', auth()->user()->managedGroups()->pluck('groups.id'));
+            });
+        }
+
+        $averageRecordsPerManager = $query->get()->average('count') ?? 0;
 
         return [
             Stat::make('متوسط التسجيلات لكل مشرف', Number::format(round($averageRecordsPerManager)))

@@ -15,21 +15,42 @@ class QuranProgramStatsOverview extends BaseWidget
 
     protected function getStats(): array
     {
+        $query = Student::query();
+        $groupsQuery = Group::query();
+        
+        // Filter by managed groups if not admin
+        if (!auth()->user()->isAdministrator()) {
+            $managedGroupIds = auth()->user()->managedGroups()->pluck('groups.id');
+            $query->whereIn('group_id', $managedGroupIds);
+            $groupsQuery->whereHas('managers', function ($q) {
+                $q->where('manager_id', auth()->id());
+            });
+        }
+
         // Get unique students count
-        $uniqueStudents = Student::distinct('phone')->count('phone');
+        $uniqueStudents = $query->distinct('phone')->count('phone');
 
         // Calculate total active groups
-        $activeGroups = Group::count();
+        $activeGroups = $groupsQuery->count();
 
         // Calculate students needing attention (3+ absences)
-        $studentsNeedingAttention = Student::whereHas('progresses', function ($query) {
-            $query->where('status', 'absent');
+        $studentsNeedingAttention = $query->whereHas('progresses', function ($q) {
+            $q->where('status', 'absent');
         }, '>=', 3)->count();
 
         // Calculate average attendance for the last 7 days
         $weeklyAttendance = Progress::where('date', '>=', now()->subDays(7))
-            ->whereNotNull('status')
-            ->count();
+            ->whereNotNull('status');
+        
+        if (!auth()->user()->isAdministrator()) {
+            $weeklyAttendance->whereIn('student_id', function ($q) {
+                $q->select('id')
+                    ->from('students')
+                    ->whereIn('group_id', auth()->user()->managedGroups()->pluck('groups.id'));
+            });
+        }
+        
+        $weeklyAttendance = $weeklyAttendance->count();
         $dailyAverage = round($weeklyAttendance / 7);
 
         return [
