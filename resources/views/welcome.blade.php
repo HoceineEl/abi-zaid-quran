@@ -13,6 +13,7 @@
 
     <!-- Styles -->
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    @laravelPWA
 </head>
 
 <body class="font-sans antialiased dark:bg-black dark:text-white/50">
