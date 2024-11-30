@@ -152,7 +152,7 @@ MSG;
 المرجو المبادرة قبل غلق المجموعة
 _زاد{$genderTerms['pronoun']} الله حرصا_ 🌙
 MSG;
-                        } elseif (str_contains($this->ownerRecord->type, 'مراجعة')) {
+                        } elseif (str_contains($this->ownerRecord->type, 'مراجعة') || str_contains($this->ownerRecord->name, 'مراجعة')) {
                             $message = <<<MSG
 السلام عليكم ورحمة الله وبركاته
 *{$genderTerms['prefix']} {$record->name}*
