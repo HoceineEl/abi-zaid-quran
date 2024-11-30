@@ -119,17 +119,46 @@ class StudentsRelationManager extends RelationManager
                     ->icon('heroicon-o-chat-bubble-oval-left')
                     ->label('إرسال رسالة واتساب')
                     ->url(function ($record) {
+                        // Format phone number for WhatsApp
                         $number = $record->phone;
                         if (substr($number, 0, 2) == '06' || substr($number, 0, 2) == '07') {
                             $number = '+212' . substr($number, 1);
                         }
-                        $message = "السلام عليكم ورحمة الله وبركاته أخي الطالب {$record->name}، نذكرك بالواجب المقرر اليوم، لعل المانع خير.";
 
+                        // Get gender-specific terms
+                        $genderTerms = $record->sex === 'female' ? [
+                            'prefix' => 'أختي الطالبة',
+                            'pronoun' => 'ك',
+                            'verb' => 'تنسي'
+                        ] : [
+                            'prefix' => 'أخي الطالب',
+                            'pronoun' => 'ك',
+                            'verb' => 'تنس'
+                        ];
+
+                        // Default message template
+                        $message = <<<MSG
+السلام عليكم ورحمة الله وبركاته
+*{$genderTerms['prefix']} {$record->name}*،
+نذكر{$genderTerms['pronoun']} بالواجب المقرر اليوم، لعل المانع خير. 🌟
+MSG;
+
+                        // Customize message based on group type
                         if (str_contains($this->ownerRecord->type, 'سرد')) {
-                            $message = 'السلام عليكم ورحمة الله وبركاته،
-أخي الطالب **student_name**،
-نذكرك بواجب اليوم من السرد، المرجو المبادرة قبل غلق المجموعة زادكم الله حرصا';
-                            $message = str_replace('student_name', $record->name, $message);
+                            $message = <<<MSG
+السلام عليكم ورحمة الله وبركاته
+*{$genderTerms['prefix']} {$record->name}*،
+نذكر{$genderTerms['pronoun']} بواجب اليوم من السرد ✨
+المرجو المبادرة قبل غلق المجموعة
+_زاد{$genderTerms['pronoun']} الله حرصا_ 🌙
+MSG;
+                        } elseif (str_contains($this->ownerRecord->type, 'مراجعة')) {
+                            $message = <<<MSG
+السلام عليكم ورحمة الله وبركاته
+*{$genderTerms['prefix']} {$record->name}*
+لا {$genderTerms['verb']} الاستظهار في مجموعة المراجعة ✨
+_بارك الله في{$genderTerms['pronoun']} وزاد{$genderTerms['pronoun']} حرصا_ 🌟
+MSG;
                         }
 
                         return "https://wa.me/{$number}?text=" . urlencode($message);
