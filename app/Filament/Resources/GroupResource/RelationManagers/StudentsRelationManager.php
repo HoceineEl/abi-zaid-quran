@@ -159,6 +159,13 @@ MSG;
 لا {$genderTerms['verb']} الاستظهار في مجموعة المراجعة ✨
 _بارك الله في{$genderTerms['pronoun']} وزاد{$genderTerms['pronoun']} حرصا_ 🌟
 MSG;
+                        } elseif (str_contains($this->ownerRecord->type, 'عتصام') || str_contains($this->ownerRecord->name, 'عتصام')) {
+                            $message = <<<MSG
+السلام عليكم ورحمة الله وبركاته
+*{$genderTerms['prefix']} {$record->name}*
+لا {$genderTerms['verb']} *استظهار واجب *الاعتصام
+_بارك الله في{$genderTerms['pronoun']} وزاد{$genderTerms['pronoun']} حرصا_ 🌟
+MSG;
                         }
 
                         return "https://wa.me/{$number}?text=" . urlencode($message);
