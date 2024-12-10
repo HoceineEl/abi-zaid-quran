@@ -4,8 +4,8 @@
 <head>
     <title>جاري التحويل إلى واتساب...</title>
     <meta charset="UTF-8">
-    @laravelPWA
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    @laravelPWA
     <style>
         body {
             margin: 0;
@@ -93,8 +93,15 @@
 
     <script>
         window.onload = function() {
-            window.open('https://wa.me/{{ $number }}?text={{ $message }}', '_blank');
-            window.close();
+            // Try to open WhatsApp in new window
+            var whatsappWindow = window.open('https://wa.me/{{ $number }}?text={{ $message }}', '_blank');
+
+            // Fallback to direct location change if popup blocked
+            if (!whatsappWindow || whatsappWindow.closed || typeof whatsappWindow.closed == 'undefined') {
+                window.location.href = 'https://wa.me/{{ $number }}?text={{ $message }}';
+            } else {
+                window.close();
+            }
         }
     </script>
 </body>

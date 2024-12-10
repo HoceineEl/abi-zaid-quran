@@ -121,9 +121,13 @@ class StudentsRelationManager extends RelationManager
                     ->url(function ($record) {
                         // Format phone number for WhatsApp
                         $number = $record->phone;
+
+
                         if (substr($number, 0, 2) == '06' || substr($number, 0, 2) == '07') {
                             $number = '+212' . substr($number, 1);
                         }
+
+                        $number = preg_replace('/[- ]/', '', $number);
 
                         // Get gender-specific terms
                         $genderTerms = $record->sex === 'female' ? [
