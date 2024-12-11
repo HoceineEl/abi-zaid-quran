@@ -121,13 +121,22 @@ class StudentsRelationManager extends RelationManager
                     ->url(function ($record) {
                         // Format phone number for WhatsApp
                         $number = $record->phone;
-
-
-                        if (substr($number, 0, 2) == '06' || substr($number, 0, 2) == '07') {
+                        
+                        // Remove any spaces, dashes or special characters
+                        $number = preg_replace('/[^0-9]/', '', $number);
+                        
+                        // Handle different Moroccan number formats
+                        if (strlen($number) === 9 && in_array(substr($number, 0, 1), ['6', '7'])) {
+                            // If number starts with 6 or 7 and is 9 digits
+                            $number = '+212' . $number;
+                        } elseif (strlen($number) === 10 && in_array(substr($number, 0, 2), ['06', '07'])) {
+                            // If number starts with 06 or 07 and is 10 digits
                             $number = '+212' . substr($number, 1);
+                        } elseif (strlen($number) === 12 && substr($number, 0, 3) === '212') {
+                            // If number already has 212 country code
+                            $number = '+' . $number;
                         }
 
-                        $number = preg_replace('/[- ]/', '', $number);
 
                         // Get gender-specific terms
                         $genderTerms = $record->sex === 'female' ? [
