@@ -108,149 +108,153 @@ class StudentsRelationManager extends RelationManager
 
             ->reorderable('order_no', true)
             ->defaultSort('order_no')
-            ->actions([
-                ActionsActionGroup::make([
-                    Tables\Actions\EditAction::make(),
-                    Tables\Actions\DeleteAction::make(),
-                    Tables\Actions\ViewAction::make(),
-                ]),
-                Tables\Actions\Action::make('send_whatsapp_msg')
-                    ->color('success')
-                    ->iconButton()
-                    ->icon('heroicon-o-chat-bubble-oval-left')
-                    ->label('إرسال رسالة واتساب')
-                    ->url(function ($record) {
-                        // Format phone number for WhatsApp
-                        $number = $record->phone;
+            ->actions(
+                [
+                    ActionsActionGroup::make([
+                        Tables\Actions\EditAction::make(),
+                        Tables\Actions\DeleteAction::make(),
+                        Tables\Actions\ViewAction::make(),
+                    ]),
+                    Tables\Actions\Action::make('send_whatsapp_msg')
+                        ->color('success')
+                        ->iconButton()
+                        ->icon('heroicon-o-chat-bubble-oval-left')
+                        ->label('إرسال رسالة واتساب')
+                        ->url(function ($record) {
+                            // Format phone number for WhatsApp
+                            $number = $record->phone;
 
-                        // Remove any spaces, dashes or special characters
-                        $number = preg_replace('/[^0-9]/', '', $number);
+                            // Remove any spaces, dashes or special characters
+                            $number = preg_replace('/[^0-9]/', '', $number);
 
-                        // Handle different Moroccan number formats
-                        if (strlen($number) === 9 && in_array(substr($number, 0, 1), ['6', '7'])) {
-                            // If number starts with 6 or 7 and is 9 digits
-                            $number = '+212' . $number;
-                        } elseif (strlen($number) === 10 && in_array(substr($number, 0, 2), ['06', '07'])) {
-                            // If number starts with 06 or 07 and is 10 digits
-                            $number = '+212' . substr($number, 1);
-                        } elseif (strlen($number) === 12 && substr($number, 0, 3) === '212') {
-                            // If number already has 212 country code
-                            $number = '+' . $number;
-                        }
+                            // Handle different Moroccan number formats
+                            if (strlen($number) === 9 && in_array(substr($number, 0, 1), ['6', '7'])) {
+                                // If number starts with 6 or 7 and is 9 digits
+                                $number = '+212' . $number;
+                            } elseif (strlen($number) === 10 && in_array(substr($number, 0, 2), ['06', '07'])) {
+                                // If number starts with 06 or 07 and is 10 digits
+                                $number = '+212' . substr($number, 1);
+                            } elseif (strlen($number) === 12 && substr($number, 0, 3) === '212') {
+                                // If number already has 212 country code
+                                $number = '+' . $number;
+                            }
 
 
-                        // Get gender-specific terms
-                        $genderTerms = $record->sex === 'female' ? [
-                            'prefix' => 'أختي الطالبة',
-                            'pronoun' => 'ك',
-                            'verb' => 'تنسي'
-                        ] : [
-                            'prefix' => 'أخي الطالب',
-                            'pronoun' => 'ك',
-                            'verb' => 'تنس'
-                        ];
-                        $name = trim($record->name);
-                        // Default message template
-                        $message = <<<MSG
+                            // Get gender-specific terms
+                            $genderTerms = $record->sex === 'female' ? [
+                                'prefix' => 'أختي الطالبة',
+                                'pronoun' => 'ك',
+                                'verb' => 'تنسي'
+                            ] : [
+                                'prefix' => 'أخي الطالب',
+                                'pronoun' => 'ك',
+                                'verb' => 'تنس'
+                            ];
+                            $name = trim($record->name);
+                            // Default message template
+                            $message = <<<MSG
 السلام عليكم ورحمة الله وبركاته
 *{$genderTerms['prefix']} {$name}*،
 نذكر{$genderTerms['pronoun']} بالواجب المقرر اليوم، لعل المانع خير. 🌟
 MSG;
 
-                        // Customize message based on group type
-                        if (str_contains($this->ownerRecord->type, 'سرد')) {
-                            $message = <<<MSG
+                            // Customize message based on group type
+                            if (str_contains($this->ownerRecord->type, 'سرد')) {
+                                $message = <<<MSG
 السلام عليكم ورحمة الله وبركاته
 *{$genderTerms['prefix']} {$name}*،
 نذكر{$genderTerms['pronoun']} بواجب اليوم من السرد ✨
 المرجو المبادرة قبل غلق المجموعة
 _زاد{$genderTerms['pronoun']} الله حرصا_ 🌙
 MSG;
-                        } elseif (str_contains($this->ownerRecord->type, 'مراجعة') || str_contains($this->ownerRecord->name, 'مراجعة')) {
-                            $message = <<<MSG
+                            } elseif (str_contains($this->ownerRecord->type, 'مراجعة') || str_contains($this->ownerRecord->name, 'مراجعة')) {
+                                $message = <<<MSG
 السلام عليكم ورحمة الله وبركاته
 *{$genderTerms['prefix']} {$name}*
 لا {$genderTerms['verb']} الاستظهار في مجموعة المراجعة ✨
 _بارك الله في{$genderTerms['pronoun']} وزاد{$genderTerms['pronoun']} حرصا_ 🌟
 MSG;
-                        } elseif (str_contains($this->ownerRecord->type, 'عتصام') || str_contains($this->ownerRecord->name, 'عتصام')) {
-                            $message = <<<MSG
+                            } elseif (str_contains($this->ownerRecord->type, 'عتصام') || str_contains($this->ownerRecord->name, 'عتصام')) {
+                                $message = <<<MSG
 السلام عليكم ورحمة الله وبركاته
 *{$genderTerms['prefix']} {$name}*
 لا {$genderTerms['verb']} استظهار واجب الاعتصام
 _بارك الله في{$genderTerms['pronoun']} وزاد{$genderTerms['pronoun']} حرصا_ 🌟
 MSG;
-                        }
+                            }
 
 
 
 
-                        $url = route('whatsapp', ['number' => $number, 'message' => $message, 'student_id' => $record->id]);
-                        // Open in new tab
-                        return $url;
-                    }, true),
+                            $url = route('whatsapp', ['number' => $number, 'message' => $message, 'student_id' => $record->id]);
+                            // Open in new tab
+                            return $url;
+                        }, true),
 
-            ], ActionsPosition::BeforeColumns)
+                ],
+                ActionsPosition::BeforeColumns
+            )
             ->paginated(false)
             ->headerActions([
-                Action::make('copy_students_from_other_groups')
-                    ->label('نسخ الطلاب من مجموعات أخرى')
-                    ->icon('heroicon-o-document-duplicate')
-                    ->color('primary')
-                    ->visible(fn() => auth()->user()->isAdministrator())
 
-                    ->form([
-                        Forms\Components\Select::make('source_group_id')
-                            ->label('المجموعة المصدر')
-                            ->options(fn() => \App\Models\Group::where('id', '!=', $this->ownerRecord->id)->pluck('name', 'id'))
-                            ->required()
-                            ->reactive(),
-                        Forms\Components\CheckboxList::make('student_ids')
-                            ->label('الطلاب')
-                            ->reactive()
-                            ->options(function (Get $get) {
-                                $groupId = $get('source_group_id');
-                                if (! $groupId) {
-                                    return [];
-                                }
-
-                                $currentGroupPhones = $this->ownerRecord->students()->pluck('phone');
-
-                                return \App\Models\Student::without(['progresses', 'group', 'progresses.page', 'group.managers'])
-                                    ->where('group_id', $groupId)
-                                    ->whereNotIn('phone', $currentGroupPhones)
-                                    ->pluck('name', 'id');
-                            })
-                            ->required()
-                            ->bulkToggleable(),
-                    ])
-                    ->action(function (array $data) {
-                        $studentsToCreate = \App\Models\Student::without(['progresses', 'group', 'progresses.page', 'group.managers'])
-                            ->whereIn('id', $data['student_ids'])
-                            ->get();
-
-                        $createdCount = 0;
-                        foreach ($studentsToCreate as $student) {
-                            if (! $this->ownerRecord->students()->where('phone', $student->phone)->exists()) {
-                                $newStudentData = $student->only([
-                                    'name',
-                                    'phone',
-                                    'sex',
-                                    'city',
-                                    // Add any other fields you want to copy here
-                                ]);
-
-                                $this->ownerRecord->students()->create($newStudentData);
-                                $createdCount++;
-                            }
-                        }
-
-                        Notification::make()
-                            ->title("تم نسخ {$createdCount} طالب بنجاح")
-                            ->success()
-                            ->send();
-                    }),
                 ActionsActionGroup::make([
+                    Action::make('copy_students_from_other_groups')
+                        ->label('نسخ الطلاب من مجموعات أخرى')
+                        ->icon('heroicon-o-document-duplicate')
+                        ->color('primary')
+                        ->visible(fn() => auth()->user()->isAdministrator())
+
+                        ->form([
+                            Forms\Components\Select::make('source_group_id')
+                                ->label('المجموعة المصدر')
+                                ->options(fn() => \App\Models\Group::where('id', '!=', $this->ownerRecord->id)->pluck('name', 'id'))
+                                ->required()
+                                ->reactive(),
+                            Forms\Components\CheckboxList::make('student_ids')
+                                ->label('الطلاب')
+                                ->reactive()
+                                ->options(function (Get $get) {
+                                    $groupId = $get('source_group_id');
+                                    if (! $groupId) {
+                                        return [];
+                                    }
+
+                                    $currentGroupPhones = $this->ownerRecord->students()->pluck('phone');
+
+                                    return \App\Models\Student::without(['progresses', 'group', 'progresses.page', 'group.managers'])
+                                        ->where('group_id', $groupId)
+                                        ->whereNotIn('phone', $currentGroupPhones)
+                                        ->pluck('name', 'id');
+                                })
+                                ->required()
+                                ->bulkToggleable(),
+                        ])
+                        ->action(function (array $data) {
+                            $studentsToCreate = \App\Models\Student::without(['progresses', 'group', 'progresses.page', 'group.managers'])
+                                ->whereIn('id', $data['student_ids'])
+                                ->get();
+
+                            $createdCount = 0;
+                            foreach ($studentsToCreate as $student) {
+                                if (! $this->ownerRecord->students()->where('phone', $student->phone)->exists()) {
+                                    $newStudentData = $student->only([
+                                        'name',
+                                        'phone',
+                                        'sex',
+                                        'city',
+                                        // Add any other fields you want to copy here
+                                    ]);
+
+                                    $this->ownerRecord->students()->create($newStudentData);
+                                    $createdCount++;
+                                }
+                            }
+
+                            Notification::make()
+                                ->title("تم نسخ {$createdCount} طالب بنجاح")
+                                ->success()
+                                ->send();
+                        }),
                     ActionsCreateAction::make()
                         ->label('إضاف�� طالب')
                         ->icon('heroicon-o-plus-circle')
@@ -364,7 +368,7 @@ MSG;
                     ->color('success')
                     ->action(function () {
                         $selectedDate = $this->tableFilters['date']['value'] ?? now()->format('Y-m-d');
-                        
+
                         $students = $this->ownerRecord->students()
                             ->with(['progresses' => function ($query) use ($selectedDate) {
                                 $query->where('date', '>=', now()->subDays(3)->format('Y-m-d'));
