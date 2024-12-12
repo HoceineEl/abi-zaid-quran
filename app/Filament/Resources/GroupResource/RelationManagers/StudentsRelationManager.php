@@ -21,6 +21,7 @@ use Filament\Tables\Actions\CreateAction as ActionsCreateAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\ActionsPosition;
 use Filament\Tables\Table;
+use Filament\Support\Enums\ActionSize;
 
 class StudentsRelationManager extends RelationManager
 {
@@ -30,7 +31,7 @@ class StudentsRelationManager extends RelationManager
 
     protected static ?string $title = 'الطلاب';
 
-    protected static ?string $navigationLabel = 'الطلاب';
+    protected static ?string $navigationLabel = 'الطل��ب';
 
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
 
@@ -121,10 +122,10 @@ class StudentsRelationManager extends RelationManager
                     ->url(function ($record) {
                         // Format phone number for WhatsApp
                         $number = $record->phone;
-                        
+
                         // Remove any spaces, dashes or special characters
                         $number = preg_replace('/[^0-9]/', '', $number);
-                        
+
                         // Handle different Moroccan number formats
                         if (strlen($number) === 9 && in_array(substr($number, 0, 1), ['6', '7'])) {
                             // If number starts with 6 or 7 and is 9 digits
@@ -251,7 +252,7 @@ MSG;
                     }),
                 ActionsActionGroup::make([
                     ActionsCreateAction::make()
-                        ->label('إضافة طالب')
+                        ->label('إضاف�� طالب')
                         ->icon('heroicon-o-plus-circle')
                         ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
                         ->slideOver(),
@@ -261,7 +262,7 @@ MSG;
                         ->icon('heroicon-o-exclamation-circle')
                         ->form([
                             Toggle::make('send_msg')
-                                ->label('تأكيد إرسال رسالة تذكير')
+                                ->label('أكيد إرسال رسالة تذكير')
                                 ->reactive()
                                 ->default(false),
                             Textarea::make('message')
@@ -356,6 +357,31 @@ MSG;
                             });
                         }),
                 ]),
+                Action::make('export_table')
+                    ->label('تصدير كصورة')
+                    ->icon('heroicon-o-photo')
+                    ->size(ActionSize::Small)
+                    ->color('success')
+                    ->action(function () {
+                        $selectedDate = $this->tableFilters['date']['value'] ?? now()->format('Y-m-d');
+                        
+                        $students = $this->ownerRecord->students()
+                            ->with(['progresses' => function ($query) use ($selectedDate) {
+                                $query->where('date', '>=', now()->subDays(3)->format('Y-m-d'));
+                            }])
+                            ->get();
+
+                        $html = view('components.students-export-table', [
+                            'students' => $students,
+                            'group' => $this->ownerRecord,
+                        ])->render();
+
+                        $this->dispatch('export-table', [
+                            'html' => $html,
+                            'groupName' => $this->ownerRecord->name
+                        ]);
+                    })
+
             ])
             ->bulkActions([
                 BulkActionGroup::make([

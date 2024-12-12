@@ -22,6 +22,7 @@ use App\Filament\Widgets\QuranProgramStatsOverview;
 use App\Filament\Widgets\UserActivityStats;
 use App\Filament\Widgets\GroupProgressChart;
 use App\Filament\Widgets\StudentProgressTimeline;
+use Filament\View\PanelsRenderHook;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -74,6 +75,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
-            ]);
+            ])
+            ->renderHook(PanelsRenderHook::BODY_START, fn() => view('components.table-export-scripts'));
     }
 }

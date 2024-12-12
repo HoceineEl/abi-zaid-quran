@@ -27,6 +27,7 @@ class AppServiceProvider extends ServiceProvider
             PanelsRenderHook::HEAD_END,
             fn() => view('laravelpwa::meta', ['config' => (new ManifestService)->generate()])
         );
+      
 
         Model::unguard();
     }
