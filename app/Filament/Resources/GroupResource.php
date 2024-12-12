@@ -118,7 +118,9 @@ class GroupResource extends Resource
             ->filters([
                 //
             ])
+            ->recordUrl(fn(Group $record) => GroupResource::getUrl('edit', ['record' => $record, 'activeRelationManager' => 0]))
             ->actions([
+                Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\Action::make('send_whatsapp_group')
                     ->label('أرسل رسالة للغائبين')
@@ -255,11 +257,17 @@ class GroupResource extends Resource
             'index' => Pages\ListGroups::route('/'),
             'create' => Pages\CreateGroup::route('/create'),
             'edit' => Pages\EditGroup::route('/{record}/edit'),
+            'view' => Pages\ViewGroup::route('/{record}'),
         ];
     }
 
     protected function getHeaderActions(): array
     {
         return [];
+    }
+
+    public static function getNavigationBadge(): ?string
+    {
+        return static::getModel()::count();
     }
 }

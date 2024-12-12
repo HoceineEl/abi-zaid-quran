@@ -16,4 +16,21 @@ class EditGroup extends EditRecord
             Actions\DeleteAction::make(),
         ];
     }
+
+    public function hasCombinedRelationManagerTabsWithContent(): bool
+    {
+        return true;
+    }
+
+    public function getContentTabLabel(): ?string
+    {
+        return __('تعديل المجموعة');
+    }
+
+    public function getContentTabIcon(): ?string
+    {
+        return 'heroicon-o-pencil';
+    }
+
+
 }
