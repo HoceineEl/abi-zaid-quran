@@ -363,16 +363,17 @@ MSG;
                 ]),
                 Action::make('export_table')
                     ->label('تصدير كصورة')
-                    ->icon('heroicon-o-photo')
+                    ->icon('heroicon-o-share')
                     ->size(ActionSize::Small)
                     ->color('success')
                     ->action(function () {
                         $selectedDate = $this->tableFilters['date']['value'] ?? now()->format('Y-m-d');
 
                         $students = $this->ownerRecord->students()
-                            ->with(['progresses' => function ($query) use ($selectedDate) {
-                                $query->where('date', '>=', now()->subDays(3)->format('Y-m-d'));
+                            ->withCount(['progresses as attendance_count' => function ($query) {
+                                $query->where('date', now()->format('Y-m-d'))->where('status', 'memorized');
                             }])
+                            ->orderByDesc('attendance_count')
                             ->get();
 
                         $html = view('components.students-export-table', [

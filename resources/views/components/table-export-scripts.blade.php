@@ -20,7 +20,7 @@
 
                 // Format date
                 const date = new Date();
-                const dayNames = ['الأحد', 'الإثنين', 'ا��ثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+                const dayNames = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
                 const dayName = dayNames[date.getDay()];
                 const formattedDate = `${dayName} ${date.getDate()}, ${date.getFullYear()}`;
 
@@ -65,9 +65,13 @@
                     logging: false,
                     windowWidth: 800,
                 }).then(canvas => {
-                    // Create download link
+                    // Create download link with group name
+                    const fileName = data[0].groupName 
+                        ? `تقرير-حضور-${data[0].groupName}-${formattedDate}.png`
+                        : `تقرير-الحضور-${formattedDate}.png`;
+                    
                     const link = document.createElement('a');
-                    link.download = `تقرير-الحضور-${formattedDate}.png`;
+                    link.download = fileName;
                     link.href = canvas.toDataURL('image/png');
                     link.click();
 
@@ -119,11 +123,10 @@
 
                         // Add click handlers
                         shareButton.onclick = function() {
-                            // Create a File from the Blob
-                            const file = new File([blob],
-                                `تقرير-الحضور-${formattedDate}.png`, {
-                                    type: 'image/png'
-                                });
+                            // Create a File from the Blob with the same filename
+                            const file = new File([blob], fileName, {
+                                type: 'image/png'
+                            });
 
                             // Check if the Web Share API is supported
                             if (navigator.share && navigator.canShare({
@@ -131,14 +134,17 @@
                                 })) {
                                 navigator.share({
                                         files: [file],
-                                        title: 'تقرير الحضور',
+                                        title: data[0].groupName 
+                                            ? `تقرير حضور ${data[0].groupName}`
+                                            : 'تقرير الحضور',
                                     })
                                     .catch((error) => console.log('Error sharing:',
                                         error));
                             } else {
                                 // Fallback for browsers that don't support sharing files
-                                const shareUrl =
-                                    `whatsapp://send?text=تقرير الحضور ${formattedDate}`;
+                                const shareUrl = data[0].groupName
+                                    ? `whatsapp://send?text=تقرير حضور ${data[0].groupName} - ${formattedDate}`
+                                    : `whatsapp://send?text=تقرير الحضور ${formattedDate}`;
                                 window.open(shareUrl);
                             }
                         };
