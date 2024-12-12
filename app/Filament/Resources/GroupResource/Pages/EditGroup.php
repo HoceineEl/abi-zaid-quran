@@ -5,6 +5,7 @@ namespace App\Filament\Resources\GroupResource\Pages;
 use App\Filament\Resources\GroupResource;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Contracts\Support\Htmlable;
 
 class EditGroup extends EditRecord
 {
@@ -16,7 +17,11 @@ class EditGroup extends EditRecord
             Actions\DeleteAction::make(),
         ];
     }
-
+    public function getTitle(): string|Htmlable
+    {
+        $name = $this->record->name;
+        return $name;
+    }
     public function hasCombinedRelationManagerTabsWithContent(): bool
     {
         return true;
@@ -31,6 +36,4 @@ class EditGroup extends EditRecord
     {
         return 'heroicon-o-pencil';
     }
-
-
 }
