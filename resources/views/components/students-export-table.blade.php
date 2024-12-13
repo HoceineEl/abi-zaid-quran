@@ -59,13 +59,18 @@
 
         .phone-number {
             color: #6b7280;
-            font-size: 0.9rem;
+            font-size: 1.1rem;
         }
 
         .index-column {
             width: 40px;
             text-align: center;
             color: #6b7280;
+        }
+
+        .city {
+            color: #6b7280;
+            font-size: 0.9rem;
         }
     </style>
 
@@ -75,6 +80,7 @@
                 <th class="index-column">#</th>
                 <th>الاسم</th>
                 <th>رقم الهاتف</th>
+                <th>المدينة</th>
                 <th>الحالة اليوم</th>
                 <th>ملاحظات</th>
             </tr>
@@ -107,6 +113,9 @@
                         <span class="phone-number {{ $consecutiveAbsentDays > 0 ? 'consecutive-absent' : '' }}">
                             {{ $student->phone }}
                         </span>
+                    </td>
+                    <td>
+                        <span class="city">{{ $student->city }}</span>
                     </td>
                     <td>
                         <span class="status-{{ $status }}">
