@@ -60,7 +60,6 @@ class Student extends Model
                     ->orderBy('date', 'asc')
                     ->get();
 
-                $maxConsecutive = 0;
                 $currentConsecutive = 0;
 
                 foreach ($recentProgresses as $progress) {
