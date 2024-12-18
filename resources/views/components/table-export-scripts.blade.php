@@ -69,15 +69,9 @@
                     logging: false,
                     windowWidth: 800,
                 }).then(canvas => {
-                    // Create download link with group name
                     const fileName = data[0].groupName ?
                         `تقرير-حضور-${data[0].groupName}-${formattedDate}.png` :
                         `تقرير-الحضور-${formattedDate}.png`;
-
-                    const link = document.createElement('a');
-                    link.download = fileName;
-                    link.href = canvas.toDataURL('image/png');
-                    link.click();
 
                     // Create a blob from canvas
                     canvas.toBlob(function(blob) {
@@ -97,11 +91,10 @@
                         shareContainer.style.fontFamily = 'Changa, sans-serif';
                         shareContainer.style.direction = 'rtl';
 
-                        // Create WhatsApp share button
+                        // Create share button
                         const shareButton = document.createElement('button');
-                        shareButton.innerHTML =
-                            '<i class="fas fa-whatsapp"></i> مشاركة على واتساب';
-                        shareButton.style.backgroundColor = '#25D366';
+                        shareButton.innerHTML = '<i class="fas fa-share-alt"></i> مشاركة التقرير';
+                        shareButton.style.backgroundColor = '#3B82F6';
                         shareButton.style.color = 'white';
                         shareButton.style.border = 'none';
                         shareButton.style.padding = '8px 16px';
@@ -127,29 +120,19 @@
 
                         // Add click handlers
                         shareButton.onclick = function() {
-                            // Create a File from the Blob with the same filename
                             const file = new File([blob], fileName, {
                                 type: 'image/png'
                             });
 
-                            // Check if the Web Share API is supported
                             if (navigator.share && navigator.canShare({
                                     files: [file]
                                 })) {
                                 navigator.share({
-                                        files: [file],
-                                        title: data[0].groupName ?
-                                            `تقرير حضور ${data[0].groupName}` :
-                                            'تقرير الحضور',
-                                    })
-                                    .catch((error) => console.log('Error sharing:',
-                                        error));
-                            } else {
-                                // Fallback for browsers that don't support sharing files
-                                const shareUrl = data[0].groupName ?
-                                    `whatsapp://send?text=تقرير حضور ${data[0].groupName} - ${formattedDate}` :
-                                    `whatsapp://send?text=تقرير الحضور ${formattedDate}`;
-                                window.open(shareUrl);
+                                    files: [file],
+                                    title: data[0].groupName ?
+                                        `تقرير حضور ${data[0].groupName}` :
+                                        'تقرير الحضور',
+                                }).catch((error) => console.log('Error sharing:', error));
                             }
                         };
 
