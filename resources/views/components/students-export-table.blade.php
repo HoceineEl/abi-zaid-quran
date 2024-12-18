@@ -127,15 +127,9 @@
                         </span>
                     </td>
                     <td>
-                        @if ($consecutiveAbsentDays > 0)
+                        @if ($student->needsCall())
                             <span class="consecutive-absent">
-                                @if ($consecutiveAbsentDays == 1)
-                                    غائب منذ يوم
-                                @elseif ($consecutiveAbsentDays == 2)
-                                    غائب منذ يومين
-                                @else
-                                    غائب منذ {{ $consecutiveAbsentDays }} {{ $consecutiveAbsentDays <= 10 ? 'أيام' : 'يوماً' }}
-                                @endif
+                                يجب الاتصال (3 مرات متتالية)
                             </span>
                         @endif
                     </td>
