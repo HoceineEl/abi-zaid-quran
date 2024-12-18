@@ -57,7 +57,7 @@ class Student extends Model
                 $recentProgresses = $this->progresses()
                     ->latest('date')
                     ->limit(30)
-                    ->orderBy('date', 'desc')
+                    ->orderBy('date', 'asc')
                     ->get();
 
                 $maxConsecutive = 0;

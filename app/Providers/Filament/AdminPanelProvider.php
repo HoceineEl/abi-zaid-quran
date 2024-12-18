@@ -35,7 +35,7 @@ class AdminPanelProvider extends PanelProvider
             ->path('quran-program')
             ->login()
             ->colors([
-                'primary' => Color::Purple,
+                'primary' => Color::Cyan,
                 'secondary' => Color::Gray,
                 'danger' => Color::Rose,
                 'warning' => Color::Yellow,
