@@ -66,13 +66,12 @@ class Student extends Model
                 foreach ($recentProgresses as $progress) {
                     if ($progress->status === 'absent') {
                         $currentConsecutive++;
-                        $maxConsecutive = max($maxConsecutive, $currentConsecutive);
                     } else if ($progress->status === 'memorized') {
                         $currentConsecutive = 0;
                     }
                 }
 
-                return $maxConsecutive;
+                return $currentConsecutive;
             }
         );
     }
