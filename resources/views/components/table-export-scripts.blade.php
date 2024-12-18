@@ -20,7 +20,7 @@
 
                 // Format date
                 const date = new Date();
-                const dayNames = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+                const dayNames = ['الأحد', 'الإثنين', 'ا��ثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
                 const monthNames = ['يناير', 'فبراير', 'مارس', 'إبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
                 const dayName = dayNames[date.getDay()];
                 const monthName = monthNames[date.getMonth()];
@@ -89,18 +89,12 @@
                                     : 'تقرير الحضور',
                             }).catch((error) => {
                                 console.log('Error sharing:', error);
-                                // Fallback to WhatsApp share if direct share fails
-                                const shareUrl = data[0].groupName
-                                    ? `whatsapp://send?text=تقرير حضور ${data[0].groupName} - ${formattedDate}`
-                                    : `whatsapp://send?text=تقرير الحضور ${formattedDate}`;
-                                window.open(shareUrl);
+                                // Fallback to download if sharing fails
+                                downloadImage(canvas, fileName);
                             });
                         } else {
-                            // Fallback for browsers that don't support sharing files
-                            const shareUrl = data[0].groupName
-                                ? `whatsapp://send?text=تقرير حضور ${data[0].groupName} - ${formattedDate}`
-                                : `whatsapp://send?text=تقرير الحضور ${formattedDate}`;
-                            window.open(shareUrl);
+                            // Fallback to download for browsers that don't support sharing
+                            downloadImage(canvas, fileName);
                         }
                     });
 
@@ -110,5 +104,16 @@
                 });
             });
         });
+
+        // Add this helper function for downloading the image
+        function downloadImage(canvas, fileName) {
+            // Create download link
+            const link = document.createElement('a');
+            link.download = fileName;
+            link.href = canvas.toDataURL('image/png');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
     </script>
 @endPushOnce
