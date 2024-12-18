@@ -89,18 +89,7 @@
             @foreach ($students as $index => $student)
                 @php
                     $todayProgress = $student->progresses->where('date', now()->format('Y-m-d'))->first();
-                    $consecutiveAbsentDays = 0;
-                    $date = now();
-
-                    while (true) {
-                        $progress = $student->progresses->where('date', $date->format('Y-m-d'))->first();
-                        if ($progress && $progress->status === 'absent') {
-                            $consecutiveAbsentDays++;
-                            $date = $date->subDay();
-                        } else {
-                            break;
-                        }
-                    }
+                    $consecutiveAbsentDays = $student->consecutiveAbsentDays;
 
                     $status = $todayProgress?->status ?? 'pending';
                 @endphp
@@ -139,7 +128,15 @@
                     </td>
                     <td>
                         @if ($consecutiveAbsentDays > 0)
-                            <span class="consecutive-absent">غائب لـ {{ $consecutiveAbsentDays }} أيام متتالية</span>
+                            <span class="consecutive-absent">
+                                @if ($consecutiveAbsentDays == 1)
+                                    غائب منذ يوم
+                                @elseif ($consecutiveAbsentDays == 2)
+                                    غائب منذ يومين
+                                @else
+                                    غائب منذ {{ $consecutiveAbsentDays }} {{ $consecutiveAbsentDays <= 10 ? 'أيام' : 'يوماً' }}
+                                @endif
+                            </span>
                         @endif
                     </td>
                 </tr>

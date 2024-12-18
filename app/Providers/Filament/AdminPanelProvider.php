@@ -23,6 +23,7 @@ use App\Filament\Widgets\UserActivityStats;
 use App\Filament\Widgets\GroupProgressChart;
 use App\Filament\Widgets\StudentProgressTimeline;
 use Filament\View\PanelsRenderHook;
+use App\Filament\Pages\SubtitleCleaner;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -45,6 +46,7 @@ class AdminPanelProvider extends PanelProvider
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
                 Pages\Dashboard::class,
+                SubtitleCleaner::class,
             ])
             ->spa()
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')

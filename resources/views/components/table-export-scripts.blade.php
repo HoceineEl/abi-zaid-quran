@@ -21,8 +21,10 @@
                 // Format date
                 const date = new Date();
                 const dayNames = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+                const monthNames = ['يناير', 'فبراير', 'مارس', 'إبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
                 const dayName = dayNames[date.getDay()];
-                const formattedDate = `${dayName} ${date.getDate()}, ${date.getFullYear()}`;
+                const monthName = monthNames[date.getMonth()];
+                const formattedDate = `${dayName} ${date.getDate()} ${monthName}, ${date.getFullYear()}`;
 
                 // Add title with formatted date
                 const title = document.createElement('h2');
@@ -65,105 +67,39 @@
                     logging: false,
                     windowWidth: 800,
                 }).then(canvas => {
-                    // Create download link with group name
                     const fileName = data[0].groupName 
                         ? `تقرير-حضور-${data[0].groupName}-${formattedDate}.png`
                         : `تقرير-الحضور-${formattedDate}.png`;
-                    
-                    const link = document.createElement('a');
-                    link.download = fileName;
-                    link.href = canvas.toDataURL('image/png');
-                    link.click();
 
                     // Create a blob from canvas
                     canvas.toBlob(function(blob) {
-                        // Create share button container
-                        const shareContainer = document.createElement('div');
-                        shareContainer.style.position = 'fixed';
-                        shareContainer.style.bottom = '20px';
-                        shareContainer.style.right = '20px';
-                        shareContainer.style.zIndex = '9999';
-                        shareContainer.style.backgroundColor = 'white';
-                        shareContainer.style.padding = '15px';
-                        shareContainer.style.borderRadius = '8px';
-                        shareContainer.style.boxShadow = '0 2px 10px rgba(0,0,0,0.1)';
-                        shareContainer.style.display = 'flex';
-                        shareContainer.style.alignItems = 'center';
-                        shareContainer.style.gap = '10px';
-                        shareContainer.style.fontFamily = 'Changa, sans-serif';
-                        shareContainer.style.direction = 'rtl';
+                        // Create a File from the Blob
+                        const file = new File([blob], fileName, {
+                            type: 'image/png'
+                        });
 
-                        // Create WhatsApp share button
-                        const shareButton = document.createElement('button');
-                        shareButton.innerHTML =
-                            '<i class="fas fa-whatsapp"></i> مشاركة على واتساب';
-                        shareButton.style.backgroundColor = '#25D366';
-                        shareButton.style.color = 'white';
-                        shareButton.style.border = 'none';
-                        shareButton.style.padding = '8px 16px';
-                        shareButton.style.borderRadius = '6px';
-                        shareButton.style.cursor = 'pointer';
-                        shareButton.style.display = 'flex';
-                        shareButton.style.alignItems = 'center';
-                        shareButton.style.gap = '8px';
-                        shareButton.style.fontSize = '14px';
-
-                        // Create close button
-                        const closeButton = document.createElement('button');
-                        closeButton.innerHTML = '×';
-                        closeButton.style.backgroundColor = '#f3f4f6';
-                        closeButton.style.border = 'none';
-                        closeButton.style.borderRadius = '50%';
-                        closeButton.style.width = '24px';
-                        closeButton.style.height = '24px';
-                        closeButton.style.cursor = 'pointer';
-                        closeButton.style.display = 'flex';
-                        closeButton.style.alignItems = 'center';
-                        closeButton.style.justifyContent = 'center';
-
-                        // Add click handlers
-                        shareButton.onclick = function() {
-                            // Create a File from the Blob with the same filename
-                            const file = new File([blob], fileName, {
-                                type: 'image/png'
-                            });
-
-                            // Check if the Web Share API is supported
-                            if (navigator.share && navigator.canShare({
-                                    files: [file]
-                                })) {
-                                navigator.share({
-                                        files: [file],
-                                        title: data[0].groupName 
-                                            ? `تقرير حضور ${data[0].groupName}`
-                                            : 'تقرير الحضور',
-                                    })
-                                    .catch((error) => console.log('Error sharing:',
-                                        error));
-                            } else {
-                                // Fallback for browsers that don't support sharing files
+                        // Try to share directly
+                        if (navigator.share && navigator.canShare({files: [file]})) {
+                            navigator.share({
+                                files: [file],
+                                title: data[0].groupName 
+                                    ? `تقرير حضور ${data[0].groupName}`
+                                    : 'تقرير الحضور',
+                            }).catch((error) => {
+                                console.log('Error sharing:', error);
+                                // Fallback to WhatsApp share if direct share fails
                                 const shareUrl = data[0].groupName
                                     ? `whatsapp://send?text=تقرير حضور ${data[0].groupName} - ${formattedDate}`
                                     : `whatsapp://send?text=تقرير الحضور ${formattedDate}`;
                                 window.open(shareUrl);
-                            }
-                        };
-
-                        closeButton.onclick = function() {
-                            document.body.removeChild(shareContainer);
-                        };
-
-                        // Assemble and add to page
-                        shareContainer.appendChild(shareButton);
-                        shareContainer.appendChild(closeButton);
-                        document.body.appendChild(shareContainer);
-
-                        // Auto-remove after 30 seconds
-                        setTimeout(() => {
-                            if (document.body.contains(shareContainer)) {
-                                document.body.removeChild(shareContainer);
-                            }
-                        }, 30000);
+                            });
+                        } else {
+                            // Fallback for browsers that don't support sharing files
+                            const shareUrl = data[0].groupName
+                                ? `whatsapp://send?text=تقرير حضور ${data[0].groupName} - ${formattedDate}`
+                                : `whatsapp://send?text=تقرير الحضور ${formattedDate}`;
+                            window.open(shareUrl);
+                        }
                     });
 
                     // Clean up

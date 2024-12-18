@@ -256,7 +256,7 @@ MSG;
                                 ->send();
                         }),
                     ActionsCreateAction::make()
-                        ->label('إضاف�� طالب')
+                        ->label('إضافة طالب')
                         ->icon('heroicon-o-plus-circle')
                         ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
                         ->slideOver(),
