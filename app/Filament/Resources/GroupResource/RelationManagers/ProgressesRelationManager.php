@@ -24,6 +24,7 @@ use Filament\Tables\Actions\ExportBulkAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\IconColumn\IconColumnSize;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\ActionsPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -211,7 +212,86 @@ class ProgressesRelationManager extends RelationManager
                         ->icon('heroicon-o-arrow-down-tray'),
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->actions([
+                Tables\Actions\Action::make('send_whatsapp_msg')
+                    ->color('success')
+                    ->iconButton()
+                    ->icon('heroicon-o-chat-bubble-oval-left')
+                    ->label('إرسال رسالة واتساب')
+                    ->url(function ($record) {
+                        // Format phone number for WhatsApp
+                        $number = $record->phone;
+
+                        // Remove any spaces, dashes or special characters
+                        $number = preg_replace('/[^0-9]/', '', $number);
+
+                        // Handle different Moroccan number formats
+                        if (strlen($number) === 9 && in_array(substr($number, 0, 1), ['6', '7'])) {
+                            // If number starts with 6 or 7 and is 9 digits
+                            $number = '+212' . $number;
+                        } elseif (strlen($number) === 10 && in_array(substr($number, 0, 2), ['06', '07'])) {
+                            // If number starts with 06 or 07 and is 10 digits
+                            $number = '+212' . substr($number, 1);
+                        } elseif (strlen($number) === 12 && substr($number, 0, 3) === '212') {
+                            // If number already has 212 country code
+                            $number = '+' . $number;
+                        }
+
+
+                        // Get gender-specific terms
+                        $genderTerms = $record->sex === 'female' ? [
+                            'prefix' => 'أختي الطالبة',
+                            'pronoun' => 'ك',
+                            'verb' => 'تنسي'
+                        ] : [
+                            'prefix' => 'أخي الطالب',
+                            'pronoun' => 'ك',
+                            'verb' => 'تنس'
+                        ];
+                        $name = trim($record->name);
+                        // Default message template
+                        $message = <<<MSG
+السلام عليكم ورحمة الله وبركاته
+*{$genderTerms['prefix']} {$name}*،
+نذكر{$genderTerms['pronoun']} بالواجب المقرر اليوم، لعل المانع خير. 🌟
+MSG;
+
+                        // Customize message based on group type
+                        if (str_contains($this->ownerRecord->type, 'سرد')) {
+                            $message = <<<MSG
+السلام عليكم ورحمة الله وبركاته
+*{$genderTerms['prefix']} {$name}*،
+نذكر{$genderTerms['pronoun']} بواجب اليوم من السرد ✨
+المرجو المبادرة قبل غلق المجموعة
+_زاد{$genderTerms['pronoun']} الله حرصا_ 🌙
+MSG;
+                        } elseif (str_contains($this->ownerRecord->type, 'مراجعة') || str_contains($this->ownerRecord->name, 'مراجعة')) {
+                            $message = <<<MSG
+السلام عليكم ورحمة الله وبركاته
+*{$genderTerms['prefix']} {$name}*
+لا {$genderTerms['verb']} الاستظهار في مجموعة المراجعة ✨
+_بارك الله في{$genderTerms['pronoun']} وزاد{$genderTerms['pronoun']} حرصا_ 🌟
+MSG;
+                        } elseif (str_contains($this->ownerRecord->type, 'عتصام') || str_contains($this->ownerRecord->name, 'عتصام')) {
+                            $message = <<<MSG
+السلام عليكم ورحمة الله وبركاته
+*{$genderTerms['prefix']} {$name}*
+لا {$genderTerms['verb']} استظهار واجب الاعتصام
+_بارك الله في{$genderTerms['pronoun']} وزاد{$genderTerms['pronoun']} حرصا_ 🌟
+MSG;
+                        }
+
+
+
+
+                        $url = route('whatsapp', ['number' => $number, 'message' => $message, 'student_id' => $record->id]);
+                        // Open in new tab
+                        return $url;
+                    }, true),
+
+            ])
+            ->actionsPosition(ActionsPosition::BeforeColumns);
     }
 
     public function isReadOnly(): bool
