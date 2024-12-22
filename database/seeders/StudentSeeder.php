@@ -14,7 +14,7 @@ class StudentSeeder extends Seeder
 
         foreach ($groups as $group) {
             Student::factory()
-                ->count(rand(5, 15))
+                ->count(200)
                 ->create([
                     'group_id' => $group->id,
                 ]);

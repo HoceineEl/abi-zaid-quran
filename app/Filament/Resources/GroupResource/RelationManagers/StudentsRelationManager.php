@@ -4,6 +4,7 @@ namespace App\Filament\Resources\GroupResource\RelationManagers;
 
 use App\Classes\Core;
 use App\Helpers\ProgressFormHelper;
+use App\Models\Group;
 use App\Models\Student;
 use Filament\Forms;
 use Filament\Forms\Components\Textarea;
@@ -31,7 +32,7 @@ class StudentsRelationManager extends RelationManager
 
     protected static ?string $title = 'الطلاب';
 
-    protected static ?string $navigationLabel = 'الطل��ب';
+    protected static ?string $navigationLabel = 'الطلب';
 
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
 
@@ -76,25 +77,32 @@ class StudentsRelationManager extends RelationManager
                     ->sortable(),
                 TextColumn::make('name')
                     ->icon(function (Student $record) {
-                        $ProgToday = $record->progresses->where('date', now()->format('Y-m-d'))->first();
-                        if ($ProgToday) {
-                            return $ProgToday->status === 'memorized' ? 'heroicon-o-check-circle' : ($ProgToday->status === 'absent' ? 'heroicon-o-exclamation-circle' : 'heroicon-o-information-circle');
-                        }
+                        // Using eager loaded today_progress relationship
+                        return match ($record->today_progress?->status) {
+                            'memorized' => 'heroicon-o-check-circle',
+                            'absent' => 'heroicon-o-exclamation-circle',
+                            default => $record->today_progress ? 'heroicon-o-information-circle' : null,
+                        };
                     })
                     ->searchable()
                     ->color(function (Student $record) {
-                        $ProgToday = $record->progresses()->where('date', now()->format('Y-m-d'))->first();
-                        if ($ProgToday) {
-                            return $ProgToday->status === 'memorized' ? 'success' : ($ProgToday->status === 'absent' ? 'danger' : 'warning');
-                        }
+                        // Using eager loaded today_progress relationship
+                        return match ($record->today_progress?->status) {
+                            'memorized' => 'success',
+                            'absent' => 'danger',
+                            default => $record->today_progress ? 'warning' : null,
+                        };
                     })
                     ->label('الاسم'),
                 TextColumn::make('phone')
                     ->url(fn($record) => "tel:{$record->phone}")
                     ->badge()
                     ->searchable()
-                    ->icon(fn($record) => $record->needsCall() ? 'heroicon-o-exclamation-circle' : 'heroicon-o-check-circle')
-                    ->color(fn(Student $record) => $record->needsCall() ? 'danger' : 'success')
+                    ->icon(function (TextColumn $column, $record) {
+                        $needsCall = $record->needACall;
+                        $column->icon(fn($record) => $needsCall ? 'heroicon-o-exclamation-circle' : 'heroicon-o-check-circle')
+                            ->color(fn(Student $record) => $needsCall ? 'danger' : 'success');
+                    })
                     ->label('رقم الهاتف'),
                 TextColumn::make('sex')->label('الجنس')
                     ->formatStateUsing(function ($state) {
@@ -120,75 +128,8 @@ class StudentsRelationManager extends RelationManager
                         ->iconButton()
                         ->icon('heroicon-o-chat-bubble-oval-left')
                         ->label('إرسال رسالة واتساب')
-                        ->url(function ($record) {
-                            // Format phone number for WhatsApp
-                            $number = $record->phone;
-
-                            // Remove any spaces, dashes or special characters
-                            $number = preg_replace('/[^0-9]/', '', $number);
-
-                            // Handle different Moroccan number formats
-                            if (strlen($number) === 9 && in_array(substr($number, 0, 1), ['6', '7'])) {
-                                // If number starts with 6 or 7 and is 9 digits
-                                $number = '+212' . $number;
-                            } elseif (strlen($number) === 10 && in_array(substr($number, 0, 2), ['06', '07'])) {
-                                // If number starts with 06 or 07 and is 10 digits
-                                $number = '+212' . substr($number, 1);
-                            } elseif (strlen($number) === 12 && substr($number, 0, 3) === '212') {
-                                // If number already has 212 country code
-                                $number = '+' . $number;
-                            }
-
-
-                            // Get gender-specific terms
-                            $genderTerms = $record->sex === 'female' ? [
-                                'prefix' => 'أختي الطالبة',
-                                'pronoun' => 'ك',
-                                'verb' => 'تنسي'
-                            ] : [
-                                'prefix' => 'أخي الطالب',
-                                'pronoun' => 'ك',
-                                'verb' => 'تنس'
-                            ];
-                            $name = trim($record->name);
-                            // Default message template
-                            $message = <<<MSG
-السلام عليكم ورحمة الله وبركاته
-*{$genderTerms['prefix']} {$name}*،
-نذكر{$genderTerms['pronoun']} بالواجب المقرر اليوم، لعل المانع خير. 🌟
-MSG;
-
-                            // Customize message based on group type
-                            if (str_contains($this->ownerRecord->type, 'سرد')) {
-                                $message = <<<MSG
-السلام عليكم ورحمة الله وبركاته
-*{$genderTerms['prefix']} {$name}*،
-نذكر{$genderTerms['pronoun']} بواجب اليوم من السرد ✨
-المرجو المبادرة قبل غلق المجموعة
-_زاد{$genderTerms['pronoun']} الله حرصا_ 🌙
-MSG;
-                            } elseif (str_contains($this->ownerRecord->type, 'مراجعة') || str_contains($this->ownerRecord->name, 'مراجعة')) {
-                                $message = <<<MSG
-السلام عليكم ورحمة الله وبركاته
-*{$genderTerms['prefix']} {$name}*
-لا {$genderTerms['verb']} الاستظهار في مجموعة المراجعة ✨
-_بارك الله في{$genderTerms['pronoun']} وزاد{$genderTerms['pronoun']} حرصا_ 🌟
-MSG;
-                            } elseif (str_contains($this->ownerRecord->type, 'عتصام') || str_contains($this->ownerRecord->name, 'عتصام')) {
-                                $message = <<<MSG
-السلام عليكم ورحمة الله وبركاته
-*{$genderTerms['prefix']} {$name}*
-لا {$genderTerms['verb']} استظهار واجب الاعتصام
-_بارك الله في{$genderTerms['pronoun']} وزاد{$genderTerms['pronoun']} حرصا_ 🌟
-MSG;
-                            }
-
-
-
-
-                            $url = route('whatsapp', ['number' => $number, 'message' => $message, 'student_id' => $record->id]);
-                            // Open in new tab
-                            return $url;
+                        ->url(function (Student $record) {
+                            return self::getWhatsAppUrl($record, $this->ownerRecord);
                         }, true),
 
                 ],
@@ -490,18 +431,104 @@ MSG;
                 ]),
             ])
             ->query(function () {
-                $query = $this->ownerRecord->students()
-                    ->withCount(['progresses as attendance_count' => function ($query) {
-                        $query->where('date', now()->format('Y-m-d'))->where('status', 'memorized');
-                    }])
-                    ->orderByDesc('attendance_count');
+                $today = now()->format('Y-m-d');
 
-                return $query;
+                return $this->ownerRecord->students()
+                    ->withCount([
+                        'progresses as attendance_count' => function ($query) use ($today) {
+                            $query->where('date', $today)
+                                ->where('status', 'memorized');
+                        },
+                        'progresses as needs_call' => function ($query) {
+                            $query->where('status', 'absent')
+                                ->latest()
+                                ->limit(3);
+                        }
+                    ])
+                    ->with([
+                        'today_progress' => function ($query) use ($today) {
+                            $query->where('date', $today)
+                                ->latest();
+                        }
+                    ])
+                    ->orderByDesc('attendance_count');
             });
     }
 
     public function isReadOnly(): bool
     {
         return ! $this->ownerRecord->managers->contains(auth()->user());
+    }
+
+    public static function getWhatsAppUrl(Student $record, Group $ownerRecord): string
+    {
+        // Format phone number for WhatsApp
+        $number = $record->phone;
+
+        // Remove any spaces, dashes or special characters
+        $number = preg_replace('/[^0-9]/', '', $number);
+
+        // Handle different Moroccan number formats
+        if (strlen($number) === 9 && in_array(substr($number, 0, 1), ['6', '7'])) {
+            // If number starts with 6 or 7 and is 9 digits
+            $number = '+212' . $number;
+        } elseif (strlen($number) === 10 && in_array(substr($number, 0, 2), ['06', '07'])) {
+            // If number starts with 06 or 07 and is 10 digits
+            $number = '+212' . substr($number, 1);
+        } elseif (strlen($number) === 12 && substr($number, 0, 3) === '212') {
+            // If number already has 212 country code
+            $number = '+' . $number;
+        }
+
+
+        // Get gender-specific terms
+        $genderTerms = $record->sex === 'female' ? [
+            'prefix' => 'أختي الطالبة',
+            'pronoun' => 'ك',
+            'verb' => 'تنسي'
+        ] : [
+            'prefix' => 'أخي الطالب',
+            'pronoun' => 'ك',
+            'verb' => 'تنس'
+        ];
+        $name = trim($record->name);
+        // Default message template
+        $message = <<<MSG
+السلام عليكم ورحمة الله وبركاته
+*{$genderTerms['prefix']} {$name}*،
+نذكر{$genderTerms['pronoun']} بالواجب المقرر اليوم، لعل المانع خير. 🌟
+MSG;
+
+        // Customize message based on group type
+        if (str_contains($ownerRecord->type, 'سرد')) {
+            $message = <<<MSG
+السلام عليكم ورحمة الله وبركاته
+*{$genderTerms['prefix']} {$name}*،
+نذكر{$genderTerms['pronoun']} بواجب اليوم من السرد ✨
+المرجو المبادرة قبل غلق المجموعة
+_زاد{$genderTerms['pronoun']} الله حرصا_ 🌙
+MSG;
+        } elseif (str_contains($ownerRecord->type, 'مراجعة') || str_contains($ownerRecord->name, 'مراجعة')) {
+            $message = <<<MSG
+السلام عليكم ورحمة الله وبركاته
+*{$genderTerms['prefix']} {$name}*
+لا {$genderTerms['verb']} الاستظهار في مجموعة المراجعة ✨
+_بارك الله في{$genderTerms['pronoun']} وزاد{$genderTerms['pronoun']} حرصا_ 🌟
+MSG;
+        } elseif (str_contains($ownerRecord->type, 'عتصام') || str_contains($ownerRecord->name, 'عتصام')) {
+            $message = <<<MSG
+السلام عليكم ورحمة الله وبركاته
+*{$genderTerms['prefix']} {$name}*
+لا {$genderTerms['verb']} استظهار واجب الاعتصام
+_بارك الله في{$genderTerms['pronoun']} وزاد{$genderTerms['pronoun']} حرصا_ 🌟
+MSG;
+        }
+
+
+
+
+        $url = route('whatsapp', ['number' => $number, 'message' => $message, 'student_id' => $record->id]);
+        // Open in new tab
+        return $url;
     }
 }

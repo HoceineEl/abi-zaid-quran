@@ -22,8 +22,6 @@ class Student extends Model
         'group_id',
     ];
 
-    protected $with = ['progresses', 'group', 'progresses.page', 'group.managers'];
-
     public function progresses(): HasMany
     {
         return $this->hasMany(Progress::class);
@@ -78,5 +76,30 @@ class Student extends Model
     public function getAbsenceAttribute(): int
     {
         return $this->progresses()->where('status', 'absent')->count();
+    }
+
+    public function today_progress()
+    {
+        return $this->hasOne(Progress::class)
+            ->where('date', now()->format('Y-m-d'))
+            ->latest();
+    }
+
+    public function needACall(): Attribute
+    {
+        return Attribute::make(
+            get: function () {
+                $recentProgresses = $this->progresses()->latest()->limit(3)->get();
+                $absentCount = $recentProgresses->where('status', 'absent')->count();
+                return $absentCount >= 3;
+            }
+        );
+    }
+
+    protected static function booted()
+    {
+        static::addGlobalScope('ordered', function ($query) {
+            $query->orderBy('order_no');
+        });
     }
 }
