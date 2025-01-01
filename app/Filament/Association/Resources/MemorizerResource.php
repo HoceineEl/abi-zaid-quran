@@ -171,26 +171,23 @@ class MemorizerResource extends Resource
                         if ($record->has_payment_this_month) {
                             return 'heroicon-o-check-circle';
                         }
+                        if ($record->has_reminder_this_month) {
+                            return 'heroicon-o-exclamation-circle';
+                        }
 
-                        // Check if reminder was sent today
-                        $hasReminderToday = $record->reminderLogs()
-                            ->whereDate('created_at', now())
-                            ->exists();
 
-                        return $hasReminderToday ? 'heroicon-o-exclamation-circle' : null;
+                        return null;
                     })
                     ->searchable()
                     ->color(function (Memorizer $record) {
                         if ($record->has_payment_this_month) {
                             return 'success';
                         }
+                        if ($record->has_reminder_this_month) {
+                            return 'warning';
+                        }
 
-                        // Check if reminder was sent today
-                        $hasReminderToday = $record->reminderLogs()
-                            ->whereDate('created_at', now())
-                            ->exists();
-
-                        return $hasReminderToday ? 'warning' : 'danger';
+                        return 'danger';
                     })
                     ->toggleable()
                     ->sortable()

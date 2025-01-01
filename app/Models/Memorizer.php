@@ -64,6 +64,14 @@ class Memorizer extends Model
         );
     }
 
+
+    public function hasReminderThisMonth(): Attribute
+    {
+        return Attribute::make(
+            get: fn() => $this->reminderLogs()->whereMonth('created_at', now()->month)->exists(),
+        );
+    }
+
     public function group(): BelongsTo
     {
         return $this->belongsTo(MemoGroup::class, 'memo_group_id');
