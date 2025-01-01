@@ -11,10 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
+        Schema::create('rounds', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->json('days');
+            $table->timestamps();
+        });
+
+        // Add round_id to memorizers table
         Schema::table('memorizers', function (Blueprint $table) {
-            $table->string('address')->nullable()->after('phone');
-            $table->date('birth_date')->nullable()->after('address');
-            $table->string('number')->unique()->nullable()->after('birth_date');
+            $table->foreignId('round_id')->nullable()->constrained()->nullOnDelete();
         });
     }
 
@@ -24,9 +30,10 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('memorizers', function (Blueprint $table) {
-            $table->dropColumn('address');
-            $table->dropColumn('birth_date');
-            $table->dropColumn('number');
+            $table->dropForeign(['round_id']);
+            $table->dropColumn('round_id');
         });
+
+        Schema::dropIfExists('rounds');
     }
 };

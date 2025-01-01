@@ -1,7 +1,9 @@
 <?php
 
+use App\Models\Memorizer;
 use App\Models\Student;
 use Illuminate\Support\Facades\Route;
+use App\Models\ReminderLog;
 
 Route::view('/', 'welcome');
 
@@ -24,3 +26,20 @@ Route::get('/whatsapp/{number}/{message}/{student_id}', function ($number, $mess
     }
     return view('redirects.whatsapp', ['number' => $number, 'message' => $message]);
 })->name('whatsapp');
+
+Route::get('/whatsapp/{number}/{message}/{memorizer_id}', function ($number, $message, $memorizer_id) {
+    $message = urldecode($message);
+    $memorizer = Memorizer::find($memorizer_id);
+
+    // Create reminder log
+    ReminderLog::create([
+        'memorizer_id' => $memorizer_id,
+        'type' => 'payment',
+        'phone_number' => $number,
+        'message' => $message,
+        'is_parent' => !$memorizer->phone && $memorizer->guardian?->phone,
+    ]);
+
+    $message = urlencode($message);
+    return view('redirects.whatsapp', ['number' => $number, 'message' => $message]);
+})->name('memorizer-whatsapp');

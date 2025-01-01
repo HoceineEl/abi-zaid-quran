@@ -14,6 +14,8 @@ class MemorizerExporter extends Exporter
     public static function getColumns(): array
     {
         return [
+            ExportColumn::make('number')
+                ->label('الرقم'),
             ExportColumn::make('name')
                 ->label('الإسم'),
             ExportColumn::make('phone')

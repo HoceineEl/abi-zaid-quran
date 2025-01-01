@@ -25,11 +25,9 @@ class ListTeachers extends ListRecords
         return [
             'male' => Tab::make('ذكور')
                 ->label('رجال')
-                ->icon('heroicon-o-user')
                 ->query(fn(Builder $query) => $query->where('sex', 'male')),
             'female' => Tab::make('أناث')
                 ->label('نساء')
-                ->icon('heroicon-o-user-group')
                 ->query(fn(Builder $query) => $query->where('sex', 'female')),
         ];
     }

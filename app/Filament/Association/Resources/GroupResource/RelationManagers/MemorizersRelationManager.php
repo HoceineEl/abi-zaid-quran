@@ -161,7 +161,7 @@ class MemorizersRelationManager extends RelationManager
                     ->requiresConfirmation()
                     ->icon('heroicon-o-currency-dollar')
                     ->color('indigo')
-                    ->hidden(fn(Memorizer $record) => $record->hasPaymentThisMonth())
+                    ->hidden(fn(Memorizer $record) => $record->has_payment_this_month)
                     ->modalDescription('هل أنت متأكد من تسجيل دفع الرسوم الشهرية لهذا الطالب؟')
                     ->modalHeading('تأكيد تسديد الرسوم')
                     ->modalSubmitActionLabel('تأكيد الدفع')
@@ -190,7 +190,7 @@ class MemorizersRelationManager extends RelationManager
                         $records = $livewire->getSelectedTableRecords();
                         $records = Memorizer::find($records);
                         $records->each(function (Memorizer $memorizer) {
-                            if (! $memorizer->hasPaymentThisMonth()) {
+                            if (! $memorizer->has_payment_this_month) {
                                 $memorizer->payments()->create([
                                     'amount' => $memorizer->exempt ? 0 : $this->ownerRecord->price,
                                     'payment_date' => now(),

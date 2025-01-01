@@ -2,13 +2,19 @@
 
 namespace App\Filament\Association\Resources;
 
+use App\Classes\Core;
+use App\Enums\Days;
 use App\Filament\Association\Resources\GroupResource\RelationManagers\MemorizersRelationManager;
 use App\Filament\Association\Resources\MemorizerResource\Pages;
 use App\Filament\Association\Resources\MemorizerResource\RelationManagers\PaymentsRelationManager;
+use App\Filament\Association\Resources\MemorizerResource\RelationManagers\ReminderLogsRelationManager;
 use App\Filament\Exports\MemorizerExporter;
 use App\Filament\Imports\MemorizerImporter;
 use App\Models\Memorizer;
+use App\Models\Round;
 use Filament\Actions\Action as ActionsAction;
+use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
@@ -31,6 +37,8 @@ use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\ActionsPosition;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\HtmlString;
 use Illuminate\Validation\Rules\File;
 use Livewire\Component;
 
@@ -57,9 +65,32 @@ class MemorizerResource extends Resource
                         TextInput::make('name')
                             ->label('الإسم')
                             ->required(),
+                        Select::make('guardian_id')
+                            ->label('ولي الأمر')
+                            ->relationship('guardian', 'name')
+                            ->createOptionForm([
+                                TextInput::make('name')
+                                    ->label('الإسم')
+                                    ->required(),
+                                TextInput::make('phone')
+                                    ->label('الهاتف')
+                                    ->required(),
+                                TextInput::make('address')
+                                    ->label('العنوان'),
+                                TextInput::make('city')
+                                    ->label('المدينة')
+                                    ->default('أسفي'),
+                            ])
+                            ->searchable()
+                            ->preload(),
                         TextInput::make('phone')
-                            ->label('الهاتف')
-                            ->required(),
+                            ->label('الهاتف (خاص)')
+                            ->helperText('سيتم استخدام رقم هاتف ولي الأمر إذا لم يتم تحديد رقم هاتف خاص'),
+                        TextInput::make('address')
+                            ->label('العنوان'),
+
+                        DatePicker::make('birth_date')
+                            ->label('تاريخ الميلاد'),
                         Select::make('memo_group_id')
                             ->label('المجموعة')
                             ->hiddenOn(MemorizersRelationManager::class)
@@ -69,6 +100,21 @@ class MemorizerResource extends Resource
                             ->label('المعلم')
                             ->relationship('teacher', 'name')
                             ->required(),
+                        Select::make('round_id')
+                            ->label('الحلقة')
+                            ->relationship('round', 'name')
+                            ->createOptionForm([
+                                TextInput::make('name')
+                                    ->label('اسم الحلقة')
+                                    ->required(),
+                                CheckboxList::make('days')
+                                    ->label('أيام الحلقة')
+                                    ->options(Days::class)
+                                    ->columns(3)
+                                    ->required(),
+                            ])
+                            ->searchable()
+                            ->preload(),
                         ToggleButtons::make('sex')
                             ->inline()
                             ->options([
@@ -105,46 +151,101 @@ class MemorizerResource extends Resource
                     ->circular()
                     ->searchable()
                     ->toggleable()
+                    ->toggledHiddenByDefault()
                     ->sortable()
                     ->size(50),
+                TextColumn::make('number')
+                    ->label('الرقم')
+                    ->searchable(query: fn($query, string $search) => $query->where(function ($query) use ($search) {
+                        $query->whereRaw("CONCAT(DATE_FORMAT(memorizers.created_at, '%y%m%d'), LPAD(memorizers.id, 2, '0')) = ?", [$search]);
+                    }))
+                    ->toggleable()
+                    ->sortable(
+                        query: fn($query, string $direction) => $query->orderByRaw("CONCAT(DATE_FORMAT(created_at, '%y%m%d'), LPAD(id, 2, '0')) $direction")
+                    )
+                    ->copyable()
+                    ->copyMessage('تم نسخ الرقم')
+                    ->copyMessageDuration(1500),
                 TextColumn::make('name')
-                    ->color(fn(Memorizer $record) => $record->hasPaymentThisMonth() ? 'success' : 'default')
+                    ->icon(function (Memorizer $record) {
+                        if ($record->has_payment_this_month) {
+                            return 'heroicon-o-check-circle';
+                        }
+
+                        // Check if reminder was sent today
+                        $hasReminderToday = $record->reminderLogs()
+                            ->whereDate('created_at', now())
+                            ->exists();
+
+                        return $hasReminderToday ? 'heroicon-o-exclamation-circle' : null;
+                    })
+                    ->searchable()
+                    ->color(function (Memorizer $record) {
+                        if ($record->has_payment_this_month) {
+                            return 'success';
+                        }
+
+                        // Check if reminder was sent today
+                        $hasReminderToday = $record->reminderLogs()
+                            ->whereDate('created_at', now())
+                            ->exists();
+
+                        return $hasReminderToday ? 'warning' : 'danger';
+                    })
+                    ->toggleable()
+                    ->sortable()
+                    ->label('الإسم')
+                    ->description(fn($record) => new HtmlString("
+                        <div class='flex flex-col'>
+                            <span class='text-xs text-gray-500'>{$record->city}</span>
+                            <span class='text-sm'>{$record->address}</span>
+                        </div>
+                    ")),
+                TextColumn::make('display_phone')
+                    ->searchable(query: fn($query, string $search) => $query->where(function ($query) use ($search) {
+                        $query->where('phone', $search)
+                            ->orWhereHas('guardian', function ($query) use ($search) {
+                                $query->where('phone', $search);
+                            });
+                    }))
+                    ->toggleable()
+                    ->copyable()
+                    ->copyMessage('تم نسخ الهاتف')
+                    ->copyMessageDuration(1500)
+                    ->sortable(false)
+                    ->label('الهاتف')
+                    ->description(fn($record) => $record->city),
+                TextColumn::make('birth_date')
+                    ->date('Y-m-d')
                     ->searchable()
                     ->toggleable()
                     ->sortable()
-                    ->weight(fn(Memorizer $record) => $record->hasPaymentThisMonth() ? 'bold' : 'normal')
-                    ->label('الإسم'),
-                TextColumn::make('phone')
-                    ->searchable()
-                    ->toggleable()
-                    ->sortable()
-                    ->label('الهاتف'),
-                TextColumn::make('sex')
-                    ->getStateUsing(fn(Memorizer $record) => match ($record->sex) {
+                    ->label('تاريخ الإزدياد')
+                    ->description(fn(Memorizer $record) => match ($record->sex) {
                         'male' => 'ذكر',
                         'female' => 'أنثى',
                         default => 'ذكر',
-                    })
-                    ->searchable()
-                    ->toggleable()
-                    ->sortable()
-                    ->label('الجنس'),
-                TextColumn::make('city')
-                    ->searchable()
-                    ->toggleable()
-                    ->sortable()
-                    ->label('المدينة'),
+                    }),
                 TextColumn::make('group.name')
                     ->searchable()
                     ->toggleable()
                     ->sortable()
                     ->label('المجموعة'),
+                TextColumn::make('round.name')
+                    ->searchable()
+                    ->toggleable()
+                    ->sortable()
+                    ->label('الحلقة'),
                 TextColumn::make('teacher.name')
                     ->searchable()
                     ->toggleable()
                     ->sortable()
                     ->label('المعلم'),
-
+                TextColumn::make('guardian.name')
+                    ->searchable()
+                    ->toggleable()
+                    ->sortable()
+                    ->label('ولي الأمر'),
                 IconColumn::make('exempt')
                     ->searchable()
                     ->toggleable()
@@ -156,6 +257,7 @@ class MemorizerResource extends Resource
                 //
             ])
             ->headerActions([
+
 
                 ExportAction::make()
                     ->label('تصدير البيانات')
@@ -172,12 +274,31 @@ class MemorizerResource extends Resource
                     Tables\Actions\EditAction::make()->slideOver(),
 
                 ]),
+                Action::make('send_payment_reminders')
+                    ->label('إرسال تذكير بالدفع')
+                    ->hidden(function (Memorizer $record) {
+                        // Skip if no phone number available
+                        if (!$record->phone && !$record->guardian?->phone) {
+                            return true;
+                        }
+
+                        // Skip if student has already paid this month
+                        if ($record->has_payment_this_month) {
+                            return true;
+                        }
+                    })
+                    ->url(function (Memorizer $record) {
+
+                        return self::getWhatsAppUrl($record);
+                    }, true),
+
+
                 Action::make('pay_this_month')
                     ->label('دفع')
                     ->icon('heroicon-o-currency-dollar')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->hidden(fn(Memorizer $record) => $record->hasPaymentThisMonth())
+                    ->hidden(fn(Memorizer $record) => $record->has_payment_this_month)
                     ->modalDescription('هل تريد تسجيل دفعة جديدة لهذا الشهر؟')
                     ->modalHeading('تسجيل دفعة جديدة')
                     ->action(function (Memorizer $record) {
@@ -236,34 +357,17 @@ class MemorizerResource extends Resource
 
 
 
-            ]);
+            ])
+            ->modifyQueryUsing(function (Builder $query) {
+                $query->with(['group:id,name', 'teacher:id,name', 'round:id,name', 'guardian:id,name,phone', 'payments:id,memorizer_id,payment_date', 'reminderLogs:id,memorizer_id,created_at']);
+            });
     }
-    protected function getHeaderActions(): array
-    {
-        FilamentAsset::register([
-            Js::make('https://html2canvas.hertzen.com/dist/html2canvas.min.js'),
-        ]);
 
-        return [
-            ActionsAction::make('snapshot')
-                ->label('Take Snapshot')
-                ->icon('heroicon-o-camera')
-                ->action(function (Component $livewire) {
-                    // This will be called when the action is triggered
-                    $livewire->dispatch('takeSnapshot');
-                })
-                ->after(function () {
-                    Notification::make()
-                        ->title('Snapshot taken')
-                        ->success()
-                        ->send();
-                })
-        ];
-    }
     public static function getRelations(): array
     {
         return [
             PaymentsRelationManager::class,
+            ReminderLogsRelationManager::class,
         ];
     }
 
@@ -274,5 +378,54 @@ class MemorizerResource extends Resource
             'create' => Pages\CreateMemorizer::route('/create'),
             'edit' => Pages\EditMemorizer::route('/{record}/edit'),
         ];
+    }
+
+    public static function getWhatsAppUrl(Memorizer $record)
+    {
+        // Determine if we should contact parent or student
+        $isParent = !$record->phone && $record->guardian?->phone;
+        $phone = $isParent ? $record->guardian?->phone : $record->phone;
+
+        // Return null if no phone number available
+        if (!$phone) {
+            return null;
+        }
+
+        // Format phone number
+        $phone = preg_replace('/[^0-9]/', '', $phone);
+        if (strlen($phone) === 9 && in_array(substr($phone, 0, 1), ['6', '7'])) {
+            $phone = '+212' . $phone;
+        } elseif (strlen($phone) === 10 && in_array(substr($phone, 0, 2), ['06', '07'])) {
+            $phone = '+212' . substr($phone, 1);
+        } elseif (strlen($phone) === 12 && substr($phone, 0, 3) === '212') {
+            $phone = '+' . $phone;
+        }
+
+        // Get gender-specific terms
+        $genderTerms = $record->sex === 'female' ? [
+            'prefix' => $isParent ? 'ابنتكم' : 'أختي الطالبة',
+            'pronoun' => $isParent ? 'ها' : 'ك',
+        ] : [
+            'prefix' => $isParent ? 'ابنكم' : 'أخي الطالب',
+            'pronoun' => $isParent ? 'ه' : 'ك',
+        ];
+
+        $message = <<<MSG
+السلام عليكم ورحمة الله وبركاته 🌸
+
+*{$genderTerms['prefix']} {$record->name}* الغالي(ة) ✨
+
+نرجو أن تكون{$genderTerms['pronoun']} بخير وعافية 💝
+نود تذكير{$genderTerms['pronoun']} بأن آخر موعد لأداء واجب التحفيظ الشهري هو يوم 5 من الشهر الحالي 📅
+
+جزا{$genderTerms['pronoun']} الله خيراً على تعاون{$genderTerms['pronoun']} معنا 🤲
+وبارك الله في{$genderTerms['pronoun']} وفي حفظ{$genderTerms['pronoun']} للقرآن الكريم 🌟
+MSG;
+
+        return $phone ? route('memorizer-whatsapp', [
+            'number' => $phone,
+            'message' => $message,
+            'memorizer_id' => $record->id
+        ]) : null;
     }
 }

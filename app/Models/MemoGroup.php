@@ -9,6 +9,8 @@ class MemoGroup extends Model
 {
     use HasFactory;
 
+    protected $fillable = ['name', 'price'];
+
     protected $with = ['memorizers'];
 
     public function memorizers(): \Illuminate\Database\Eloquent\Relations\HasMany

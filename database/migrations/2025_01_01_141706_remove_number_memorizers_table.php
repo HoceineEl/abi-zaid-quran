@@ -12,9 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('memorizers', function (Blueprint $table) {
-            $table->string('address')->nullable()->after('phone');
-            $table->date('birth_date')->nullable()->after('address');
-            $table->string('number')->unique()->nullable()->after('birth_date');
+            $table->dropColumn('number');
         });
     }
 
@@ -24,9 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('memorizers', function (Blueprint $table) {
-            $table->dropColumn('address');
-            $table->dropColumn('birth_date');
-            $table->dropColumn('number');
+            $table->string('number')->unique()->nullable()->after('birth_date');
         });
     }
 };
