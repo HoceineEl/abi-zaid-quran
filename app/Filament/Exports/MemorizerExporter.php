@@ -18,6 +18,12 @@ class MemorizerExporter extends Exporter
                 ->label('الإسم'),
             ExportColumn::make('phone')
                 ->label('الهاتف'),
+            ExportColumn::make('address')
+                ->label('العنوان'),
+            ExportColumn::make('birth_date')
+                ->label('تاريخ الميلاد'),
+            ExportColumn::make('parent_name')
+                ->label('اسم الولي'),
             ExportColumn::make('sex')
                 ->label('الجنس')
                 ->state(fn(Memorizer $record) => $record->sex === 'male' ? 'ذكر' : 'أنثى'),

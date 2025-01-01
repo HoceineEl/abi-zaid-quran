@@ -22,6 +22,7 @@ use Filament\Support\Assets\Js;
 use Filament\Support\Facades\FilamentAsset;
 use Filament\Tables;
 use Filament\Tables\Actions\Action;
+use Filament\Tables\Actions\ActionGroup;
 use Filament\Tables\Actions\ExportAction;
 use Filament\Tables\Actions\ExportBulkAction;
 use Filament\Tables\Actions\ImportAction;
@@ -167,27 +168,18 @@ class MemorizerResource extends Resource
                     ->importer(MemorizerImporter::class),
             ])
             ->actions([
+                ActionGroup::make([
+                    Tables\Actions\EditAction::make()->slideOver(),
 
-                Action::make('snapshotto')
-                    ->label('Take Snapshot')
-                    ->icon('heroicon-o-camera')
-                    ->action(function (Component $livewire) {
-                        $livewire->dispatch('takeTableSnapshot');
-                    })
-                    ->after(function () {
-                        Notification::make()
-                            ->title('Snapshot taken')
-                            ->success()
-                            ->send();
-                    }),
-
-                Tables\Actions\EditAction::make()->slideOver(),
+                ]),
                 Action::make('pay_this_month')
-                    ->label('دفع الشهر')
+                    ->label('دفع')
+                    ->icon('heroicon-o-currency-dollar')
+                    ->color('success')
                     ->requiresConfirmation()
                     ->hidden(fn(Memorizer $record) => $record->hasPaymentThisMonth())
-                    ->modalDescription('هل أنت متأكد من دفع الشهر؟')
-                    ->modalHeading('دفع الشهر')
+                    ->modalDescription('هل تريد تسجيل دفعة جديدة لهذا الشهر؟')
+                    ->modalHeading('تسجيل دفعة جديدة')
                     ->action(function (Memorizer $record) {
                         $record->payments()->create([
                             'amount' => 100,
@@ -195,10 +187,11 @@ class MemorizerResource extends Resource
                         ]);
 
                         Notification::make()
-                            ->title('تم الدفع بنجاح')
+                            ->title('تم تسجيل الدفعة بنجاح')
                             ->success()
                             ->send();
                     }),
+
             ], ActionsPosition::BeforeColumns)
             ->bulkActions([
                 ExportBulkAction::make()

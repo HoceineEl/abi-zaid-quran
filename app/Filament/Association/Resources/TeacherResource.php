@@ -4,13 +4,13 @@ namespace App\Filament\Association\Resources;
 
 use App\Filament\Association\Resources\TeacherResource\Pages;
 use App\Models\Teacher;
-use Filament\Forms;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class TeacherResource extends Resource
 {
@@ -20,7 +20,7 @@ class TeacherResource extends Resource
 
     protected static ?string $navigationLabel = 'الأساتذة';
 
-    protected static ?string $modelLabel = 'أستاذ';
+    protected static ?string $modelLabel = 'أستاذ(ة)';
 
     protected static ?string $pluralModelLabel = 'الأساتذة';
 
@@ -28,14 +28,25 @@ class TeacherResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('name')
+                TextInput::make('name')
                     ->label('الاسم')
                     ->required()
                     ->maxLength(255),
-                Forms\Components\TextInput::make('phone')
+
+                TextInput::make('phone')
                     ->label('رقم الهاتف')
                     ->tel()
                     ->maxLength(255),
+
+                ToggleButtons::make('sex')
+                    ->label('الجنس')
+                    ->inline()
+                    ->options([
+                        'male' => 'ذكر',
+                        'female' => 'أنثى',
+                    ])
+                    ->default('female')
+                    ->required(),
             ]);
     }
 
@@ -43,18 +54,29 @@ class TeacherResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name')
+                TextColumn::make('name')
                     ->label('الاسم')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('phone')
+
+                TextColumn::make('phone')
                     ->label('رقم الهاتف')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('created_at')
+
+                TextColumn::make('sex')
+                    ->label('الجنس')
+                    ->formatStateUsing(fn(string $state): string => match ($state) {
+                        'male' => 'ذكر',
+                        'female' => 'أنثى',
+                    })
+                    ->sortable(),
+
+                TextColumn::make('created_at')
                     ->label('تاريخ الإنشاء')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
+
+                TextColumn::make('updated_at')
                     ->label('تاريخ التحديث')
                     ->dateTime()
                     ->sortable()

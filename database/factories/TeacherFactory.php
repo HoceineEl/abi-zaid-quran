@@ -8,9 +8,12 @@ class TeacherFactory extends Factory
 {
     public function definition(): array
     {
+        $sex = fake()->randomElement(['male', 'female']);
+
         return [
-            'name' => fake('ar_SA')->name(),
+            'name' => fake('ar_SA')->name($sex),
             'phone' => fake('ar_SA')->phoneNumber(),
+            'sex' => $sex,
         ];
     }
 }

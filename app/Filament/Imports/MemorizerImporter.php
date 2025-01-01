@@ -9,6 +9,7 @@ use Filament\Actions\Imports\ImportColumn;
 use Filament\Actions\Imports\Importer;
 use Filament\Actions\Imports\Models\Import;
 use Filament\Forms\Components\Checkbox;
+use Filament\Forms\Components\Select;
 
 class MemorizerImporter extends Importer
 {
@@ -27,19 +28,26 @@ class MemorizerImporter extends Importer
                 ->label('الفئة')
                 ->rules(['required', 'string'])
                 ->guess(['الفئة', 'المجموعة', 'الصف'])
-                ->fillRecordUsing(function (Memorizer $record, string $state) {
-                    $group = MemoGroup::firstOrCreate(['name' => $state], ['price' => 100]);
-                    $record->memo_group_id = $group->id;
+                ->fillRecordUsing(function (Memorizer $record, string $state, array $options) {
+                    if (isset($options['group_id'])) {
+                        $record->memo_group_id = $options['group_id'];
+                    } else {
+                        $group = MemoGroup::firstOrCreate(['name' => $state], ['price' => 100]);
+                        $record->memo_group_id = $group->id;
+                    }
                 }),
 
             ImportColumn::make('teacher')
                 ->label('الأستاذة')
-                ->requiredMapping()
                 ->rules(['required', 'string'])
                 ->guess(['الأستاذة', 'المعلمة', 'المدرسة'])
-                ->fillRecordUsing(function (Memorizer $record, string $state) {
-                    $teacher = Teacher::firstOrCreate(['name' => $state]);
-                    $record->teacher_id = $teacher->id;
+                ->fillRecordUsing(function (Memorizer $record, string $state, array $options) {
+                    if (isset($options['teacher_id'])) {
+                        $record->teacher_id = $options['teacher_id'];
+                    } else {
+                        $teacher = Teacher::firstOrCreate(['name' => $state]);
+                        $record->teacher_id = $teacher->id;
+                    }
                 }),
 
             ImportColumn::make('payment_status')
@@ -95,8 +103,22 @@ class MemorizerImporter extends Importer
     public static function getOptionsFormComponents(): array
     {
         return [
+            Select::make('group_id')
+                ->label('المجموعة')
+                ->relationship('group', 'name')
+                ->model(MemoGroup::class)
+                ->placeholder('اختر المجموعة (اختياري)')
+                ->helperText('إذا تم تحديد مجموعة، سيتم تجاهل عمود المجموعة في ملف الاستيراد'),
+
+            Select::make('teacher_id')
+                ->label('الأستاذ(ة)')
+                ->relationship('teacher', 'name')
+                ->model(Teacher::class)
+                ->placeholder('اختر الأستاذ(ة) (اختياري)')
+                ->helperText('إذا تم تحديد أستاذ(ة)، سيتم تجاهل عمود الأستاذ(ة) في ملف الاستيراد'),
+
             Checkbox::make('updateExisting')
-                ->label('تحديث السجلات الموجودة')
+                ->label('تحديث السجلات الموجودة'),
         ];
     }
 
