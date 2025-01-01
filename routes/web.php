@@ -13,7 +13,7 @@ Route::view('/', 'welcome');
 
 Route::get('/whatsapp/{number}/{message}/{student_id}', function ($number, $message, $student_id) {
     $message = urlencode($message);
-    $student = Student::find($student_id);
+    $student = Student::with('progresses')->find($student_id);
     if ($student->progresses->where('date', now()->format('Y-m-d'))->count() == 0) {
         $student->progresses()->create([
             'created_by' => auth()->id(),
@@ -27,18 +27,18 @@ Route::get('/whatsapp/{number}/{message}/{student_id}', function ($number, $mess
     return view('redirects.whatsapp', ['number' => $number, 'message' => $message]);
 })->name('whatsapp');
 
-Route::get('/whatsapp/{number}/{message}/{memorizer_id}', function ($number, $message, $memorizer_id) {
+Route::get('/send-reminder/{number}/{message}/{memorizer_id}', function ($number, $message, $memorizer_id) {
     $message = urldecode($message);
-    $memorizer = Memorizer::find($memorizer_id);
-
-    // Create reminder log
-    ReminderLog::create([
-        'memorizer_id' => $memorizer_id,
-        'type' => 'payment',
-        'phone_number' => $number,
-        'message' => $message,
-        'is_parent' => !$memorizer->phone && $memorizer->guardian?->phone,
-    ]);
+    $memorizer = Memorizer::with('reminderLogs', 'guardian')->find($memorizer_id);
+    if ($memorizer->reminderLogs->where('type', 'payment')->where('created_at', '>', now()->subDay())->count() == 0) {
+        // Create reminder log
+        $memorizer->reminderLogs()->create([
+            'type' => 'payment',
+            'phone_number' => $number,
+            'message' => $message,
+            'is_parent' => !$memorizer->phone && $memorizer->guardian?->phone,
+        ]);
+    }
 
     $message = urlencode($message);
     return view('redirects.whatsapp', ['number' => $number, 'message' => $message]);
