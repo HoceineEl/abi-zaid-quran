@@ -13,6 +13,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use App\Filament\Association\Resources\RoundResource\RelationManagers\MemorizersRelationManager;
 
 class RoundResource extends Resource
 {
@@ -86,7 +87,7 @@ class RoundResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            MemorizersRelationManager::class,
         ];
     }
 

@@ -115,7 +115,7 @@ class MemorizerImporter extends Importer
             ImportColumn::make('birth_date')
                 ->label('تاريخ الإزدياد')
                 ->rules(['nullable', 'date'])
-                ->guess(['تاريخ الإزدياد', 'الإزدياد', 'تاريخ الميلاد' ])
+                ->guess(['تاريخ الإزدياد', 'الإزدياد', 'تاريخ الميلاد'])
                 ->castStateUsing(function (?string $state) {
                     return $state ? Carbon::parse($state)->format('Y-m-d') : null;
                 })

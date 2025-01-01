@@ -11,6 +11,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use App\Filament\Association\Resources\GuardianResource\RelationManagers\MemorizersRelationManager;
 
 class GuardianResource extends Resource
 {
@@ -86,7 +87,7 @@ class GuardianResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            MemorizersRelationManager::class,
         ];
     }
 
