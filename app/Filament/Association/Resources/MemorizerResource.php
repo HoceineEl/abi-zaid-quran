@@ -272,7 +272,9 @@ class MemorizerResource extends Resource
 
                 ]),
                 Action::make('send_payment_reminders')
-                    ->label('إرسال تذكير بالدفع')
+                    ->tooltip('إرسال تذكير بالدفع')
+                    ->iconButton()
+                    ->icon('heroicon-o-chat-bubble-left-ellipsis')
                     ->hidden(function (Memorizer $record) {
                         // Skip if no phone number available
                         if (!$record->phone && !$record->guardian?->phone) {
@@ -298,9 +300,18 @@ class MemorizerResource extends Resource
                     ->hidden(fn(Memorizer $record) => $record->has_payment_this_month)
                     ->modalDescription('هل تريد تسجيل دفعة جديدة لهذا الشهر؟')
                     ->modalHeading('تسجيل دفعة جديدة')
-                    ->action(function (Memorizer $record) {
+                    ->form(function (Memorizer $record) {
+                        return [
+                            TextInput::make('amount')
+                                ->label('المبلغ')
+                                ->helperText('المبلغ المستحق للشهر')
+                                ->numeric()
+                                ->default(fn() => $record->group->price ?? 100),
+                        ];
+                    })
+                    ->action(function (Memorizer $record, array $data) {
                         $record->payments()->create([
-                            'amount' => 100,
+                            'amount' => $data['amount'],
                             'payment_date' => now(),
                         ]);
 
