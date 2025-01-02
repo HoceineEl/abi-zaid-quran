@@ -27,34 +27,7 @@ class MemorizerImporter extends Importer
                 ->rules(['required', 'string'])
                 ->guess(['الاسم الكامل', 'الاسم', 'اسم الطالب']),
 
-            ImportColumn::make('guardian_name')
-                ->label('اسم ولي الأمر')
-                ->rules(['required', 'string'])
-                ->guess(['الأب أو الولي', 'اسم ولي الأمر', 'ولي الأمر', 'الولي', 'ولي الأمر', 'ولي الأمر'])
-                ->fillRecordUsing(function (Memorizer $record, string $state, array $options) {
-                    if (isset($options['guardian_id'])) {
-                        $record->guardian_id = $options['guardian_id'];
-                    } else {
-                        $guardian = Guardian::firstOrCreate(
-                            ['phone' => $record->phone ?? null],
-                            [
-                                'name' => $state,
-                                'city' => $record->city ?? 'أسفي',
-                            ]
-                        );
-                        $record->guardian_id = $guardian->id;
-                    }
-                }),
 
-            ImportColumn::make('guardian_phone')
-                ->label('هاتف ولي الأمر')
-                ->rules(['nullable', 'string'])
-                ->guess(['هاتف ولي الأمر', 'رقم ولي الأمر', 'رقم الهاتف', 'الهاتف'])
-                ->fillRecordUsing(function (Memorizer $record, ?string $state) {
-                    if ($record->guardian_id && $state) {
-                        Guardian::where('id', $record->guardian_id)->update(['phone' => $state]);
-                    }
-                }),
 
             ImportColumn::make('group')
                 ->label('الفئة')
@@ -129,12 +102,34 @@ class MemorizerImporter extends Importer
                 ->fillRecordUsing(function (Memorizer $record, ?string $state) {
                     $record->sex = $this->mapSex($state ?? 'ذكر');
                 }),
-
-            ImportColumn::make('city')
-                ->label('المدينة')
+            ImportColumn::make('guardian_name')
+                ->label('اسم ولي الأمر')
                 ->rules(['nullable', 'string'])
-                ->guess(['المدينة', 'البلدة', 'المكان'])
-                ->example('أسفي'),
+                ->guess(['الأب أو الولي', 'اسم ولي الأمر', 'ولي الأمر', 'الولي', 'ولي الأمر', 'ولي الأمر'])
+                ->fillRecordUsing(function (Memorizer $record, string $state, array $options) {
+                    if (isset($options['guardian_id'])) {
+                        $record->guardian_id = $options['guardian_id'];
+                    } else {
+                        $guardian = Guardian::firstOrCreate(
+                            ['phone' => $record->phone ?? null],
+                            [
+                                'name' => $state,
+                                'city' => $record->city ?? 'أسفي',
+                            ]
+                        );
+                        $record->guardian_id = $guardian->id;
+                    }
+                }),
+
+            ImportColumn::make('guardian_phone')
+                ->label('هاتف ولي الأمر')
+                ->rules(['nullable', 'string'])
+                ->guess(['هاتف ولي الأمر', 'رقم ولي الأمر', 'رقم الهاتف', 'الهاتف'])
+                ->fillRecordUsing(function (Memorizer $record, ?string $state) {
+                    if ($record->guardian_id && $state) {
+                        Guardian::where('id', $record->guardian_id)->update(['phone' => $state]);
+                    }
+                }),
         ];
     }
 
@@ -154,7 +149,7 @@ class MemorizerImporter extends Importer
             'أنثى', 'مرأة'  => 'female',
             default => 'male',
         };
-    } 
+    }
 
     public static function getOptionsFormComponents(): array
     {
