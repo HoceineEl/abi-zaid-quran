@@ -45,7 +45,14 @@ class GroupResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')
-                    ->searchable()
+                    ->searchable(query: function ($query, string $search) {
+                        return $query->where(function ($query) use ($search) {
+                            $query->where('name', 'like', '%' . $search . '%')
+                                ->orWhereHas('memorizers', function ($query) use ($search) {
+                                    $query->where('name', 'like', '%' . $search . '%');
+                                });
+                        });
+                    })
                     ->badge()
                     ->label('الإسم')
                     ->sortable(),
@@ -53,11 +60,11 @@ class GroupResource extends Resource
                     ->searchable()
                     ->label('الدفع')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('memorizers')
-                    ->searchable()
-                    ->getStateUsing(fn($record) => $record->memorizers->count())
+                Tables\Columns\TextColumn::make('memorizers_count')
+                    ->searchable(false)
+                    ->getStateUsing(fn($record) => $record->memorizers_count)
                     ->label('عدد الطلاب')
-                    ->sortable(),
+                    ->sortable(false),
             ])
             ->filters([
                 //

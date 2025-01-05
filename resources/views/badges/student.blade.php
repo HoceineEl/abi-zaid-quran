@@ -143,7 +143,7 @@
             </div>
         </div>
         <div class="badge-footer">
-            رقم الطالب: {{ $memorizer->id }}
+            رقم الطالب: {{ $memorizer->number }}
         </div>
     </div>
 </body>

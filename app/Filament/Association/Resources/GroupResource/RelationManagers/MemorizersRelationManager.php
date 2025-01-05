@@ -15,6 +15,8 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Support\Colors\Color;
+use Filament\Support\Enums\FontWeight;
 use Filament\Tables;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\ActionGroup;
@@ -57,54 +59,46 @@ class MemorizersRelationManager extends RelationManager
                         return $rowLoop->iteration;
                     })
                     ->sortable(),
-                IconColumn::make('has_payment_this_month')
-                    ->label('الدفع')
-                    ->boolean()
-                    ->tooltip(fn(Memorizer $record) => $record->has_payment_this_month ? 'تم الدفع' : 'إضغط لتسجيل الدفع')
-                    ->action(
-                        Action::make('pay_this_month')
-                            ->label('دفع')
-                            ->icon('heroicon-o-currency-dollar')
-                            ->color('success')
-                            ->requiresConfirmation()
-                            ->hidden(fn(Memorizer $record) => $record->has_payment_this_month)
-                            ->modalDescription('هل تريد تسجيل دفعة جديدة لهذا الشهر؟')
-                            ->modalHeading('تسجيل دفعة جديدة')
-                            ->form(function (Memorizer $record) {
-                                return [
-                                    TextInput::make('amount')
-                                        ->label('المبلغ')
-                                        ->helperText('المبلغ المستحق للشهر')
-                                        ->numeric()
-                                        ->default(fn() => $record->group->price ?? 100),
-                                ];
-                            })
-                            ->action(function (Memorizer $record, array $data) {
-                                $record->payments()->create([
-                                    'amount' => $data['amount'],
-                                    'payment_date' => now(),
-                                ]);
 
-                                Notification::make()
-                                    ->title('تم تسجيل الدفعة بنجاح')
-                                    ->success()
-                                    ->send();
-                            }),
-                    )
-                    ->trueIcon('heroicon-o-check-circle')
-                    ->falseIcon('heroicon-o-x-circle'),
                 TextColumn::make('name')
+                    ->weight(FontWeight::Bold)
+                    ->icon(function (Memorizer $record) {
+                        if ($record->has_payment_this_month) {
+                            return 'heroicon-o-check-circle';
+                        }
+                        if ($record->has_reminder_this_month) {
+                            return 'heroicon-o-exclamation-circle';
+                        }
+                        if (!$record->has_payment_this_month) {
+                            return 'heroicon-o-x-circle';
+                        }
+
+                        return null;
+                    })
+                    ->action(self::getPayAction())
                     ->searchable()
-                    ->color(fn(Memorizer $record) => $record->present_today ? 'success' : ($record->absent_today ? 'danger' : 'default'))
-                    ->label('الإسم')
-                    ->sortable(),
+                    ->color(function (Memorizer $record) {
+                        if ($record->has_payment_this_month) {
+                            return 'success';
+                        }
+                        if ($record->has_reminder_this_month) {
+                            return Color::Yellow;
+                        }
+
+                        return Color::Rose;
+                    })
+                    ->toggleable()
+                    ->sortable()
+                    ->label('الإسم'),
+                IconColumn::make('exempt')
+                    ->label('معفي')
+                    ->boolean(),
                 TextColumn::make('phone')
                     ->label('رقم الهاتف')
                     ->copyable()
                     ->copyMessage('تم نسخ رقم الهاتف')
                     ->copyMessageDuration(1500),
-                ToggleColumn::make('exempt')
-                    ->label('معفي')
+
             ])
             ->filters([])
             ->headerActions([
@@ -116,47 +110,6 @@ class MemorizersRelationManager extends RelationManager
                     Tables\Actions\DeleteAction::make(),
                     Tables\Actions\ViewAction::make(),
                 ]),
-                Action::make('generate_badge')
-                    ->label('إنشاء بطاقة')
-                    ->icon('heroicon-o-identification')
-                    ->action(function (Memorizer $record) {
-                        // Generate QR Code
-                        $data = json_encode(['memorizer_id' => $record->id]);
-                        $renderer = new ImageRenderer(
-                            new RendererStyle(400),
-                            new SvgImageBackEnd
-                        );
-                        $writer = new Writer($renderer);
-                        $svg = $writer->writeString($data);
-                        $qrCode = 'data:image/svg+xml;base64,' . base64_encode($svg);
-
-                        // Generate Badge HTML
-                        $badgeHtml = view('badges.student', [
-                            'memorizer' => $record,
-                            'qrCode' => $qrCode,
-                        ])->render();
-
-                        // Generate PDF with mpdf
-                        $mpdf = new Mpdf([
-                            'mode' => 'utf-8',
-                            'format' => 'A4',
-                            'orientation' => 'P',
-                            'margin_left' => 0,
-                            'margin_right' => 0,
-                            'margin_top' => 0,
-                            'margin_bottom' => 0,
-                        ]);
-
-                        $mpdf->SetDirectionality('rtl');
-                        $mpdf->autoScriptToLang = true;
-                        $mpdf->autoLangToFont = true;
-
-                        $mpdf->WriteHTML($badgeHtml);
-
-                        return response()->streamDownload(function () use ($mpdf) {
-                            echo $mpdf->Output('', 'S');
-                        }, "badge_{$record->id}.pdf");
-                    }),
 
                 Action::make('send_payment_reminders')
                     ->tooltip('إرسال تذكير بالدفع')
@@ -204,59 +157,91 @@ class MemorizersRelationManager extends RelationManager
                             ->success()
                             ->send();
                     }),
-                BulkAction::make('mark_attendance_bulk')
-                    ->label('تسجيل الحضور للمحددين')
-                    ->icon('heroicon-o-check-circle')
-                    ->color('success')
-                    ->action(function ($livewire) {
-                        $records = $livewire->getSelectedTableRecords();
-                        $records = Memorizer::find($records);
-                        $records->each(function (Memorizer $memorizer) {
-                            Attendance::firstOrCreate([
-                                'memorizer_id' => $memorizer->id,
-                                'date' => now()->toDateString(),
-                            ], [
-                                'check_in_time' => now()->toTimeString(),
-                            ]);
-                        });
+                // BulkAction::make('mark_attendance_bulk')
+                //     ->label('تسجيل الحضور للمحددين')
+                //     ->icon('heroicon-o-check-circle')
+                //     ->color('success')
+                //     ->action(function ($livewire) {
+                //         $records = $livewire->getSelectedTableRecords();
+                //         $records = Memorizer::find($records);
+                //         $records->each(function (Memorizer $memorizer) {
+                //             Attendance::firstOrCreate([
+                //                 'memorizer_id' => $memorizer->id,
+                //                 'date' => now()->toDateString(),
+                //             ], [
+                //                 'check_in_time' => now()->toTimeString(),
+                //             ]);
+                //         });
 
-                        Notification::make()
-                            ->title('تم تسجيل الحضور بنجاح للطلاب المحددين')
-                            ->success()
-                            ->send();
-                    }),
-                BulkAction::make('mark_absence_bulk')
-                    ->label('تسجيل الغياب للمحددين')
-                    ->icon('heroicon-o-x-circle')
-                    ->color('danger')
-                    ->requiresConfirmation()
-                    ->modalHeading('تأكيد تسجيل الغياب الجماعي')
-                    ->modalDescription('هل أنت متأكد من تسجيل الغياب للطلاب المحددين؟')
-                    ->modalSubmitActionLabel('تأكيد الغياب للجميع')
-                    ->action(function ($livewire) {
-                        $records = $livewire->getSelectedTableRecords();
-                        $records = Memorizer::find($records);
-                        $records->each(function (Memorizer $memorizer) {
-                            Attendance::updateOrCreate(
-                                [
-                                    'memorizer_id' => $memorizer->id,
-                                    'date' => now()->toDateString(),
-                                ],
-                                [
-                                    'check_in_time' => null,
-                                ]
-                            );
-                        });
+                //         Notification::make()
+                //             ->title('تم تسجيل الحضور بنجاح للطلاب المحددين')
+                //             ->success()
+                //             ->send();
+                //     }),
+                // BulkAction::make('mark_absence_bulk')
+                //     ->label('تسجيل الغياب للمحددين')
+                //     ->icon('heroicon-o-x-circle')
+                //     ->color('danger')
+                //     ->requiresConfirmation()
+                //     ->modalHeading('تأكيد تسجيل الغياب الجماعي')
+                //     ->modalDescription('هل أنت متأكد من تسجيل الغياب للطلاب المحددين؟')
+                //     ->modalSubmitActionLabel('تأكيد الغياب للجميع')
+                //     ->action(function ($livewire) {
+                //         $records = $livewire->getSelectedTableRecords();
+                //         $records = Memorizer::find($records);
+                //         $records->each(function (Memorizer $memorizer) {
+                //             Attendance::updateOrCreate(
+                //                 [
+                //                     'memorizer_id' => $memorizer->id,
+                //                     'date' => now()->toDateString(),
+                //                 ],
+                //                 [
+                //                     'check_in_time' => null,
+                //                 ]
+                //             );
+                //         });
 
-                        Notification::make()
-                            ->title('تم تسجيل الغياب بنجاح للطلاب المحددين')
-                            ->success()
-                            ->send();
-                    }),
+                //         Notification::make()
+                //             ->title('تم تسجيل الغياب بنجاح للطلاب المحددين')
+                //             ->success()
+                //             ->send();
+                //     }),
 
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])->paginated(false);
+    }
+
+    public static function getPayAction(): Action
+    {
+        return  Action::make('pay_this_month')
+            ->label('دفع')
+            ->icon('heroicon-o-currency-dollar')
+            ->color('success')
+            ->requiresConfirmation()
+            ->hidden(fn(Memorizer $record) => $record->has_payment_this_month)
+            ->modalDescription('هل تريد تسجيل دفعة جديدة لهذا الشهر؟')
+            ->modalHeading('تسجيل دفعة جديدة')
+            ->form(function (Memorizer $record) {
+                return [
+                    TextInput::make('amount')
+                        ->label('المبلغ')
+                        ->helperText('المبلغ المستحق للشهر')
+                        ->numeric()
+                        ->default(fn() => $record->group->price ?? 100),
+                ];
+            })
+            ->action(function (Memorizer $record, array $data) {
+                $record->payments()->create([
+                    'amount' => $data['amount'],
+                    'payment_date' => now(),
+                ]);
+
+                Notification::make()
+                    ->title('تم تسجيل الدفعة بنجاح')
+                    ->success()
+                    ->send();
+            });
     }
 }

@@ -29,6 +29,7 @@ use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Support\Assets\Js;
+use Filament\Support\Enums\FontWeight;
 use Filament\Support\Facades\FilamentAsset;
 use Filament\Tables;
 use Filament\Tables\Actions\Action;
@@ -41,6 +42,8 @@ use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Enums\ActionsPosition;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\HtmlString;
@@ -152,6 +155,7 @@ class MemorizerResource extends Resource
 
         return $table
             ->columns([
+
                 ImageColumn::make('photo')
                     ->label('الصورة')
                     ->circular()
@@ -160,19 +164,15 @@ class MemorizerResource extends Resource
                     ->toggledHiddenByDefault()
                     ->sortable()
                     ->size(50),
-                TextColumn::make('number')
-                    ->label('الرقم')
-                    ->searchable(query: fn($query, string $search) => $query->where(function ($query) use ($search) {
-                        $query->whereRaw("CONCAT(DATE_FORMAT(memorizers.created_at, '%y%m%d'), LPAD(memorizers.id, 2, '0')) = ?", [$search]);
-                    }))
+                IconColumn::make('exempt')
+                    ->searchable()
                     ->toggleable()
-                    ->sortable(
-                        query: fn($query, string $direction) => $query->orderByRaw("CONCAT(DATE_FORMAT(created_at, '%y%m%d'), LPAD(id, 2, '0')) $direction")
-                    )
-                    ->copyable()
-                    ->copyMessage('تم نسخ الرقم')
-                    ->copyMessageDuration(1500),
+                    ->sortable()
+                    ->label('معفي')
+                    ->boolean(),
+
                 TextColumn::make('name')
+                    ->weight(FontWeight::Bold)
                     ->icon(function (Memorizer $record) {
                         if ($record->has_payment_this_month) {
                             return 'heroicon-o-check-circle';
@@ -195,15 +195,18 @@ class MemorizerResource extends Resource
 
                         return 'danger';
                     })
+                    ->action(MemorizersRelationManager::getPayAction())
                     ->toggleable()
                     ->sortable()
-                    ->label('الإسم')
-                    ->description(fn($record) => new HtmlString("
-                        <div class='flex flex-col'>
-                            <span class='text-xs text-gray-500'>{$record->city}</span>
-                            <span class='text-sm'>{$record->address}</span>
-                        </div>
-                    ")),
+                    ->label('الإسم'),
+                TextColumn::make('group.name')
+                    ->searchable()
+                    ->toggleable()
+                    ->badge()
+                    ->color('indigo')
+                    ->url(fn(Memorizer $record) => GroupResource::getUrl('edit', ['record' => $record->group]))
+                    ->sortable()
+                    ->label('المجموعة'),
                 TextColumn::make('phone')
                     ->searchable(query: fn($query, string $search) => $query->where(function ($query) use ($search) {
                         $query->where('phone', $search)
@@ -219,6 +222,18 @@ class MemorizerResource extends Resource
                     ->label('الهاتف')
                     ->html()
                     ->description(fn($record) => $record->city),
+                TextColumn::make('number')
+                    ->label('الرقم')
+                    ->searchable(query: fn($query, string $search) => $query->where(function ($query) use ($search) {
+                        $query->whereRaw("CONCAT(DATE_FORMAT(memorizers.created_at, '%y%m%d'), LPAD(memorizers.id, 2, '0')) = ?", [$search]);
+                    }))
+                    ->toggleable()
+                    ->sortable(
+                        query: fn($query, string $direction) => $query->orderByRaw("CONCAT(DATE_FORMAT(created_at, '%y%m%d'), LPAD(id, 2, '0')) $direction")
+                    )
+                    ->copyable()
+                    ->copyMessage('تم نسخ الرقم')
+                    ->copyMessageDuration(1500),
                 TextColumn::make('birth_date')
                     ->date('Y-m-d')
                     ->searchable()
@@ -230,31 +245,11 @@ class MemorizerResource extends Resource
                         'female' => 'أنثى',
                         default => 'ذكر',
                     }),
-                TextColumn::make('group.name')
-                    ->searchable()
-                    ->toggleable()
-                    ->sortable()
-                    ->label('المجموعة'),
-                TextColumn::make('round.name')
-                    ->searchable()
-                    ->toggleable()
-                    ->sortable()
-                    ->label('الحلقة'),
-                TextColumn::make('teacher.name')
-                    ->searchable()
-                    ->toggleable()
-                    ->sortable()
-                    ->label('المعلم'),
 
-                ToggleColumn::make('exempt')
-                    ->searchable()
-                    ->toggleable()
-                    ->sortable()
-                    ->label('معفي'),
+
+
             ])
-            ->filters([
-                //
-            ])
+
             ->headerActions([
 
 
@@ -274,7 +269,8 @@ class MemorizerResource extends Resource
 
                 ]),
                 Action::make('generate_badge')
-                    ->label('إنشاء بطاقة')
+                    ->tooltip('إنشاء بطاقة')
+                    ->label('')
                     ->icon('heroicon-o-identification')
                     ->action(function (Memorizer $record) {
                         // Generate QR Code
@@ -318,51 +314,24 @@ class MemorizerResource extends Resource
                     ->tooltip('إرسال تذكير بالدفع')
                     ->iconButton()
                     ->icon('heroicon-o-chat-bubble-left-ellipsis')
-                    ->hidden(function (Memorizer $record) {
-                        // Skip if no phone number available
-                        if (!$record->phone && !$record->guardian?->phone) {
-                            return true;
-                        }
+                    // ->hidden(function (Memorizer $record) {
+                    //     // Skip if no phone number available
+                    //     if (!$record->phone && !$record->guardian?->phone) {
+                    //         return true;
+                    //     }
 
-                        // Skip if student has already paid this month
-                        if ($record->has_payment_this_month) {
-                            return true;
-                        }
-                    })
+                    //     // Skip if student has already paid this month
+                    //     if ($record->has_payment_this_month) {
+                    //         return true;
+                    //     }
+                    // })
                     ->url(function (Memorizer $record) {
 
                         return self::getWhatsAppUrl($record);
                     }, true),
 
 
-                Action::make('pay_this_month')
-                    ->label('دفع')
-                    ->icon('heroicon-o-currency-dollar')
-                    ->color('success')
-                    ->requiresConfirmation()
-                    ->hidden(fn(Memorizer $record) => $record->has_payment_this_month)
-                    ->modalDescription('هل تريد تسجيل دفعة جديدة لهذا الشهر؟')
-                    ->modalHeading('تسجيل دفعة جديدة')
-                    ->form(function (Memorizer $record) {
-                        return [
-                            TextInput::make('amount')
-                                ->label('المبلغ')
-                                ->helperText('المبلغ المستحق للشهر')
-                                ->numeric()
-                                ->default(fn() => $record->group->price ?? 100),
-                        ];
-                    })
-                    ->action(function (Memorizer $record, array $data) {
-                        $record->payments()->create([
-                            'amount' => $data['amount'],
-                            'payment_date' => now(),
-                        ]);
 
-                        Notification::make()
-                            ->title('تم تسجيل الدفعة بنجاح')
-                            ->success()
-                            ->send();
-                    }),
 
             ], ActionsPosition::BeforeColumns)
             ->bulkActions([
@@ -406,11 +375,35 @@ class MemorizerResource extends Resource
                     ->multiple()
                     ->preload(),
 
+                TernaryFilter::make('exempt')
+                    ->label('معفي')
+                    ->options([
+                        'yes' => 'معفي',
+                        'no' => 'غير معفي',
+                        'all' => 'الكل',
+                    ]),
+                Filter::make('doesnt_have_payment_this_month')
+                    ->label('الدفع')
+                    ->form([
+                        Toggle::make('doesnt_have_payment_this_month')
+                            ->label('لم يدفع هذا الشهر'),
+                    ])
+                    ->modifyQueryUsing(function (Builder $query, array $data) {
+                        if ($data['doesnt_have_payment_this_month']) {
+                            $query->where(function ($query) {
+                                $query->where('exempt', false)
+                                    ->whereDoesntHave('payments', function ($query) {
+                                        $query->whereYear('payment_date', now()->year)->whereMonth('payment_date', now()->month);
+                                    });
+                            });
+                        }
+                    }),
 
 
             ])
             ->modifyQueryUsing(function (Builder $query) {
-                $query->with(['group:id,name', 'teacher:id,name', 'round:id,name', 'guardian:id,name,phone', 'payments:id,memorizer_id,payment_date', 'reminderLogs:id,memorizer_id,created_at']);
+                $query
+                    ->with(['group:id,name', 'teacher:id,name', 'round:id,name', 'guardian:id,name,phone', 'payments:id,memorizer_id,payment_date', 'reminderLogs:id,memorizer_id,created_at']);
             });
     }
 

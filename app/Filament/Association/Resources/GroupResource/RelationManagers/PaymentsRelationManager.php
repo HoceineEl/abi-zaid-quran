@@ -34,7 +34,7 @@ class PaymentsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         $this->dateFrom = $this->dateFrom ?? Carbon::now()->startOfYear()->toDateString();
-        $this->dateTo = $this->dateTo ?? Carbon::now()->endOfYear()->toDateString();
+        $this->dateTo = $this->dateTo ?? Carbon::now()->startOfYear()->addMonths(2)->toDateString();
 
         $paymentColumns = $this->generatePaymentColumns();
 

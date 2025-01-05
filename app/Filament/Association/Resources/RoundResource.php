@@ -23,6 +23,8 @@ class RoundResource extends Resource
 
     protected static ?string $navigationLabel = 'الحلقات';
 
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static ?string $modelLabel = 'حلقة';
 
     protected static ?string $pluralModelLabel = 'الحلقات';

@@ -17,4 +17,9 @@ class MemoGroup extends Model
     {
         return $this->hasMany(Memorizer::class);
     }
+
+    public function getMemorizersCountAttribute(): int
+    {
+        return $this->memorizers->count();
+    }
 }

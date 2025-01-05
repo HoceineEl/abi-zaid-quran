@@ -4,7 +4,9 @@ namespace App\Filament\Association\Resources\MemorizerResource\Pages;
 
 use App\Filament\Association\Resources\MemorizerResource;
 use Filament\Actions;
+use Filament\Resources\Components\Tab;
 use Filament\Resources\Pages\ListRecords;
+use Illuminate\Database\Eloquent\Builder;
 
 class ListMemorizers extends ListRecords
 {
@@ -16,4 +18,6 @@ class ListMemorizers extends ListRecords
             Actions\CreateAction::make(),
         ];
     }
+
+ 
 }
