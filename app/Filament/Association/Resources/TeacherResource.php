@@ -9,6 +9,7 @@ use Filament\Forms\Components\ToggleButtons;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Tables\Columns\SelectColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -62,12 +63,12 @@ class TeacherResource extends Resource
                     ->label('رقم الهاتف')
                     ->searchable(),
 
-                TextColumn::make('sex')
+                SelectColumn::make('sex')
                     ->label('الجنس')
-                    ->formatStateUsing(fn(string $state): string => match ($state) {
+                    ->options([
                         'male' => 'ذكر',
                         'female' => 'أنثى',
-                    })
+                    ])
                     ->sortable(),
 
                 TextColumn::make('created_at')

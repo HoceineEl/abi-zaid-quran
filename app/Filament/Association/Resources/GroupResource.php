@@ -46,6 +46,7 @@ class GroupResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->searchable()
+                    ->badge()
                     ->label('الإسم')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('price')

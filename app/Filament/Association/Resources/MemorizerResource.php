@@ -12,6 +12,10 @@ use App\Filament\Exports\MemorizerExporter;
 use App\Filament\Imports\MemorizerImporter;
 use App\Models\Memorizer;
 use App\Models\Round;
+use BaconQrCode\Renderer\Image\SvgImageBackEnd;
+use BaconQrCode\Renderer\ImageRenderer;
+use BaconQrCode\Renderer\RendererStyle\RendererStyle;
+use BaconQrCode\Writer;
 use Filament\Actions\Action as ActionsAction;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
@@ -35,12 +39,14 @@ use Filament\Tables\Actions\ImportAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Enums\ActionsPosition;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\HtmlString;
 use Illuminate\Validation\Rules\File;
 use Livewire\Component;
+use Mpdf\Mpdf;
 
 use function GuzzleHttp\default_ca_bundle;
 
@@ -198,7 +204,7 @@ class MemorizerResource extends Resource
                             <span class='text-sm'>{$record->address}</span>
                         </div>
                     ")),
-                TextColumn::make('display_phone')
+                TextColumn::make('phone')
                     ->searchable(query: fn($query, string $search) => $query->where(function ($query) use ($search) {
                         $query->where('phone', $search)
                             ->orWhereHas('guardian', function ($query) use ($search) {
@@ -211,6 +217,7 @@ class MemorizerResource extends Resource
                     ->copyMessageDuration(1500)
                     ->sortable(false)
                     ->label('الهاتف')
+                    ->html()
                     ->description(fn($record) => $record->city),
                 TextColumn::make('birth_date')
                     ->date('Y-m-d')
@@ -238,17 +245,12 @@ class MemorizerResource extends Resource
                     ->toggleable()
                     ->sortable()
                     ->label('المعلم'),
-                TextColumn::make('guardian.name')
+
+                ToggleColumn::make('exempt')
                     ->searchable()
                     ->toggleable()
                     ->sortable()
-                    ->label('ولي الأمر'),
-                IconColumn::make('exempt')
-                    ->searchable()
-                    ->toggleable()
-                    ->sortable()
-                    ->label('معفي')
-                    ->boolean(),
+                    ->label('معفي'),
             ])
             ->filters([
                 //
@@ -271,6 +273,47 @@ class MemorizerResource extends Resource
                     Tables\Actions\EditAction::make()->slideOver(),
 
                 ]),
+                Action::make('generate_badge')
+                    ->label('إنشاء بطاقة')
+                    ->icon('heroicon-o-identification')
+                    ->action(function (Memorizer $record) {
+                        // Generate QR Code
+                        $data = json_encode(['memorizer_id' => $record->id]);
+                        $renderer = new ImageRenderer(
+                            new RendererStyle(400),
+                            new SvgImageBackEnd
+                        );
+                        $writer = new Writer($renderer);
+                        $svg = $writer->writeString($data);
+                        $qrCode = 'data:image/svg+xml;base64,' . base64_encode($svg);
+
+                        // Generate Badge HTML
+                        $badgeHtml = view('badges.student', [
+                            'memorizer' => $record,
+                            'qrCode' => $qrCode,
+                        ])->render();
+
+                        // Generate PDF with mpdf
+                        $mpdf = new Mpdf([
+                            'mode' => 'utf-8',
+                            'format' => 'A4',
+                            'orientation' => 'P',
+                            'margin_left' => 0,
+                            'margin_right' => 0,
+                            'margin_top' => 0,
+                            'margin_bottom' => 0,
+                        ]);
+
+                        $mpdf->SetDirectionality('rtl');
+                        $mpdf->autoScriptToLang = true;
+                        $mpdf->autoLangToFont = true;
+
+                        $mpdf->WriteHTML($badgeHtml);
+
+                        return response()->streamDownload(function () use ($mpdf) {
+                            echo $mpdf->Output('', 'S');
+                        }, "badge_{$record->id}.pdf");
+                    }),
                 Action::make('send_payment_reminders')
                     ->tooltip('إرسال تذكير بالدفع')
                     ->iconButton()
@@ -419,16 +462,16 @@ class MemorizerResource extends Resource
         ];
 
         $message = <<<MSG
-السلام عليكم ورحمة الله وبركاته 🌸
+        السلام عليكم ورحمة الله وبركاته 🌸
 
-*{$genderTerms['prefix']} {$record->name}* الغالي(ة) ✨
+        *{$genderTerms['prefix']} {$record->name}* الغالي(ة) ✨
 
-نرجو أن تكون{$genderTerms['pronoun']} بخير وعافية 💝
-نود تذكير{$genderTerms['pronoun']} بأن آخر موعد لأداء واجب التحفيظ الشهري هو يوم 5 من الشهر الحالي 📅
+        نرجو أن تكون{$genderTerms['pronoun']} بخير وعافية 💝
+        نود تذكير{$genderTerms['pronoun']} بأن آخر موعد لأداء واجب التحفيظ الشهري هو يوم 5 من الشهر الحالي 📅
 
-جزا{$genderTerms['pronoun']} الله خيراً على تعاون{$genderTerms['pronoun']} معنا 🤲
-وبارك الله في{$genderTerms['pronoun']} وفي حفظ{$genderTerms['pronoun']} للقرآن الكريم 🌟
-MSG;
+        جزا{$genderTerms['pronoun']} الله خيراً على تعاون{$genderTerms['pronoun']} معنا 🤲
+        وبارك الله في{$genderTerms['pronoun']} وفي حفظ{$genderTerms['pronoun']} للقرآن الكريم 🌟
+        MSG;
 
         return $phone ? route('memorizer-whatsapp', [
             'number' => $phone,

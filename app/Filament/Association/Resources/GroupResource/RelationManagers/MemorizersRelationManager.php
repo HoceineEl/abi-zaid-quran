@@ -11,6 +11,7 @@ use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -21,6 +22,8 @@ use Filament\Tables\Actions\BulkAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ToggleColumn;
+use Filament\Tables\Enums\ActionsPosition;
 use Filament\Tables\Table;
 use Mpdf\Mpdf;
 
@@ -54,20 +57,54 @@ class MemorizersRelationManager extends RelationManager
                         return $rowLoop->iteration;
                     })
                     ->sortable(),
-                IconColumn::make('attendance_today')
-                    ->label('حاضر')
+                IconColumn::make('has_payment_this_month')
+                    ->label('الدفع')
                     ->boolean()
+                    ->tooltip(fn(Memorizer $record) => $record->has_payment_this_month ? 'تم الدفع' : 'إضغط لتسجيل الدفع')
+                    ->action(
+                        Action::make('pay_this_month')
+                            ->label('دفع')
+                            ->icon('heroicon-o-currency-dollar')
+                            ->color('success')
+                            ->requiresConfirmation()
+                            ->hidden(fn(Memorizer $record) => $record->has_payment_this_month)
+                            ->modalDescription('هل تريد تسجيل دفعة جديدة لهذا الشهر؟')
+                            ->modalHeading('تسجيل دفعة جديدة')
+                            ->form(function (Memorizer $record) {
+                                return [
+                                    TextInput::make('amount')
+                                        ->label('المبلغ')
+                                        ->helperText('المبلغ المستحق للشهر')
+                                        ->numeric()
+                                        ->default(fn() => $record->group->price ?? 100),
+                                ];
+                            })
+                            ->action(function (Memorizer $record, array $data) {
+                                $record->payments()->create([
+                                    'amount' => $data['amount'],
+                                    'payment_date' => now(),
+                                ]);
+
+                                Notification::make()
+                                    ->title('تم تسجيل الدفعة بنجاح')
+                                    ->success()
+                                    ->send();
+                            }),
+                    )
                     ->trueIcon('heroicon-o-check-circle')
-                    ->falseIcon('heroicon-o-x-circle')
-                    ->getStateUsing(fn(Memorizer $record) => $record->present_today),
+                    ->falseIcon('heroicon-o-x-circle'),
                 TextColumn::make('name')
                     ->searchable()
-                    ->url(fn(Memorizer $record) => "tel:{$record->phone}")
-                    ->description(fn(Memorizer $record) => $record->phone)
                     ->color(fn(Memorizer $record) => $record->present_today ? 'success' : ($record->absent_today ? 'danger' : 'default'))
                     ->label('الإسم')
                     ->sortable(),
-
+                TextColumn::make('phone')
+                    ->label('رقم الهاتف')
+                    ->copyable()
+                    ->copyMessage('تم نسخ رقم الهاتف')
+                    ->copyMessageDuration(1500),
+                ToggleColumn::make('exempt')
+                    ->label('معفي')
             ])
             ->filters([])
             ->headerActions([
@@ -120,63 +157,27 @@ class MemorizersRelationManager extends RelationManager
                             echo $mpdf->Output('', 'S');
                         }, "badge_{$record->id}.pdf");
                     }),
-                Tables\Actions\Action::make('send_whatsapp_msg')
-                    ->color('success')
+
+                Action::make('send_payment_reminders')
+                    ->tooltip('إرسال تذكير بالدفع')
                     ->iconButton()
-                    ->icon('heroicon-o-chat-bubble-oval-left')
-                    ->label('إرسال رسالة واتساب')
-                    ->modal()
-                    ->form(
-                        [
-                            Textarea::make('message')
-                                ->hint('السلام عليكم وإسم الطالب سيتم إضافته تلقائياً في  الرسالة.')
-                                ->reactive()
-                                ->default('نذكرك بالواجب الشهري، لعل المانع خير.')
-                                ->label('الرسالة')
-                                ->required(),
-                        ]
-                    )
-                    ->action(function ($record, array $data, Action $action) {
-                        $number = $record->phone;
-                        if (substr($number, 0, 2) == '06' || substr($number, 0, 2) == '07') {
-                            $number = '+212' . substr($number, 1);
+                    ->icon('heroicon-o-chat-bubble-left-ellipsis')
+                    ->hidden(function (Memorizer $record) {
+                        // Skip if no phone number available
+                        if (!$record->phone && !$record->guardian?->phone) {
+                            return true;
                         }
-                        $customMessage = $data['message'] ?? '';
-                        $message = <<<EOT
-                            *السلام عليكم ورحمة الله وبركاته*
 
-                            أخي الطالب *{$record->name}*،
+                        // Skip if student has already paid this month
+                        if ($record->has_payment_this_month) {
+                            return true;
+                        }
+                    })
+                    ->url(function (Memorizer $record) {
 
-                            {$customMessage}
-
-                            ---------------------
-                            _جمعية إبن أبي زيد القيرواني_
-                            EOT;
-
-                        $whatsappUrl = "https://wa.me/{$number}?text=" . urlencode($message);
-                        redirect($whatsappUrl);
-                    }),
-                Action::make('pay_monthly_fee')
-                    ->label('تسديد الرسوم الشهرية')
-                    ->requiresConfirmation()
-                    ->icon('heroicon-o-currency-dollar')
-                    ->color('indigo')
-                    ->hidden(fn(Memorizer $record) => $record->has_payment_this_month)
-                    ->modalDescription('هل أنت متأكد من تسجيل دفع الرسوم الشهرية لهذا الطالب؟')
-                    ->modalHeading('تأكيد تسديد الرسوم')
-                    ->modalSubmitActionLabel('تأكيد الدفع')
-                    ->action(function (Memorizer $record) {
-                        $record->payments()->create([
-                            'amount' => $record->exempt ? 0 : $this->ownerRecord->price,
-                            'payment_date' => now(),
-                        ]);
-
-                        Notification::make()
-                            ->title('تم الدفع بنجاح')
-                            ->success()
-                            ->send();
-                    }),
-            ])
+                        return MemorizerResource::getWhatsAppUrl($record);
+                    }, true),
+            ], ActionsPosition::BeforeColumns)
             ->bulkActions([
                 BulkAction::make('pay_monthly_fee_bulk')
                     ->label('تسديد الرسوم للمحددين')

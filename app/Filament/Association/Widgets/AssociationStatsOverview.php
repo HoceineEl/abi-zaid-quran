@@ -18,7 +18,7 @@ class AssociationStatsOverview extends BaseWidget
     protected function getStats(): array
     {
         // Get unique students count by phone number
-        $uniqueStudents = Memorizer::distinct('phone')->count('phone');
+        $uniqueStudents = Memorizer::count();
 
         // Calculate total payments this month
         $monthlyPayments = Payment::whereMonth('payment_date', now()->month)
@@ -41,8 +41,8 @@ class AssociationStatsOverview extends BaseWidget
             : 0;
 
         return [
-            Stat::make('إجمالي الطلاب الفريدين', Number::format($uniqueStudents))
-                ->description('عدد الطلاب الفريدين حسب رقم الهاتف')
+            Stat::make('إجمالي الطلاب', Number::format($uniqueStudents))
+                ->description('عدد الطلاب')
                 ->descriptionIcon('heroicon-m-users')
                 ->chart([7, 3, 4, 5, 6, $uniqueStudents])
                 ->color('success'),
@@ -60,6 +60,10 @@ class AssociationStatsOverview extends BaseWidget
                 ->color('info'),
 
             Stat::make('عدد المجموعات النشطة', MemoGroup::count())
+                ->description(sprintf('%d معلم مسجل', Teacher::count()))
+                ->descriptionIcon('heroicon-m-user-group')
+                ->color('success'),
+            Stat::make('عدد المعلمين', Teacher::count())
                 ->description(sprintf('%d معلم مسجل', Teacher::count()))
                 ->descriptionIcon('heroicon-m-user-group')
                 ->color('success'),
