@@ -19,5 +19,20 @@ class ListMemorizers extends ListRecords
         ];
     }
 
- 
+    public function getTabs(): array
+    {
+        return [
+            'all' => Tab::make('الجميع')
+                ->query(fn(Builder $query) => $query),
+            'males' => Tab::make('الذكور')
+                ->query(fn(Builder $query) => $query->whereHas('teacher', fn($query) => $query->where('sex', 'male'))),
+            'females' => Tab::make('الإناث')
+                ->query(fn(Builder $query) => $query->whereHas('teacher', fn($query) => $query->where('sex', 'female'))),
+        ];
+    }
+
+    public function getDefaultActiveTab(): string|int|null
+    {
+        return 'males';
+    }
 }
