@@ -175,7 +175,6 @@ class AttendanceTeacherRelationManager extends RelationManager
                         if (!$phone) {
                             return;
                         }
-                        dd($phone, $data);
                         $phone = preg_replace('/[^0-9]/', '', $phone);
                         $message = urlencode($data['message']);
                         $whatsappUrl = "https://wa.me/{$phone}?text={$message}";
