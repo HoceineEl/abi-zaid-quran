@@ -2,6 +2,7 @@
 
 namespace App\Filament\Association\Resources\GroupResource\RelationManagers;
 
+use App\Enums\MemorizationScore;
 use App\Filament\Association\Resources\MemorizerResource;
 use App\Models\Attendance;
 use App\Models\Memorizer;
@@ -12,6 +13,7 @@ use BaconQrCode\Writer;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Forms\Form;
 use Filament\Infolists\Components\Grid;
 use Filament\Infolists\Components\RepeatableEntry;
@@ -146,6 +148,118 @@ class MemorizersRelationManager extends RelationManager
                     Tables\Actions\DeleteAction::make(),
                     Tables\Actions\ViewAction::make(),
                     self::getTroublesAction(),
+                    Action::make('send_whatsapp')
+                        ->label('إرسال رسالة واتساب')
+                        ->icon('heroicon-o-chat-bubble-left-ellipsis')
+                        ->color('success')
+                        ->hidden(function (Memorizer $record) {
+                            return !$record->phone && !$record->guardian?->phone;
+                        })
+                        ->form([
+                            ToggleButtons::make('message_type')
+                                ->label('نوع الرسالة')
+                                ->options([
+                                    'absence' => 'رسالة غياب',
+                                    'trouble' => 'رسالة شغب',
+                                    'no_memorization' => 'رسالة عدم الحفظ'
+                                ])
+                                ->colors([
+                                    'absence' => 'danger',
+                                    'trouble' => 'warning',
+                                    'no_memorization' => 'info'
+                                ])
+                                ->icons([
+                                    'absence' => 'heroicon-o-exclamation-circle',
+                                    'trouble' => 'heroicon-o-exclamation-circle',
+                                    'no_memorization' => 'heroicon-o-exclamation-circle'
+                                ])
+                                ->default(function (Memorizer $record) {
+                                    $attendance = $record->attendances()
+                                        ->whereDate('date', now()->toDateString())
+                                        ->first();
+
+                                    if (!$attendance) {
+                                        return 'absence';
+                                    }
+
+                                    if ($attendance->notes) {
+                                        return 'trouble';
+                                    }
+
+                                    if (
+                                        $attendance->score === MemorizationScore::NOT_MEMORIZED->value ||
+                                        $attendance->score === MemorizationScore::NOT_REVIEWED->value
+                                    ) {
+                                        return 'no_memorization';
+                                    }
+
+                                    return 'absence';
+                                })
+                                ->reactive()
+                                ->afterStateUpdated(function ($set, $record, $state) {
+                                    $studentPrefix = $record->sex === 'male' ? "الطالب" : "الطالبة";
+
+                                    $set('message', match ($state) {
+                                        'absence' => "السلام عليكم ورحمه الله وبركاته،\n" .
+                                            "تخبركم إدارة جمعية بن ابي زيد القيرواني أن {$studentPrefix}: {$record->name} قد تغيب عن حصة اليوم.\n" .
+                                            "لذلك المرجو منكم تبرير هذا الغياب\n" .
+                                            "كما نخبركم أنه عملا بالقانون الداخلي للجمعية فإن أربعة غيابات بدون مبرر في الشهر تعرض ابنكم/ ابنتكم للفصل.",
+
+                                        'trouble' => "السلام عليكم ورحمه الله وبركاته،\n" .
+                                            "تخبركم إدارة جمعية بن ابي زيد القرواني أن ابنكم قد سجلت عليه حاله شغب في الحلقة اليوم.\n" .
+                                            "وكما لا يخفى عليكم فان الشغب يؤثر سلبا على حلقة القرآن.\n" .
+                                            "لذلك و عملا بالقانون الداخلي للجمعية فإن كل طالب توصل بثلاثة إنذارات بالشغب يعرض نفسه للفصل من الجمعية في المرة الرابعة.",
+
+                                        'no_memorization' => "السلام عليكم ورحمه الله وبركاته،\n" .
+                                            "تخبركم إداره جمعيه بن ابي زيد القرواني أن ابنكم قد سجلت عليه تكرار عدم الحفظ\n" .
+                                            "وكما لا يخفى عليكم فإن تكرار عدم الحفظ يؤثر سلبا على مردودية الطالب في الحلقة.\n" .
+                                            "لذلك نهيب بكم مراقبة دفتر التواصل الخاص بابنكم و الحرص على برمجة أوقات للحفظ في البيت.\n" .
+                                            "لذلك و عملا بالقانون الداخلي للجمعية فإن تكرار عدم الحفظ يعرض الطالب للفصل من الجمعية.",
+
+                                        default => ''
+                                    });
+                                })
+                                ->inline()
+                                ->required(),
+                            Textarea::make('message')
+                                ->label('نص الرسالة')
+                                ->afterStateHydrated(function ($set, $record, $get) {
+                                    $studentPrefix = $record->sex === 'male' ? "الطالب" : "الطالبة";
+                                    $state = $get('message_type');
+                                    $set('message', match ($state) {
+                                        'absence' => "السلام عليكم ورحمه الله وبركاته،\n" .
+                                            "تخبركم إدارة جمعية بن ابي زيد القيرواني أن {$studentPrefix}: {$record->name} قد تغيب عن حصة اليوم.\n" .
+                                            "لذلك المرجو منكم تبرير هذا الغياب\n" .
+                                            "كما نخبركم أنه عملا بالقانون الداخلي للجمعية فإن أربعة غيابات بدون مبرر في الشهر تعرض ابنكم/ ابنتكم للفصل.",
+
+                                        'trouble' => "السلام عليكم ورحمه الله وبركاته،\n" .
+                                            "تخبركم إدارة جمعية بن ابي زيد القرواني أن ابنكم قد سجلت عليه حاله شغب في الحلقة اليوم.\n" .
+                                            "وكما لا يخفى عليكم فان الشغب يؤثر سلبا على حلقة القرآن.\n" .
+                                            "لذلك و عملا بالقانون الداخلي للجمعية فإن كل طالب توصل بثلاثة إنذارات بالشغب يعرض نفسه للفصل من الجمعية في المرة الرابعة.",
+
+                                        'no_memorization' => "السلام عليكم ورحمه الله وبركاته،\n" .
+                                            "تخبركم إداره جمعيه بن ابي زيد القرواني أن ابنكم قد سجلت عليه تكرار عدم الحفظ\n" .
+                                            "وكما لا يخفى عليكم فإن تكرار عدم الحفظ يؤثر سلبا على مردودية الطالب في الحلقة.\n" .
+                                            "لذلك نهيب بكم مراقبة دفتر التواصل الخاص بابنكم و الحرص على برمجة أوقات للحفظ في البيت.\n" .
+                                            "لذلك و عملا بالقانون الداخلي للجمعية فإن تكرار عدم الحفظ يعرض الطالب للفصل من الجمعية.",
+
+                                        default => ''
+                                    });
+                                })
+                                ->rows(8),
+                        ])
+                        ->action(function (Memorizer $record, array $data) {
+                            $phone = $record->phone ?? $record->guardian?->phone;
+                            if (!$phone) {
+                                return;
+                            }
+
+                            $phone = preg_replace('/[^0-9]/', '', $phone);
+                            $message = urlencode($data['message']);
+                            $whatsappUrl = "https://wa.me/{$phone}?text={$message}";
+
+                            return redirect()->away($whatsappUrl);
+                        }),
                 ]),
 
                 Action::make('send_payment_reminders')
@@ -167,6 +281,7 @@ class MemorizersRelationManager extends RelationManager
 
                         return MemorizerResource::getWhatsAppUrl($record);
                     }, true),
+
             ], ActionsPosition::BeforeColumns)
             ->bulkActions([
                 BulkAction::make('pay_monthly_fee_bulk')

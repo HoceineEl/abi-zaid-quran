@@ -139,7 +139,6 @@ class StudentsRelationManager extends RelationManager
             )
             ->paginated(false)
             ->headerActions([
-
                 ActionsActionGroup::make([
                     Action::make('copy_students_from_other_groups')
                         ->label('نسخ الطلاب من مجموعات أخرى')
@@ -334,37 +333,7 @@ class StudentsRelationManager extends RelationManager
             ->bulkActions([
                 BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
-                    Tables\Actions\BulkAction::make('set_prgress')
-                        ->label('تسجيلهم كحاضرين')
-                        ->icon('heroicon-o-check-circle')
-                        ->color('success')
-                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
-                        ->deselectRecordsAfterCompletion()
-                        ->action(function () {
-                            $students = $this->selectedTableRecords;
-                            foreach ($students as $studentId) {
-                                $student = Student::find($studentId);
-                                // $data = ProgressFormHelper::calculateNextProgress($student);
-                                if ($student->progresses->where('date', now()->format('Y-m-d'))->count() == 0) {
-                                    $student->progresses()->create([
-                                        'created_by' => auth()->id(),
-                                        'date' => now()->format('Y-m-d'),
-                                        'page_id' => null,
-                                        'lines_from' => null,
-                                        'lines_to' => null,
-                                        'status' => 'memorized',
-                                    ]);
-                                } else {
-                                    $progress = $student->progresses->where('date', now()->format('Y-m-d'))->first();
-                                    $progress->update([
-                                        'page_id' => null,
-                                        'lines_from' => null,
-                                        'lines_to' => null,
-                                        'status' => 'memorized',
-                                    ]);
-                                }
-                            }
-                        }),
+
                     BulkAction::make('send_msg')
                         ->label('إرسال رسالة ')
                         ->icon('heroicon-o-chat-bubble-oval-left')
@@ -376,6 +345,7 @@ class StudentsRelationManager extends RelationManager
                                 ->label('الرسالة')
                                 ->required(),
                         ])
+                        ->hidden()
                         ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
                         ->action(function (array $data) {
                             $students = $this->selectedTableRecords;
@@ -385,52 +355,83 @@ class StudentsRelationManager extends RelationManager
                                 Core::sendSpecifMessageToStudent($student, $msg);
                             }
                         })->deselectRecordsAfterCompletion(),
-                    BulkAction::make('set_as_absent')
-                        ->label('تسجيلهم كغائبين')
-                        ->color('danger')
-                        ->icon('heroicon-o-exclamation-circle')
-                        ->modalSubmitActionLabel('تأكيد')
-                        ->form([
-                            Toggle::make('send_msg')
-                                ->label('تأكيد إرسال رسالة تذكير')
-                                ->reactive()
-                                ->default(false),
-                            Textarea::make('message')
-                                ->hint('السلام عليكم وإسم الطالب سيتم إضافته تلقائياً في  الرسالة.')
-                                ->reactive()
-                                ->hidden(fn(Get $get) => ! $get('send_msg'))
-                                ->default('لم ترسلوا الواجب المقرر اليوم، لعل المانع خير.')
-                                ->label('الرسالة')
-                                ->required(),
-                        ])
-                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
-                        ->action(function (array $data) {
-                            $students = $this->selectedTableRecords;
-                            foreach ($students as $studentId) {
-                                $student = Student::find($studentId);
-                                $selectedDate = now()->format('Y-m-d');
-                                if ($student->progresses->where('date', $selectedDate)->count() == 0) {
-                                    $student->progresses()->create([
-                                        'date' => $selectedDate,
-                                        'status' => 'absent',
-                                        'comment' => $data['send_msg'] ? 'message_sent' : null,
-                                        'page_id' => null,
-                                        'lines_from' => null,
-                                        'lines_to' => null,
-                                    ]);
-                                } else {
-                                    $student->progresses()->where('date', $selectedDate)->update([
-                                        'status' => 'absent',
-                                        'comment' => 'message_sent',
-                                    ]);
-                                }
-                                if ($data['send_msg']) {
-                                    $msg = $data['message'];
-                                    Core::sendSpecifMessageToStudent($student, $msg);
-                                }
-                            }
-                        })->deselectRecordsAfterCompletion(),
                 ]),
+                BulkAction::make('set_as_absent')
+                    ->label('تسجيلهم كغائبين')
+                    ->color('danger')
+                    ->icon('heroicon-o-exclamation-circle')
+                    ->modalSubmitActionLabel('تأكيد')
+                    ->form([
+                        Toggle::make('send_msg')
+                            ->label('تأكيد إرسال رسالة تذكير')
+                            ->reactive()
+                            ->default(false),
+                        Textarea::make('message')
+                            ->hint('السلام عليكم وإسم الطالب سيتم إضافته تلقائياً في  الرسالة.')
+                            ->reactive()
+                            ->hidden(fn(Get $get) => ! $get('send_msg'))
+                            ->default('لم ترسلوا الواجب المقرر اليوم، لعل المانع خير.')
+                            ->label('الرسالة')
+                            ->required(),
+                    ])
+                    ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
+                    ->action(function (array $data) {
+                        $students = $this->selectedTableRecords;
+                        foreach ($students as $studentId) {
+                            $student = Student::find($studentId);
+                            $selectedDate = now()->format('Y-m-d');
+                            if ($student->progresses->where('date', $selectedDate)->count() == 0) {
+                                $student->progresses()->create([
+                                    'date' => $selectedDate,
+                                    'status' => 'absent',
+                                    'comment' => $data['send_msg'] ? 'message_sent' : null,
+                                    'page_id' => null,
+                                    'lines_from' => null,
+                                    'lines_to' => null,
+                                ]);
+                            } else {
+                                $student->progresses()->where('date', $selectedDate)->update([
+                                    'status' => 'absent',
+                                    'comment' => 'message_sent',
+                                ]);
+                            }
+                            if ($data['send_msg']) {
+                                $msg = $data['message'];
+                                Core::sendSpecifMessageToStudent($student, $msg);
+                            }
+                        }
+                    })->deselectRecordsAfterCompletion(),
+                Tables\Actions\BulkAction::make('set_prgress')
+                    ->label('تسجيلهم كحاضرين')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
+                    ->deselectRecordsAfterCompletion()
+                    ->action(function () {
+                        $students = $this->selectedTableRecords;
+                        foreach ($students as $studentId) {
+                            $student = Student::find($studentId);
+                            // $data = ProgressFormHelper::calculateNextProgress($student);
+                            if ($student->progresses->where('date', now()->format('Y-m-d'))->count() == 0) {
+                                $student->progresses()->create([
+                                    'created_by' => auth()->id(),
+                                    'date' => now()->format('Y-m-d'),
+                                    'page_id' => null,
+                                    'lines_from' => null,
+                                    'lines_to' => null,
+                                    'status' => 'memorized',
+                                ]);
+                            } else {
+                                $progress = $student->progresses->where('date', now()->format('Y-m-d'))->first();
+                                $progress->update([
+                                    'page_id' => null,
+                                    'lines_from' => null,
+                                    'lines_to' => null,
+                                    'status' => 'memorized',
+                                ]);
+                            }
+                        }
+                    }),
             ])
             ->query(function () {
                 $today = now()->format('Y-m-d');

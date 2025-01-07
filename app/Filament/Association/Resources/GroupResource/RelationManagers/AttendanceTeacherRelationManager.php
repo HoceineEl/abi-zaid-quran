@@ -116,34 +116,73 @@ class AttendanceTeacherRelationManager extends RelationManager
                         return !$record->phone && !$record->guardian?->phone;
                     })
                     ->form([
-                        Textarea::make('message')
-                            ->label('نص الرسالة')
+                        ToggleButtons::make('message_type')
+                            ->label('نوع الرسالة')
+                            ->options([
+                                'absence' => 'رسالة غياب',
+                                'trouble' => 'رسالة شغب',
+                                'no_memorization' => 'رسالة عدم الحفظ'
+                            ])
+                            ->colors([
+                                'absence' => 'danger',
+                                'trouble' => 'warning',
+                                'no_memorization' => 'info'
+                            ])
+                            ->icons([
+                                'absence' => 'heroicon-o-exclamation-circle',
+                                'trouble' => 'heroicon-o-exclamation-circle',
+                                'no_memorization' => 'heroicon-o-exclamation-circle'
+                            ])
                             ->default(function (Memorizer $record) {
-                                $defaultMessage = "السلام عليكم ورحمة الله وبركاته\n";
-                                $defaultMessage .= "نود إعلامكم أن " .
-                                    ($record->sex === 'male' ? "الطالب" : "الطالبة") .
-                                    " {$record->name} ";
-
                                 $attendance = $record->attendances()
                                     ->whereDate('date', now()->toDateString())
                                     ->first();
 
-                                if (!$attendance || !$attendance->check_in_time) {
-                                    $defaultMessage .= ($record->sex === 'male' ?
-                                        "لم يحضر" : "لم تحضر") . " اليوم إلى حلقة التحفيظ.\n";
-                                    $defaultMessage .= " نرجوا إخبارنا في حال وجود أي ظرف.\n";
-                                } else {
-                                    $defaultMessage .= ($record->sex === 'male' ?
-                                        "حضر" : "حضرت") . " اليوم إلى حلقة التحفيظ في تمام الساعة " .
-                                        date('H:i', strtotime($attendance->check_in_time)) . "\n";
+                                if (!$attendance) {
+                                    return 'absence';
                                 }
 
-                                $defaultMessage .= "\n عن المشرف عن الحلقة.";
+                                if ($attendance->notes) {
+                                    return 'trouble';
+                                }
 
-                                return $defaultMessage;
+                                if ($attendance->score === MemorizationScore::NOT_MEMORIZED->value || 
+                                    $attendance->score === MemorizationScore::NOT_REVIEWED->value) {
+                                    return 'no_memorization';
+                                }
+
+                                return 'absence';
                             })
-                            ->required()
-                            ->rows(5),
+                            ->reactive()
+                            ->afterStateUpdated(function ($set, $record, $state) {
+                                $studentPrefix = $record->sex === 'male' ? "الطالب" : "الطالبة";
+                                
+                                $set('message', match ($state) {
+                                    'absence' => "السلام عليكم ورحمه الله وبركاته،\n" .
+                                        "تخبركم إدارة جمعية بن ابي زيد القيرواني أن {$studentPrefix}: {$record->name} قد تغيب عن حصة اليوم.\n" .
+                                        "لذلك المرجو منكم تبرير هذا الغياب\n" .
+                                        "كما نخبركم أنه عملا بالقانون الداخلي للجمعية فإن أربعة غيابات بدون مبرر في الشهر تعرض ابنكم/ ابنتكم للفصل.",
+                                        
+                                    'trouble' => "السلام عليكم ورحمه الله وبركاته،\n" .
+                                        "تخبركم إدارة جمعية بن ابي زيد القرواني أن ابنكم قد سجلت عليه حاله شغب في الحلقة اليوم.\n" .
+                                        "وكما لا يخفى عليكم فان الشغب يؤثر سلبا على حلقة القرآن.\n" .
+                                        "لذلك و عملا بالقانون الداخلي للجمعية فإن كل طالب توصل بثلاثة إنذارات بالشغب يعرض نفسه للفصل من الجمعية في المرة الرابعة.",
+                                        
+                                    'no_memorization' => "السلام عليكم ورحمه الله وبركاته،\n" .
+                                        "تخبركم إداره جمعيه بن ابي زيد القرواني أن ابنكم قد سجلت عليه تكرار عدم الحفظ\n" .
+                                        "وكما لا يخفى عليكم فإن تكرار عدم الحفظ يؤثر سلبا على مردودية الطالب في الحلقة.\n" .
+                                        "لذلك نهيب بكم مراقبة دفتر التواصل الخاص بابنكم و الحرص على برمجة أوقات للحفظ في البيت.\n" .
+                                        "لذلك و عملا بالقانون الداخلي للجمعية فإن تكرار عدم الحفظ يعرض الطالب للفصل من الجمعية.",
+                                        
+                                    default => ''
+                                });
+                            })
+                            ->inline()
+                            ->required(),
+                        Textarea::make('message')
+                            ->label('نص الرسالة')
+                            ->dehydrated(false)
+                            ->rows(8),
                     ])
                     ->action(function (Memorizer $record, array $data) {
                         $phone = $record->phone ?? $record->guardian?->phone;
@@ -441,6 +480,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                     ->label('إرسال رسائل واتساب للمحددين')
                     ->icon('heroicon-o-chat-bubble-left-ellipsis')
                     ->color('success')
+                    ->hidden()
                     ->form([
                         Textarea::make('message')
                             ->label('نص الرسالة')

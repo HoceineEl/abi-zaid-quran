@@ -32,11 +32,13 @@ class AppServiceProvider extends ServiceProvider
             fn() => view('laravelpwa::meta', ['config' => (new ManifestService)->generate()])
         );
 
-        Page::$formActionsAlignment = Alignment::Right;
-        MountableAction::configureUsing(function (MountableAction $action) {
-            $action->modalAlignment(Alignment::Left);
-        });
 
+        Page::formActionsAlignment(Alignment::Right);
+        MountableAction::configureUsing(function (MountableAction $action) {
+            $action->modalFooterActionsAlignment(Alignment::Right)
+                ->modalSubmitActionLabel(__('حفظ'))
+            ;
+        });
         Model::unguard();
     }
 }

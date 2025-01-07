@@ -21,6 +21,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use App\Models\User;
+
 class GroupResource extends Resource
 {
     protected static ?string $model = MemoGroup::class;
@@ -64,6 +65,10 @@ class GroupResource extends Resource
             ->schema([
                 TextEntry::make('name')
                     ->label('الإسم'),
+                TextEntry::make('teacher.name')
+                    ->label('المدرس'),
+                TextEntry::make('arabic_days')
+                    ->label('الأيام')
             ]);
     }
 
