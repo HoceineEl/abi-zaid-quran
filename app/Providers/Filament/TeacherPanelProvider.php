@@ -2,7 +2,7 @@
 
 namespace App\Providers\Filament;
 
-use Filament\Enums\ThemeMode;
+use App\Filament\Association\Resources\GroupResource;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
@@ -18,53 +18,45 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
-use App\Filament\Widgets\QuranProgramStatsOverview;
-use App\Filament\Widgets\UserActivityStats;
-use App\Filament\Widgets\GroupProgressChart;
-use App\Filament\Widgets\StudentProgressTimeline;
-use Filament\View\PanelsRenderHook;
-use App\Filament\Pages\SubtitleCleaner;
 use App\Filament\Pages\CustomLogin;
-class AdminPanelProvider extends PanelProvider
+use Filament\Enums\ThemeMode;
+
+class TeacherPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
         return $panel
-            ->default()
-            ->id('quran-program')
-            ->path('quran-program')
-            ->login()
+            ->id('teacher')
+            ->path('teacher')
             ->colors([
-                'primary' => Color::Cyan,
-                'secondary' => Color::Gray,
-                'danger' => Color::Rose,
-                'warning' => Color::Yellow,
-                'success' => Color::Teal,
-                'info' => Color::Amber,
+                'primary' => Color::Purple,
             ])
-            ->login(CustomLogin::class)
-            ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
-            ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
+            ->discoverResources(in: app_path('Filament/Teacher/Resources'), for: 'App\\Filament\\Teacher\\Resources')
+            ->discoverPages(in: app_path('Filament/Teacher/Pages'), for: 'App\\Filament\\Teacher\\Pages')
             ->pages([
                 Pages\Dashboard::class,
-                SubtitleCleaner::class,
             ])
-            ->spa()
-            ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
-            ->widgets([
-                QuranProgramStatsOverview::class,
-                UserActivityStats::class,
-                GroupProgressChart::class,
-                StudentProgressTimeline::class,
+            ->colors([
+                'primary' => Color::Emerald,
+                'indigo' => Color::Indigo,
             ])
             ->topNavigation()
-            ->databaseNotifications()
             ->font('Cairo')
+            ->login(CustomLogin::class)
+            ->viteTheme('resources/css/filament/association/theme.css')
             ->defaultThemeMode(ThemeMode::Light)
-            ->brandName('مشروع حفظ القرآن الكريم')
+            ->databaseNotifications()
+            ->databaseNotificationsPolling("10s")
+            ->brandName('مدرسة إبن أبي زيد القيرواني')
             ->brandLogo(asset('logo.jpg'))
             ->brandLogoHeight('3.5rem')
             ->favicon(asset('logo.jpg'))
+            ->login(CustomLogin::class)
+            ->spa()
+            ->resources([
+                GroupResource::class,
+            ])
+            ->discoverWidgets(in: app_path('Filament/Teacher/Widgets'), for: 'App\\Filament\\Teacher\\Widgets')
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
@@ -78,7 +70,6 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
-            ])
-            ->renderHook(PanelsRenderHook::BODY_START, fn() => view('components.table-export-scripts'));
+            ]);
     }
 }

@@ -20,6 +20,7 @@ use Filament\Tables;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class UserResource extends Resource
 {
@@ -156,6 +157,12 @@ class UserResource extends Resource
         return [
             //
         ];
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        
+        return parent::getEloquentQuery()->where('role', '!=', 'teacher');
     }
 
     public static function getPages(): array

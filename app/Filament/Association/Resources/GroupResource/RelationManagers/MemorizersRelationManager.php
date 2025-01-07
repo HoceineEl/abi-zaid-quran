@@ -27,6 +27,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Enums\ActionsPosition;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 use Mpdf\Mpdf;
 
 class MemorizersRelationManager extends RelationManager

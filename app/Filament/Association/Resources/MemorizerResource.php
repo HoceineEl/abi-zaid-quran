@@ -74,24 +74,7 @@ class MemorizerResource extends Resource
                         TextInput::make('name')
                             ->label('الإسم')
                             ->required(),
-                        Select::make('guardian_id')
-                            ->label('ولي الأمر')
-                            ->relationship('guardian', 'name')
-                            ->createOptionForm([
-                                TextInput::make('name')
-                                    ->label('الإسم')
-                                    ->required(),
-                                TextInput::make('phone')
-                                    ->label('الهاتف')
-                                    ->required(),
-                                TextInput::make('address')
-                                    ->label('العنوان'),
-                                TextInput::make('city')
-                                    ->label('المدينة')
-                                    ->default('أسفي'),
-                            ])
-                            ->searchable()
-                            ->preload(),
+                      
                         TextInput::make('phone')
                             ->label('الهاتف (خاص)')
                             ->helperText('سيتم استخدام رقم هاتف ولي الأمر إذا لم يتم تحديد رقم هاتف خاص'),
@@ -109,21 +92,7 @@ class MemorizerResource extends Resource
                             ->label('المعلم')
                             ->relationship('teacher', 'name')
                             ->required(),
-                        Select::make('round_id')
-                            ->label('الحلقة')
-                            ->relationship('round', 'name')
-                            ->createOptionForm([
-                                TextInput::make('name')
-                                    ->label('اسم الحلقة')
-                                    ->required(),
-                                CheckboxList::make('days')
-                                    ->label('أيام الحلقة')
-                                    ->options(Days::class)
-                                    ->columns(3)
-                                    ->required(),
-                            ])
-                            ->searchable()
-                            ->preload(),
+                       
                         ToggleButtons::make('sex')
                             ->inline()
                             ->options([

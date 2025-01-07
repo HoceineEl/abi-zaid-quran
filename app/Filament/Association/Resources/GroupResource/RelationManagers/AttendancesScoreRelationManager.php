@@ -2,34 +2,40 @@
 
 namespace App\Filament\Association\Resources\GroupResource\RelationManagers;
 
+use App\Enums\MemorizationScore;
+use App\Enums\Troubles;
+use App\Models\Attendance;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Support\Enums\IconSize;
 use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Columns\IconColumn\IconColumnSize;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Filament\Tables\Actions\Action;
+use Filament\Support\Colors\Color;
 
-class AttendancesRelationManager extends RelationManager
+class AttendancesScoreRelationManager extends RelationManager
 {
     protected static string $relationship = 'memorizers';
 
-    protected static ?string $title = 'الحضور';
-    protected static ?string $navigationLabel = 'الحضور';
-    protected static ?string $modelLabel = 'حضور';
-    protected static ?string $pluralModelLabel = 'الحضور';
+    protected static ?string $title = 'الحضور والتقييم';
+    protected static ?string $navigationLabel = 'الحضور والتقييم';
+    protected static ?string $modelLabel = 'حضور وتقييم';
+    protected static ?string $pluralModelLabel = 'الحضور والتقييم';
 
     public $dateFrom;
     public $dateTo;
+
     protected function canView(Model $record): bool
     {
         return !auth()->user()->isTeacher();
     }
+
     public function form(Form $form): Form
     {
         return $form->schema([]);
@@ -37,7 +43,7 @@ class AttendancesRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
-        $this->dateFrom = $this->dateFrom ?? now()->subDays(4)->format('Y-m-d');
+        $this->dateFrom = $this->dateFrom ?? now()->subDays(2)->format('Y-m-d');
         $this->dateTo = $this->dateTo ?? now()->format('Y-m-d');
 
         $dateRange = new \DatePeriod(
@@ -48,33 +54,80 @@ class AttendancesRelationManager extends RelationManager
 
         $attendanceColumns = collect();
         foreach ($dateRange as $date) {
-            $formattedDate = $date->format('Y-m-d H:i:s');
+            $formattedDate = $date->format('Y-m-d');
             $day = $date->format('d/m');
+
             $attendanceColumns->push(
-                IconColumn::make("attendance_day_{$formattedDate}")
+                TextColumn::make("attendance_day_{$formattedDate}")
                     ->label($day)
+                    ->alignCenter()
                     ->state(function ($record) use ($formattedDate) {
                         $attendance = $record->attendances()
                             ->whereDate('date', $formattedDate)
                             ->first();
 
                         if (!$attendance) {
-                            return 'none';
+                            return null;
                         }
 
-                        return $attendance->check_in_time ? 'present' : 'absent';
+                        if (!$attendance->check_in_time) {
+                            return 'absent';
+                        }
+
+                        return $attendance->score ?? 'present';
                     })
-                    ->icon(fn(string $state): string => match ($state) {
-                        'present' => 'heroicon-o-check-circle',
-                        'absent' => 'heroicon-o-x-circle',
-                        default => 'heroicon-o-minus-circle',
+                    ->badge()
+                    ->formatStateUsing(function ($state) {
+                        if ($state === null) return '—';
+                        if ($state === 'absent') return '✗';
+                        if ($state === 'present') return '✓';
+                        return $state;
                     })
-                    ->size(IconColumnSize::ExtraLarge)
-                    ->color(fn(string $state): string => match ($state) {
-                        'present' => 'success',
-                        'absent' => 'danger',
-                        default => 'secondary',
+                    ->color(function ($state) {
+                        if ($state === null) return 'gray';
+                        if ($state === 'absent') return Color::Red;
+                        if ($state === 'present') return Color::Green;
+
+                        // Use the enum's color for scores
+                        $scores = collect(MemorizationScore::cases())->pluck('value');
+                        if ($scores->contains($state)) {
+                            return MemorizationScore::from($state)->getColor();
+                        }
+
+                        return Color::Gray;
                     })
+                    ->icon(function ($state) {
+                        if ($state === null) return 'heroicon-o-minus-circle';
+                        if ($state === 'absent') return 'heroicon-o-x-circle';
+                        if ($state === 'present') return 'heroicon-o-check-circle';
+
+                        // Use the enum's icon for scores
+                        $scores = collect(MemorizationScore::cases())->pluck('value');
+                        if ($scores->contains($state)) {
+                            return MemorizationScore::from($state)->getIcon();
+                        }
+
+                        return null;
+                    })
+                    ->iconPosition('before')
+                    ->action(
+                        Action::make('view_details_' . $formattedDate)
+                            ->modalHeading(fn($record) => "تفاصيل يوم {$day} للطالب {$record->name}")
+                            ->hidden(fn($record) => !$record->attendances()->whereDate('date', $formattedDate)->exists())
+                            ->modalContent(function ($record) use ($formattedDate) {
+                                $attendance = $record->attendances()
+                                    ->whereDate('date', $formattedDate)
+                                    ->first();
+
+                                return view('filament.components.attendance-details', [
+                                    'attendance' => $attendance,
+                                    'memorizer' => $record,
+                                    'date' => $formattedDate,
+                                ]);
+                            })
+                            ->modalWidth('2xl')
+                            ->slideOver()
+                    )
             );
         }
 
@@ -92,8 +145,7 @@ class AttendancesRelationManager extends RelationManager
             ])
             ->filters([
                 Filter::make('date')
-                    ->columnSpan(4)
-                    ->columns()
+                    ->columnSpanFull()
                     ->form([
                         DatePicker::make('date_from')
                             ->label('من تاريخ')
@@ -107,7 +159,6 @@ class AttendancesRelationManager extends RelationManager
                             ->default(now()->format('Y-m-d')),
                     ], FiltersLayout::AboveContent),
             ])
-
             ->query(function () {
                 $dateFrom = $this->dateFrom;
                 $dateTo = $this->dateTo;
@@ -118,6 +169,7 @@ class AttendancesRelationManager extends RelationManager
                     ->orderByDesc('attendance_count');
             })
             ->paginated(false)
+            ->recordUrl(null)
             ->headerActions([])
             ->actions([])
             ->bulkActions([]);

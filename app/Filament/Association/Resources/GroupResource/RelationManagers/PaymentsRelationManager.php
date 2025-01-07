@@ -12,6 +12,7 @@ use Filament\Tables\Table;
 use Carbon\Carbon;
 use Filament\Tables\Columns\IconColumn\IconColumnSize;
 use Filament\Tables\Enums\FiltersLayout;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 
 class PaymentsRelationManager extends RelationManager
@@ -25,7 +26,10 @@ class PaymentsRelationManager extends RelationManager
 
     public ?string $dateFrom = null;
     public ?string $dateTo = null;
-
+    protected function canView(Model $record): bool
+    {
+        return !auth()->user()->isTeacher();
+    }
     public function form(Form $form): Form
     {
         return $form->schema([]);

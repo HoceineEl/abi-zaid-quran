@@ -7,12 +7,14 @@ use App\Models\MemoGroup;
 use App\Models\Teacher;
 use App\Models\Guardian;
 use App\Models\Round;
+use App\Models\User;
 use Filament\Actions\Imports\ImportColumn;
 use Filament\Actions\Imports\Importer;
 use Filament\Actions\Imports\Models\Import;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Select;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 
 class MemorizerImporter extends Importer
 {
@@ -50,7 +52,14 @@ class MemorizerImporter extends Importer
                     if (isset($options['teacher_id'])) {
                         $record->teacher_id = $options['teacher_id'];
                     } else {
-                        $teacher = Teacher::firstOrCreate(['name' => $state]);
+                        $teacher = User::firstOrCreate(['name' => $state, 'role' => 'teacher'], [
+                            'phone' => '0666666666',
+                            'sex' => 'male',
+                            'password' => bcrypt('teacher'),
+                            'email' => Str::slug($state) . rand(100, 999) . '@abi-zaid.com',
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
                         $record->teacher_id = $teacher->id;
                     }
                 }),
@@ -76,7 +85,7 @@ class MemorizerImporter extends Importer
             ImportColumn::make('phone')
                 ->label('رقم الهاتف الخاص')
                 ->rules(['nullable', 'string'])
-                ->guess(['رقم الهاتف الخاص', 'الهاتف الخاص', 'رقم الهاتف', 'الهاتف'])
+                ->guess(['رقم الهاتف الخاص', 'الهاتف الخاص', 'رقم الهاتف', 'الهاتف', 'الهاتف (الخاص)'])
                 ->fillRecordUsing(function (Memorizer $record, ?string $state) {
                     $record->phone = $state;
                 }),
@@ -85,6 +94,7 @@ class MemorizerImporter extends Importer
                 ->label('العنوان')
                 ->rules(['nullable', 'string'])
                 ->guess(['العنوان', 'المقر', 'السكن']),
+                
             ImportColumn::make('birth_date')
                 ->label('تاريخ الإزدياد')
                 ->rules(['nullable', 'date'])
@@ -102,34 +112,8 @@ class MemorizerImporter extends Importer
                 ->fillRecordUsing(function (Memorizer $record, ?string $state) {
                     $record->sex = $this->mapSex($state ?? 'ذكر');
                 }),
-            ImportColumn::make('guardian_name')
-                ->label('اسم ولي الأمر')
-                ->rules(['nullable', 'string'])
-                ->guess(['الأب أو الولي', 'اسم ولي الأمر', 'ولي الأمر', 'الولي', 'ولي الأمر', 'ولي الأمر'])
-                ->fillRecordUsing(function (Memorizer $record, string $state, array $options) {
-                    if (isset($options['guardian_id'])) {
-                        $record->guardian_id = $options['guardian_id'];
-                    } else {
-                        $guardian = Guardian::firstOrCreate(
-                            ['phone' => $record->phone ?? null],
-                            [
-                                'name' => $state,
-                                'city' => $record->city ?? 'أسفي',
-                            ]
-                        );
-                        $record->guardian_id = $guardian->id;
-                    }
-                }),
+     
 
-            ImportColumn::make('guardian_phone')
-                ->label('هاتف ولي الأمر')
-                ->rules(['nullable', 'string'])
-                ->guess(['هاتف ولي الأمر', 'رقم ولي الأمر', 'رقم الهاتف', 'الهاتف'])
-                ->fillRecordUsing(function (Memorizer $record, ?string $state) {
-                    if ($record->guardian_id && $state) {
-                        Guardian::where('id', $record->guardian_id)->update(['phone' => $state]);
-                    }
-                }),
         ];
     }
 
@@ -162,22 +146,12 @@ class MemorizerImporter extends Importer
 
             Select::make('teacher_id')
                 ->label('الأستاذ(ة)')
-                ->options(fn() => Teacher::all()->pluck('name', 'id'))
+                ->options(fn() => User::where('role', 'teacher')->pluck('name', 'id'))
                 ->placeholder('اختر الأستاذ(ة) (اختياري)')
                 ->helperText('إذا تم تحديد أستاذ(ة)، سيتم تجاهل عمود الأستاذ(ة) في ملف الاستيراد'),
 
-            Select::make('round_id')
-                ->label('الحلقة')
-                ->options(fn() => Round::all()->pluck('name', 'id'))
-                ->placeholder('اختر الحلقة (اختياري)')
-                ->helperText('إذا تم تحديد الحلقة، سيتم تجاهل عمود الحلقة في ملف الاستيراد'),
 
-            Select::make('guardian_id')
-                ->label('ولي الأمر')
-                ->options(fn() => Guardian::all()->pluck('name', 'id'))
-                ->placeholder('اختر ولي الأمر (اختياري)')
-                ->helperText('إذا تم تحديد ولي الأمر، سيتم تجاهل عمود ولي الأمر في ملف الاستيراد'),
-
+   
             Checkbox::make('updateExisting')
                 ->label('تحديث السجلات الموجودة'),
         ];

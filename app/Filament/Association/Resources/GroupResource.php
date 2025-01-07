@@ -4,14 +4,19 @@ namespace App\Filament\Association\Resources;
 
 use App\Filament\Association\Resources\GroupResource\Pages;
 use App\Filament\Association\Resources\GroupResource\RelationManagers\AttendancesRelationManager;
+use App\Filament\Association\Resources\GroupResource\RelationManagers\AttendancesScoreRelationManager;
 use App\Filament\Association\Resources\GroupResource\RelationManagers\MemorizersRelationManager;
 use App\Filament\Association\Resources\GroupResource\RelationManagers\PaymentsRelationManager;
+use App\Filament\Association\Resources\GroupResource\RelationManagers\AttendanceTeacherRelationManager;
 use App\Models\MemoGroup;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class GroupResource extends Resource
 {
@@ -37,6 +42,15 @@ class GroupResource extends Resource
                     ->suffix('درهم')
                     ->default(100)
                     ->required(),
+            ]);
+    }
+
+    public static function infolist(Infolist $infolist): Infolist
+    {
+        return $infolist
+            ->schema([
+                TextEntry::make('name')
+                    ->label('الإسم'),
             ]);
     }
 
@@ -71,7 +85,9 @@ class GroupResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\ViewAction::make(),
             ])
+            ->recordUrl(fn($record) => GroupResource::getUrl('view', ['record' => $record->id]))
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
@@ -81,20 +97,34 @@ class GroupResource extends Resource
 
     public static function getRelations(): array
     {
+        if (auth()->check() && auth()->user()->isTeacher()) {
+            return [
+                AttendanceTeacherRelationManager::class,
+                AttendancesScoreRelationManager::class,
+            ];
+        }
         return [
             MemorizersRelationManager::class,
             AttendancesRelationManager::class,
             PaymentsRelationManager::class,
-
         ];
     }
-
+    public static function getEloquentQuery(): Builder
+    {
+        if (auth()->user()->isTeacher()) {
+            return parent::getEloquentQuery()->whereHas('memorizers', function ($query) {
+                $query->where('teacher_id', auth()->user()->id);
+            });
+        }
+        return parent::getEloquentQuery();
+    }
     public static function getPages(): array
     {
         return [
             'index' => Pages\ListGroups::route('/'),
             'create' => Pages\CreateGroup::route('/create'),
             'edit' => Pages\EditGroup::route('/{record}/edit'),
+            'view' => Pages\ViewGroup::route('/{record}'),
         ];
     }
 }

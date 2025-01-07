@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Memorizer extends Model
 {
@@ -103,7 +104,7 @@ class Memorizer extends Model
 
     public function teacher(): BelongsTo
     {
-        return $this->belongsTo(Teacher::class);
+        return $this->belongsTo(User::class, 'teacher_id');
     }
 
     public function guardian(): BelongsTo
@@ -121,5 +122,17 @@ class Memorizer extends Model
         return Attribute::make(
             get: fn() => $this->phone ?: $this->guardian?->phone,
         );
+    }
+
+    public function todayScore(): Attribute
+    {
+        return Attribute::make(
+            get: fn() => $this->attendances()->whereDate('date', now()->toDateString())->first()?->score,
+        );
+    }
+
+    public function todayAttendance(): HasOne
+    {
+        return $this->hasOne(Attendance::class)->whereDate('date', now()->toDateString());
     }
 }

@@ -13,7 +13,6 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             UserSeeder::class,
-            TeacherSeeder::class,
             MemoGroupSeeder::class,
             MemorizerSeeder::class,
             AttendanceSeeder::class,

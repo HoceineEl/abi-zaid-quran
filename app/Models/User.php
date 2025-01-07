@@ -27,6 +27,7 @@ class User extends Authenticatable implements FilamentUser
         'password',
         'phone',
         'role',
+        'sex',
     ];
 
     /**
@@ -58,6 +59,11 @@ class User extends Authenticatable implements FilamentUser
         if ($panel->getId() === 'association') {
             return str_ends_with($this->email, '@association.com');
         }
+        if ($panel->getId() === 'teacher') {
+            return $this->isTeacher();
+        }elseif($panel->getId() === 'quran-program'){
+            return !$this->isTeacher();
+        }
 
         return true;
     }
@@ -84,5 +90,15 @@ class User extends Authenticatable implements FilamentUser
         return $query->whereHas('progresses', function ($query) {
             $query->whereDate('created_at', today());
         });
+    }
+
+    public function memorizers(): HasMany
+    {
+        return $this->hasMany(Memorizer::class, 'teacher_id');
+    }
+
+    public function isTeacher(): bool
+    {
+        return $this->role === 'teacher';
     }
 }

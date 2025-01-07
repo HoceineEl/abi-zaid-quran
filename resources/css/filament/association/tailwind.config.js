@@ -8,5 +8,6 @@ export default {
         './resources/views/livewire/association/**/*.blade.php',
         './resources/views/badges/association/**/*.blade.php',
         './vendor/filament/**/*.blade.php',
+        './app/**/*.php',
     ],
 }

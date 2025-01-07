@@ -26,6 +26,7 @@ use App\Filament\Association\Widgets\DetailedStatsOverview;
 use App\Filament\Association\Widgets\AttendanceChart;
 use App\Filament\Association\Widgets\GroupsStatsChart;
 use App\Filament\Association\Widgets\PaymentsChart;
+use App\Filament\Pages\CustomLogin;
 
 class AssociationPanelProvider extends PanelProvider
 {
@@ -40,7 +41,7 @@ class AssociationPanelProvider extends PanelProvider
             ])
             ->topNavigation()
             ->font('Cairo')
-            ->login()
+            ->login(CustomLogin::class)
             ->viteTheme('resources/css/filament/association/theme.css')
             ->defaultThemeMode(ThemeMode::Light)
             ->databaseNotifications()

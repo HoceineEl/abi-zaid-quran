@@ -10,12 +10,20 @@ class Attendance extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['memorizer_id', 'date', 'check_in_time', 'check_out_time'];
+    protected $fillable = [
+        'memorizer_id',
+        'date',
+        'check_in_time',
+        'check_out_time',
+        'score',
+        'custom_note'
+    ];
 
     protected $casts = [
         'date' => 'date',
         'check_in_time' => 'datetime',
         'check_out_time' => 'datetime',
+        'notes' => 'array',
     ];
 
     public function memorizer(): BelongsTo
