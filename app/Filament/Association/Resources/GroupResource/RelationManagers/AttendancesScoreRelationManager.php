@@ -18,15 +18,16 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Filament\Tables\Actions\Action;
 use Filament\Support\Colors\Color;
+use Filament\Support\Enums\ActionSize;
 
 class AttendancesScoreRelationManager extends RelationManager
 {
     protected static string $relationship = 'memorizers';
-
     protected static ?string $title = 'الحضور والتقييم';
     protected static ?string $navigationLabel = 'الحضور والتقييم';
     protected static ?string $modelLabel = 'حضور وتقييم';
     protected static ?string $pluralModelLabel = 'الحضور والتقييم';
+    protected static ?string $icon = 'heroicon-o-clipboard-document-check';
 
     public $dateFrom;
     public $dateTo;
@@ -53,42 +54,44 @@ class AttendancesScoreRelationManager extends RelationManager
         );
 
         $attendanceColumns = collect();
+
+        // Eager load only needed attendance attributes
+        $this->ownerRecord->loadMissing(['memorizers' => function ($query) use ($dateRange) {
+            $query->with(['attendances:id,memorizer_id,date,check_in_time,score' => function ($query) use ($dateRange) {
+                $query->whereBetween('date', [
+                    $dateRange->getStartDate()->format('Y-m-d'),
+                    $dateRange->getEndDate()->format('Y-m-d')
+                ]);
+            }]);
+        }]);
+
         foreach ($dateRange as $date) {
             $formattedDate = $date->format('Y-m-d');
             $day = $date->format('d/m');
-
             $attendanceColumns->push(
                 TextColumn::make("attendance_day_{$formattedDate}")
                     ->label($day)
                     ->alignCenter()
                     ->state(function ($record) use ($formattedDate) {
-                        $attendance = $record->attendances()
-                            ->whereDate('date', $formattedDate)
-                            ->first();
+                        $attendance = $record->attendances->first(function ($attendance) use ($formattedDate) {
+                            return $attendance->date->format('Y-m-d') === $formattedDate;
+                        });
 
                         if (!$attendance) {
-                            return null;
+                            return 'غ.م';
                         }
 
                         if (!$attendance->check_in_time) {
                             return 'absent';
                         }
-
                         return $attendance->score ?? 'present';
                     })
                     ->badge()
-                    ->formatStateUsing(function ($state) {
-                        if ($state === null) return '—';
-                        if ($state === 'absent') return '✗';
-                        if ($state === 'present') return '✓';
-                        return $state;
-                    })
                     ->color(function ($state) {
-                        if ($state === null) return 'gray';
+                        if ($state === 'غ.م') return Color::Gray;
                         if ($state === 'absent') return Color::Red;
                         if ($state === 'present') return Color::Green;
 
-                        // Use the enum's color for scores
                         $scores = collect(MemorizationScore::cases())->pluck('value');
                         if ($scores->contains($state)) {
                             return MemorizationScore::from($state)->getColor();
@@ -97,11 +100,10 @@ class AttendancesScoreRelationManager extends RelationManager
                         return Color::Gray;
                     })
                     ->icon(function ($state) {
-                        if ($state === null) return 'heroicon-o-minus-circle';
+                        if ($state === 'غ.م') return 'heroicon-o-question-mark-circle';
                         if ($state === 'absent') return 'heroicon-o-x-circle';
                         if ($state === 'present') return 'heroicon-o-check-circle';
 
-                        // Use the enum's icon for scores
                         $scores = collect(MemorizationScore::cases())->pluck('value');
                         if ($scores->contains($state)) {
                             return MemorizationScore::from($state)->getIcon();
@@ -110,14 +112,29 @@ class AttendancesScoreRelationManager extends RelationManager
                         return null;
                     })
                     ->iconPosition('before')
+                    ->description(function ($record) use ($formattedDate) {
+                        $attendance = $record->attendances->first(function ($attendance) use ($formattedDate) {
+                            return $attendance->date->format('Y-m-d') === $formattedDate;
+                        });
+
+                        if ($attendance && ($attendance->notes || $attendance->custom_note)) {
+                            return 'مشكلة';
+                        }
+
+                        return null;
+                    })
                     ->action(
                         Action::make('view_details_' . $formattedDate)
                             ->modalHeading(fn($record) => "تفاصيل يوم {$day} للطالب {$record->name}")
-                            ->hidden(fn($record) => !$record->attendances()->whereDate('date', $formattedDate)->exists())
+                            ->hidden(function ($record) use ($formattedDate) {
+                                return !$record->attendances->contains(function ($attendance) use ($formattedDate) {
+                                    return $attendance->date->format('Y-m-d') === $formattedDate;
+                                });
+                            })
                             ->modalContent(function ($record) use ($formattedDate) {
-                                $attendance = $record->attendances()
-                                    ->whereDate('date', $formattedDate)
-                                    ->first();
+                                $attendance = $record->attendances->first(function ($attendance) use ($formattedDate) {
+                                    return $attendance->date->format('Y-m-d') === $formattedDate;
+                                });
 
                                 return view('filament.components.attendance-details', [
                                     'attendance' => $attendance,
@@ -136,8 +153,8 @@ class AttendancesScoreRelationManager extends RelationManager
             ->columns([
                 TextColumn::make('name')
                     ->label('الاسم')
-                    ->getStateUsing(function ($record) {
-                        $number = $this->getTable()->getQuery()->get()->search(fn($memorizer) => $memorizer->id == $record->id) + 1;
+                    ->getStateUsing(function ($record, $rowLoop) {
+                        $number = $rowLoop->iteration;
                         return $number . '. ' . $record->name;
                     })
                     ->sortable(),
@@ -163,6 +180,7 @@ class AttendancesScoreRelationManager extends RelationManager
                 $dateFrom = $this->dateFrom;
                 $dateTo = $this->dateTo;
                 return $this->ownerRecord->memorizers()
+                    ->select('id', 'name')
                     ->withCount(['attendances as attendance_count' => function ($query) use ($dateFrom, $dateTo) {
                         $query->whereBetween('date', [$dateFrom, $dateTo]);
                     }])
@@ -170,7 +188,30 @@ class AttendancesScoreRelationManager extends RelationManager
             })
             ->paginated(false)
             ->recordUrl(null)
-            ->headerActions([])
+            ->headerActions([
+                Action::make('export_table')
+                    ->label('تصدير كصورة')
+                    ->icon('heroicon-o-share')
+                    ->size(ActionSize::Small)
+                    ->color('success')
+                    ->action(function () {
+                        $date = now()->format('Y-m-d');
+
+                        $memorizers = $this->ownerRecord->memorizers()
+                            ->get();
+
+                        $html = view('components.attendance-export-table', [
+                            'memorizers' => $memorizers,
+                            'group' => $this->ownerRecord,
+                            'date' => $date,
+                        ])->render();
+
+                        $this->dispatch('export-table', [
+                            'html' => $html,
+                            'groupName' => $this->ownerRecord->name
+                        ]);
+                    })
+            ])
             ->actions([])
             ->bulkActions([]);
     }

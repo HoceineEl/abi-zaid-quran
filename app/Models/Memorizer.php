@@ -135,4 +135,19 @@ class Memorizer extends Model
     {
         return $this->hasOne(Attendance::class)->whereDate('date', now()->toDateString());
     }
+
+    public function troubles(): Attribute
+    {
+        return Attribute::make(
+            get: function () {
+                $troubles = [];
+                foreach ($this->attendances as $attendance) {
+                    if ($attendance->notes) {
+                        $troubles = array_merge($troubles, $attendance->notes);
+                    }
+                }
+                return array_unique($troubles);
+            }
+        );
+    }
 }

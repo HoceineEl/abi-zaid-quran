@@ -20,6 +20,7 @@ use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use App\Filament\Pages\CustomLogin;
 use Filament\Enums\ThemeMode;
+use Filament\View\PanelsRenderHook;
 
 class TeacherPanelProvider extends PanelProvider
 {
@@ -33,14 +34,10 @@ class TeacherPanelProvider extends PanelProvider
             ])
             ->discoverResources(in: app_path('Filament/Teacher/Resources'), for: 'App\\Filament\\Teacher\\Resources')
             ->discoverPages(in: app_path('Filament/Teacher/Pages'), for: 'App\\Filament\\Teacher\\Pages')
-            ->pages([
-                Pages\Dashboard::class,
-            ])
             ->colors([
                 'primary' => Color::Emerald,
                 'indigo' => Color::Indigo,
             ])
-            ->topNavigation()
             ->font('Cairo')
             ->login(CustomLogin::class)
             ->viteTheme('resources/css/filament/association/theme.css')
@@ -70,6 +67,7 @@ class TeacherPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
-            ]);
+            ])
+            ->renderHook(PanelsRenderHook::BODY_START, fn() => view('components.attendance-export-scripts'));
     }
 }

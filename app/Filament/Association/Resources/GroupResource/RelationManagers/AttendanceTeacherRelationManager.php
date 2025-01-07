@@ -20,9 +20,12 @@ use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Section;
 use App\Enums\MemorizationScore;
+use App\Filament\Association\Resources\GroupResource;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Support\Enums\ActionSize;
+use App\Models\User;
+use Filament\Notifications\Actions\Action as ActionsAction;
 
 class AttendanceTeacherRelationManager extends RelationManager
 {
@@ -32,6 +35,7 @@ class AttendanceTeacherRelationManager extends RelationManager
 
     protected static ?string $title = 'تسجيل الحضور والغياب';
 
+    protected static ?string $icon = 'heroicon-o-user-group';
 
 
     protected function canView(Model $record): bool
@@ -44,8 +48,6 @@ class AttendanceTeacherRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('name')
             ->columns([
-
-
                 TextColumn::make('name')
                     ->weight(FontWeight::Bold)
                     ->searchable()
@@ -330,13 +332,59 @@ class AttendanceTeacherRelationManager extends RelationManager
                             ]);
 
 
+                            if ($data['behavioral_issues'] != null) {
+                                $associationAdmins = User::where('email', 'LIKE', '%@association.com')->get();
+                                $troublesLabels = '';
+                                foreach ($data['behavioral_issues'] as $trouble) {
+                                    $troublesLabels .= Troubles::tryFrom($trouble)->getLabel() . ', ';
+                                }
+                                Notification::make()
+                                    ->title("مشكلة سلوكية للطالب {$record->name}")
+                                    ->body("قام الطالب {$record->name} في مجموعة {$this->ownerRecord->name} بـ " . $troublesLabels . " بتاريخ " . now()->format('Y-m-d'))
+                                    ->warning()
+                                    ->actions([
+                                        ActionsAction::make('view_attendance')
+                                            ->label('عرض الحضور')
+                                            ->url(fn() => GroupResource::getUrl('view', ['record' => $this->ownerRecord, 'activeRelationManager' => '0'],panel:'association'))
+                                    ])
+                                    ->sendToDatabase($associationAdmins);
+                            }
+
                             Notification::make()
                                 ->title('تم حفظ الملاحظات بنجاح')
                                 ->success()
                                 ->send();
                         }
                     }),
-            ],)
+
+            ], ActionsPosition::BeforeColumns)
+            ->headerActions([
+                Action::make('export_table')
+                    ->label('تصدير كصورة')
+                    ->icon('heroicon-o-share')
+                    ->size(ActionSize::Small)
+                    ->color('success')
+                    ->action(function () {
+                        $date = now()->format('Y-m-d');
+
+                        $memorizers = $this->ownerRecord->memorizers()
+                            ->with(['attendances' => function ($query) use ($date) {
+                                $query->whereDate('date', $date);
+                            }])
+                            ->get();
+
+                        $html = view('components.attendance-export-table', [
+                            'memorizers' => $memorizers,
+                            'group' => $this->ownerRecord,
+                            'date' => $date,
+                        ])->render();
+
+                        $this->dispatch('export-table', [
+                            'html' => $html,
+                            'groupName' => $this->ownerRecord->name
+                        ]);
+                    })
+            ])
             ->bulkActions([
                 BulkAction::make('mark_attendance_bulk')
                     ->label('تسجيل الحضور للمحددين')
@@ -399,7 +447,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                             ->default(
                                 "السلام عليكم ورحمة الله وبركاته\n" .
                                     "نود إعلامكم أن [الطالب/الطالبة] [اسم الطالب] [لم يحضر/لم تحضر] اليوم إلى حلقة التحفيظ.\n" .
-                                    "نرجو الاهتمام والمتابعة، وإخبارنا في حال وجود أي ظرف.\n\n" .
+                                    "نرجوا إخبارنا في حال وجود أي ظرف.\n\n" .
                                     "جزاكم الله خيراً"
                             )
                             ->required()

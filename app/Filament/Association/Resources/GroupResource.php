@@ -106,6 +106,7 @@ class GroupResource extends Resource
         return [
             MemorizersRelationManager::class,
             AttendancesRelationManager::class,
+            AttendancesScoreRelationManager::class,
             PaymentsRelationManager::class,
         ];
     }
@@ -120,6 +121,12 @@ class GroupResource extends Resource
     }
     public static function getPages(): array
     {
+        if (auth()->check() && auth()->user()->isTeacher()) {
+            return [
+                'index' => Pages\ListGroups::route('/'),
+                'view' => Pages\ViewGroup::route('/{record}'),
+            ];
+        }
         return [
             'index' => Pages\ListGroups::route('/'),
             'create' => Pages\CreateGroup::route('/create'),

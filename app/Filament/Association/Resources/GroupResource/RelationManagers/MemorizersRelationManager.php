@@ -13,6 +13,10 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
+use Filament\Infolists\Components\Grid;
+use Filament\Infolists\Components\RepeatableEntry;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Infolist;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Support\Colors\Color;
@@ -26,7 +30,9 @@ use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Enums\ActionsPosition;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Mpdf\Mpdf;
 
@@ -43,6 +49,9 @@ class MemorizersRelationManager extends RelationManager
     protected static ?string $modelLabel = 'طالب';
 
     protected static ?string $pluralModelLabel = 'الطلبة';
+
+    protected static ?string $icon = 'heroicon-o-user-group';
+
 
     public function form(Form $form): Form
     {
@@ -101,7 +110,25 @@ class MemorizersRelationManager extends RelationManager
                     ->copyMessageDuration(1500),
 
             ])
-            ->filters([])
+            ->filters([
+                Filter::make('troublemakers')
+                    ->label('الأكثر مشاكل')
+                    ->form([
+                        TextInput::make('trouble_threshold')
+                            ->label('عدد المشاكل على الأقل')
+                            ->numeric(),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['trouble_threshold'],
+                                fn(Builder $query, $threshold): Builder => $query->whereHas('attendances', function (Builder $query) use ($threshold) {
+                                    $query->whereJsonLength('notes', '>=', $threshold);
+                                })
+                            );
+                    })
+                    ->indicator('الأكثر مشاكل'),
+            ])
             ->headerActions([
                 Tables\Actions\CreateAction::make(),
             ])
@@ -110,6 +137,7 @@ class MemorizersRelationManager extends RelationManager
                     Tables\Actions\EditAction::make(),
                     Tables\Actions\DeleteAction::make(),
                     Tables\Actions\ViewAction::make(),
+                    self::getTroublesAction(),
                 ]),
 
                 Action::make('send_payment_reminders')
@@ -244,5 +272,60 @@ class MemorizersRelationManager extends RelationManager
                     ->success()
                     ->send();
             });
+    }
+
+    public function infolist(Infolist $infolist): Infolist
+    {
+        return $infolist
+            ->schema([
+                TextEntry::make('name')
+                    ->label('الاسم'),
+                TextEntry::make('attendances')
+                    ->label('المشاكل')
+                    ->getStateUsing(function (Memorizer $record) {
+                        $troubles = [];
+                        foreach ($record->attendances as $attendance) {
+                            if ($attendance->notes) {
+                                foreach ($attendance->notes as $note) {
+                                    $troubles[] = \App\Enums\Troubles::tryFrom($note)?->getLabel();
+                                }
+                            }
+                        }
+                        return implode(', ', $troubles);
+                    })
+            ]);
+    }
+
+    public static function getTroublesAction(): Action
+    {
+        return Action::make('view_troubles')
+            ->label('عرض المشاكل')
+            ->icon('heroicon-o-exclamation-triangle')
+            ->color('warning')
+            ->modalHeading('قائمة المشاكل')
+            ->modalSubmitAction(false)
+            ->modalCancelAction(false)
+            ->infolist(fn(Memorizer $record) => self::getTroublesInfolist($record));
+    }
+
+    public static function getTroublesInfolist(Memorizer $record): Infolist
+    {
+        return Infolist::make()
+            ->record($record)
+            ->schema([
+                RepeatableEntry::make('attendances')
+                    ->label('قائمة المشاكل')
+                    ->hidden(fn($state) => empty($state))
+                    ->schema([
+                        TextEntry::make('date')
+                            ->label('التاريخ')
+                            ->formatStateUsing(fn($state) => $state->format('Y-m-d')),
+                        TextEntry::make('notes')
+                            ->label('المشاكل')
+                            ->badge()
+                            ->getStateUsing(fn($record) =>  array_map(fn($note) => \App\Enums\Troubles::tryFrom($note)?->getLabel(), $record->notes)),
+                    ])
+                    ->grid(2)
+            ]);
     }
 }
