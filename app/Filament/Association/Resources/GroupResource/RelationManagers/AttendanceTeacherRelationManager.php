@@ -168,7 +168,6 @@ class AttendanceTeacherRelationManager extends RelationManager
                                 $state = $get('message_type');
                                 $set('message', $record->getMessageToSend($state));
                             })
-                            ->dehydrated(false)
                             ->rows(8),
                     ])
                     ->action(function (Memorizer $record, array $data) {
@@ -176,7 +175,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                         if (!$phone) {
                             return;
                         }
-
+                        dd($phone, $data);
                         $phone = preg_replace('/[^0-9]/', '', $phone);
                         $message = urlencode($data['message']);
                         $whatsappUrl = "https://wa.me/{$phone}?text={$message}";
@@ -388,26 +387,17 @@ class AttendanceTeacherRelationManager extends RelationManager
                     ->icon('heroicon-o-pencil-square')
                     ->color('info')
                     ->form([
-                        \Filament\Forms\Components\TextInput::make('name')
-                            ->label('الإسم')
-                            ->required(),
                         \Filament\Forms\Components\DatePicker::make('birth_date')
                             ->label('تاريخ الميلاد')
                             ->required(),
-                        \Filament\Forms\Components\TextInput::make('phone')
-                            ->label('رقم الهاتف')
-                            ->tel(),
+
                     ])
                     ->fillForm(fn(Memorizer $record): array => [
-                        'name' => $record->name,
                         'birth_date' => $record->birth_date,
-                        'phone' => $record->phone,
                     ])
                     ->action(function (Memorizer $record, array $data): void {
                         $record->update([
-                            'name' => $data['name'],
                             'birth_date' => $data['birth_date'],
-                            'phone' => $data['phone'],
                         ]);
 
                         Notification::make()
