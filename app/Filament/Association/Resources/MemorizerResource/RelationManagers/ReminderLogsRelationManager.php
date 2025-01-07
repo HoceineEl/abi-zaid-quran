@@ -27,7 +27,9 @@ class ReminderLogsRelationManager extends RelationManager
                         default => $state,
                     }),
                 Tables\Columns\TextColumn::make('phone_number')
-                    ->label('رقم الهاتف'),
+                    ->label('رقم الهاتف')
+                    ->extraCellAttributes(['dir' => 'ltr'])
+                    ->alignRight(),
                 Tables\Columns\TextColumn::make('message')
                     ->label('الرسالة')
                     ->limit(50),

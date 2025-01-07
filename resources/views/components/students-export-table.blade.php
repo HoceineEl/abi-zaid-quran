@@ -119,7 +119,7 @@
         .phone-number {
             color: var(--text-secondary);
             font-size: 1.1rem;
-            direction: rtl;
+            direction: ltr;
         }
 
         .index-column {
@@ -133,7 +133,7 @@
             font-size: 0.9rem;
         }
     </style>
-
+    
     <table class="export-table">
         <thead>
             <tr>

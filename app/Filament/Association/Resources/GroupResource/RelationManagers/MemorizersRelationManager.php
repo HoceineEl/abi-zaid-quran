@@ -107,7 +107,15 @@ class MemorizersRelationManager extends RelationManager
                     ->label('رقم الهاتف')
                     ->copyable()
                     ->copyMessage('تم نسخ رقم الهاتف')
-                    ->copyMessageDuration(1500),
+                    ->copyMessageDuration(1500)
+                    ->extraCellAttributes(['dir' => 'ltr'])
+                    ->alignRight()
+                    ->getStateUsing(function ($record) {
+                        if ($record->phone) {
+                            return $record->phone;
+                        }
+                        return $record->guardian?->phone;
+                    }),
 
             ])
             ->filters([

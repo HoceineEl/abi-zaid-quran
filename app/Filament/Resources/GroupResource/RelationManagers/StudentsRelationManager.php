@@ -103,7 +103,9 @@ class StudentsRelationManager extends RelationManager
                         $column->icon(fn($record) => $needsCall ? 'heroicon-o-exclamation-circle' : 'heroicon-o-check-circle')
                             ->color(fn(Student $record) => $needsCall ? 'danger' : 'success');
                     })
-                    ->label('رقم الهاتف'),
+                    ->label('رقم الهاتف')
+                    ->extraCellAttributes(['dir' => 'ltr'])
+                    ->alignRight(),
                 TextColumn::make('sex')->label('الجنس')
                     ->formatStateUsing(function ($state) {
                         return match ($state) {

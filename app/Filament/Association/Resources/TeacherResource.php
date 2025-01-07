@@ -57,7 +57,8 @@ class TeacherResource extends Resource
 
                 TextInput::make('phone')
                     ->label('رقم الهاتف')
-                    ->maxLength(255),
+                    ->maxLength(255)
+                 ,
 
                 ToggleButtons::make('sex')
                     ->label('الجنس')
@@ -84,7 +85,9 @@ class TeacherResource extends Resource
 
                 TextColumn::make('phone')
                     ->label('رقم الهاتف')
-                    ->searchable(),
+                    ->searchable()
+                    ->extraCellAttributes(['dir' => 'ltr'])
+                    ->alignRight(),
 
                 SelectColumn::make('sex')
                     ->label('الجنس')

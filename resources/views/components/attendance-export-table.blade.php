@@ -78,6 +78,7 @@
                 <tr>
                     <td>{{ $index + 1 }}</td>
                     <td class="text-right">{{ $memorizer->name }}</td>
+                    <td dir="ltr">{{ $memorizer->phone }}</td>
                     <td class="{{ $statusClass }}">{{ $status }}</td>
                     <td class="{{ $scoreColor }}">
                         {{ $attendance?->score ?? '—' }}

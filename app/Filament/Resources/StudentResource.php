@@ -69,7 +69,10 @@ class StudentResource extends Resource
                             default => $state,
                         };
                     }),
-                TextColumn::make('phone')->label('رقم الهاتف'),
+                TextColumn::make('phone')
+                    ->extraCellAttributes(['dir' => 'ltr'])
+                    ->alignRight()
+                    ->label('رقم الهاتف'),
                 TextColumn::make('group.name')->label('المجموعة')
                     ->badge(),
                 // StudentProgress::make('progress')->label('التقدم'),
