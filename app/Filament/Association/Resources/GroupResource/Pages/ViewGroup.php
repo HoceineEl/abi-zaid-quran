@@ -14,7 +14,7 @@ class ViewGroup extends ViewRecord
     {
         return [
             Actions\EditAction::make()
-                ->visible(fn() => !auth()->user()->isTeacher()),
+                ->hidden(fn() => auth()->user()->isTeacher()),
         ];
     }
 }

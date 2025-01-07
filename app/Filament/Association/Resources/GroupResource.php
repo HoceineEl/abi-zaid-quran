@@ -2,6 +2,7 @@
 
 namespace App\Filament\Association\Resources;
 
+use App\Enums\Days;
 use App\Filament\Association\Resources\GroupResource\Pages;
 use App\Filament\Association\Resources\GroupResource\RelationManagers\AttendancesRelationManager;
 use App\Filament\Association\Resources\GroupResource\RelationManagers\AttendancesScoreRelationManager;
@@ -10,6 +11,8 @@ use App\Filament\Association\Resources\GroupResource\RelationManagers\PaymentsRe
 use App\Filament\Association\Resources\GroupResource\RelationManagers\AttendanceTeacherRelationManager;
 use App\Models\MemoGroup;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Forms\Form;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Infolist;
@@ -42,6 +45,15 @@ class GroupResource extends Resource
                     ->suffix('درهم')
                     ->default(100)
                     ->required(),
+                Select::make('teacher_id')
+                    ->relationship('teacher', 'name')
+                    ->label('المدرس')
+                    ->searchable()
+                    ->preload(),
+                ToggleButtons::make('days')
+                    ->multiple()
+                    ->options(Days::class)
+                    ->label('الأيام')
             ]);
     }
 
@@ -70,6 +82,14 @@ class GroupResource extends Resource
                     ->badge()
                     ->label('الإسم')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('teacher.name')
+                    ->searchable()
+                    ->label('المدرس')
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('arabic_days')
+                    ->searchable(false)
+                    ->label('الأيام')
+                    ->sortable(false),
                 Tables\Columns\TextColumn::make('price')
                     ->searchable()
                     ->label('الدفع')
@@ -84,13 +104,15 @@ class GroupResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->hidden(fn() => auth()->user()->isTeacher()),
                 Tables\Actions\ViewAction::make(),
             ])
             ->recordUrl(fn($record) => GroupResource::getUrl('view', ['record' => $record->id]))
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->hidden(fn() => auth()->user()->isTeacher()),
                 ]),
             ]);
     }
@@ -113,9 +135,7 @@ class GroupResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         if (auth()->user()->isTeacher()) {
-            return parent::getEloquentQuery()->whereHas('memorizers', function ($query) {
-                $query->where('teacher_id', auth()->user()->id);
-            });
+            return parent::getEloquentQuery()->where('teacher_id', auth()->user()->id);
         }
         return parent::getEloquentQuery();
     }
