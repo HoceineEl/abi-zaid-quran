@@ -96,10 +96,7 @@ class GroupResource extends Resource
                     ->searchable(false)
                     ->label('الأيام')
                     ->sortable(false),
-                Tables\Columns\TextColumn::make('price')
-                    ->searchable()
-                    ->label('الدفع')
-                    ->sortable(),
+
                 Tables\Columns\TextColumn::make('memorizers_count')
                     ->searchable(false)
                     ->getStateUsing(fn($record) => $record->memorizers_count)
