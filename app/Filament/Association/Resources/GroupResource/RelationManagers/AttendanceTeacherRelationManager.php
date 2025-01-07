@@ -26,6 +26,7 @@ use Filament\Forms\Components\ToggleButtons;
 use Filament\Support\Enums\ActionSize;
 use App\Models\User;
 use Filament\Notifications\Actions\Action as ActionsAction;
+use Filament\Tables\Actions\ActionGroup;
 
 class AttendanceTeacherRelationManager extends RelationManager
 {
@@ -113,7 +114,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                     ->icon('heroicon-o-chat-bubble-left-ellipsis')
                     ->color('success')
                     ->hidden(function (Memorizer $record) {
-                        return !$record->phone && !$record->guardian?->phone;
+                        return !$record->phone;
                     })
                     ->form([
                         ToggleButtons::make('message_type')
@@ -146,8 +147,10 @@ class AttendanceTeacherRelationManager extends RelationManager
                                     return 'trouble';
                                 }
 
-                                if ($attendance->score === MemorizationScore::NOT_MEMORIZED->value || 
-                                    $attendance->score === MemorizationScore::NOT_REVIEWED->value) {
+                                if (
+                                    $attendance->score === MemorizationScore::NOT_MEMORIZED->value ||
+                                    $attendance->score === MemorizationScore::NOT_REVIEWED->value
+                                ) {
                                     return 'no_memorization';
                                 }
 
@@ -169,7 +172,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                             ->rows(8),
                     ])
                     ->action(function (Memorizer $record, array $data) {
-                        $phone = $record->phone ?? $record->guardian?->phone;
+                        $phone = $record->phone;
                         if (!$phone) {
                             return;
                         }
@@ -368,7 +371,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                                     ->actions([
                                         ActionsAction::make('view_attendance')
                                             ->label('عرض الحضور')
-                                            ->url(fn() => GroupResource::getUrl('view', ['record' => $this->ownerRecord, 'activeRelationManager' => '0'],panel:'association'))
+                                            ->url(fn() => GroupResource::getUrl('view', ['record' => $this->ownerRecord, 'activeRelationManager' => '0'], panel: 'association'))
                                     ])
                                     ->sendToDatabase($associationAdmins);
                             }
@@ -379,6 +382,39 @@ class AttendanceTeacherRelationManager extends RelationManager
                                 ->send();
                         }
                     }),
+                Action::make('edit_student')
+                    ->tooltip('تعديل معلومات الطالب')
+                    ->label('')
+                    ->icon('heroicon-o-pencil-square')
+                    ->color('info')
+                    ->form([
+                        \Filament\Forms\Components\TextInput::make('name')
+                            ->label('الإسم')
+                            ->required(),
+                        \Filament\Forms\Components\DatePicker::make('birth_date')
+                            ->label('تاريخ الميلاد')
+                            ->required(),
+                        \Filament\Forms\Components\TextInput::make('phone')
+                            ->label('رقم الهاتف')
+                            ->tel(),
+                    ])
+                    ->fillForm(fn(Memorizer $record): array => [
+                        'name' => $record->name,
+                        'birth_date' => $record->birth_date,
+                        'phone' => $record->phone,
+                    ])
+                    ->action(function (Memorizer $record, array $data): void {
+                        $record->update([
+                            'name' => $data['name'],
+                            'birth_date' => $data['birth_date'],
+                            'phone' => $data['phone'],
+                        ]);
+
+                        Notification::make()
+                            ->title('تم تحديث معلومات الطالب بنجاح')
+                            ->success()
+                            ->send();
+                    })
 
             ], ActionsPosition::BeforeColumns)
             ->headerActions([
