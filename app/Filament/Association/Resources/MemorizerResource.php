@@ -12,6 +12,7 @@ use App\Filament\Exports\MemorizerExporter;
 use App\Filament\Imports\MemorizerImporter;
 use App\Models\Memorizer;
 use App\Models\Round;
+use App\Models\User;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
@@ -74,7 +75,7 @@ class MemorizerResource extends Resource
                         TextInput::make('name')
                             ->label('الإسم')
                             ->required(),
-                      
+
                         TextInput::make('phone')
                             ->label('الهاتف (خاص)')
                             ->helperText('سيتم استخدام رقم هاتف ولي الأمر إذا لم يتم تحديد رقم هاتف خاص'),
@@ -88,19 +89,8 @@ class MemorizerResource extends Resource
                             ->hiddenOn(MemorizersRelationManager::class)
                             ->relationship('group', 'name')
                             ->required(),
-                        Select::make('teacher_id')
-                            ->label('المعلم')
-                            ->relationship('teacher', 'name')
-                            ->required(),
-                       
-                        ToggleButtons::make('sex')
-                            ->inline()
-                            ->options([
-                                'male' => 'ذكر',
-                                'female' => 'أنثى',
-                            ])->default('male')
-                            ->label('الجنس')
-                            ->required(),
+
+
                         TextInput::make('city')
                             ->label('المدينة')
                             ->default('أسفي'),
@@ -187,6 +177,8 @@ class MemorizerResource extends Resource
                     ->copyable()
                     ->copyMessage('تم نسخ الهاتف')
                     ->copyMessageDuration(1500)
+                    ->extraCellAttributes(['dir' => 'ltr'])
+                    ->alignRight()
                     ->sortable(false)
                     ->label('الهاتف')
                     ->html()
@@ -340,9 +332,15 @@ class MemorizerResource extends Resource
 
                 Tables\Filters\SelectFilter::make('teacher_id')
                     ->label('المعلم')
-                    ->relationship('teacher', 'name')
-                    ->multiple()
-                    ->preload(),
+                    ->options(User::where('role', 'teacher')->pluck('name', 'id'))
+                    ->preload()
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query->when($data['value'], function ($query) use ($data) {
+                            $query->whereHas('group', function ($query) use ($data) {
+                                $query->where('teacher_id', $data['value']);
+                            });
+                        });
+                    }),
 
                 TernaryFilter::make('exempt')
                     ->label('معفي')
@@ -372,7 +370,7 @@ class MemorizerResource extends Resource
             ])
             ->modifyQueryUsing(function (Builder $query) {
                 $query
-                    ->with(['group:id,name', 'teacher:id,name', 'round:id,name', 'guardian:id,name,phone', 'payments:id,memorizer_id,payment_date', 'reminderLogs:id,memorizer_id,created_at']);
+                    ->with(['group:id,name', 'round:id,name', 'guardian:id,name,phone', 'payments:id,memorizer_id,payment_date', 'reminderLogs:id,memorizer_id,created_at']);
             });
     }
 

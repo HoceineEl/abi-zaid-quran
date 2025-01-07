@@ -49,6 +49,7 @@ class AssociationPanelProvider extends PanelProvider
             ->brandName('مدرسة إبن أبي زيد القيرواني')
             ->brandLogo(asset('logo.jpg'))
             ->brandLogoHeight('3.5rem')
+            ->spa()
             ->favicon(asset('logo.jpg'))
             ->discoverResources(in: app_path('Filament/Association/Resources'), for: 'App\\Filament\\Association\\Resources')
             ->discoverPages(in: app_path('Filament/Association/Pages'), for: 'App\\Filament\\Association\\Pages')

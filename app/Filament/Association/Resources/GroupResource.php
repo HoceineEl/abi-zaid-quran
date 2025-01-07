@@ -20,7 +20,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-
+use App\Models\User;
 class GroupResource extends Resource
 {
     protected static ?string $model = MemoGroup::class;
@@ -46,12 +46,13 @@ class GroupResource extends Resource
                     ->default(100)
                     ->required(),
                 Select::make('teacher_id')
-                    ->relationship('teacher', 'name')
+                    ->options(fn() => User::where('role', 'teacher')->pluck('name', 'id'))
                     ->label('المدرس')
                     ->searchable()
                     ->preload(),
                 ToggleButtons::make('days')
                     ->multiple()
+                    ->inline()
                     ->options(Days::class)
                     ->label('الأيام')
             ]);
@@ -135,7 +136,13 @@ class GroupResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         if (auth()->user()->isTeacher()) {
-            return parent::getEloquentQuery()->where('teacher_id', auth()->user()->id);
+            $today = strtolower(now()->format('l')); // Get current day name in lowercase
+
+            return parent::getEloquentQuery()
+                ->where(function ($query) use ($today) {
+                    $query->where('teacher_id', auth()->user()->id)
+                        ->whereJsonContains('days', $today);
+                });
         }
         return parent::getEloquentQuery();
     }

@@ -32,18 +32,17 @@ class AssociationStatsOverview extends BaseWidget
                 ->whereYear('payment_date', now()->year);
         })->where('exempt', false)->count();
 
-        // Calculate attendance percentage for today
-        $totalStudents = Memorizer::count();
-        $presentToday = Attendance::whereDate('date', now())
-            ->whereNotNull('check_in_time')
-            ->count();
 
         return [
             Stat::make('إجمالي الطلاب', Number::format($uniqueStudents))
                 ->description(sprintf(
                     'ذكور: %d | إناث: %d',
-                    Memorizer::where('sex', 'male')->count(),
-                    Memorizer::where('sex', 'female')->count()
+                    Memorizer::whereHas('teacher', function ($query) {
+                        $query->where('sex', 'male');
+                    })->count(),
+                    Memorizer::whereHas('teacher', function ($query) {
+                        $query->where('sex', 'female');
+                    })->count()
                 ))
                 ->descriptionIcon('heroicon-m-users')
                 ->chart([7, 3, 4, 5, 6, $uniqueStudents])

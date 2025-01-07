@@ -2,6 +2,10 @@
 
 namespace App\Providers;
 
+use Filament\Actions\Action;
+use Filament\Actions\MountableAction;
+use Filament\Pages\Page;
+use Filament\Support\Enums\Alignment;
 use Filament\Support\Facades\FilamentView;
 use Filament\View\PanelsRenderHook;
 use Illuminate\Database\Eloquent\Model;
@@ -27,7 +31,11 @@ class AppServiceProvider extends ServiceProvider
             PanelsRenderHook::HEAD_END,
             fn() => view('laravelpwa::meta', ['config' => (new ManifestService)->generate()])
         );
-      
+
+        Page::$formActionsAlignment = Alignment::Right;
+        MountableAction::configureUsing(function (MountableAction $action) {
+            $action->modalAlignment(Alignment::Left);
+        });
 
         Model::unguard();
     }

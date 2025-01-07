@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 
 class Memorizer extends Model
 {
@@ -102,9 +103,16 @@ class Memorizer extends Model
         return $this->hasMany(Attendance::class);
     }
 
-    public function teacher(): BelongsTo
+    public function teacher(): HasOneThrough
     {
-        return $this->belongsTo(User::class, 'teacher_id');
+        return $this->hasOneThrough(User::class, MemoGroup::class, 'id', 'id', 'memo_group_id', 'teacher_id');
+    }
+
+    public function sex(): Attribute
+    {
+        return Attribute::make(
+            get: fn() => $this->group?->teacher?->sex ?? 'male',
+        );
     }
 
     public function guardian(): BelongsTo

@@ -39,7 +39,7 @@ class MemorizerImporter extends Importer
                     if (isset($options['group_id'])) {
                         $record->memo_group_id = $options['group_id'];
                     } else {
-                        $group = MemoGroup::firstOrCreate(['name' => $state], ['price' => 100]);
+                        $group = MemoGroup::firstOrCreate(['name' => $state], ['price' => 100, 'teacher_id' => $options['teacher_id'] ?? null ]);
                         $record->memo_group_id = $group->id;
                     }
                 }),
@@ -50,7 +50,7 @@ class MemorizerImporter extends Importer
                 ->guess(['الأستاذ', 'المعلم', 'المدرس', 'أستاذ'])
                 ->fillRecordUsing(function (Memorizer $record, string $state, array $options) {
                     if (isset($options['teacher_id'])) {
-                        $record->teacher_id = $options['teacher_id'];
+                        $record->group->update(['teacher_id' => $options['teacher_id']]);
                     } else {
                         $teacher = User::firstOrCreate(['name' => $state, 'role' => 'teacher'], [
                             'phone' => '0666666666',
@@ -60,27 +60,10 @@ class MemorizerImporter extends Importer
                             'created_at' => now(),
                             'updated_at' => now(),
                         ]);
-                        $record->teacher_id = $teacher->id;
+                        $record->group->update(['teacher_id' => $teacher->id]);
                     }
                 }),
 
-            ImportColumn::make('round')
-                ->label('الحلقة')
-                ->rules(['nullable', 'string'])
-                ->guess(['الحلقة', 'الفترة', 'الوقت'])
-                ->fillRecordUsing(function (Memorizer $record, ?string $state, array $options) {
-                    if (isset($options['round_id'])) {
-                        $record->round_id = $options['round_id'];
-                    } elseif ($state) {
-                        // Default to all weekdays if not specified
-                        $defaultDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-                        $round = Round::firstOrCreate(
-                            ['name' => $state],
-                            ['days' => $defaultDays]
-                        );
-                        $record->round_id = $round->id;
-                    }
-                }),
 
             ImportColumn::make('phone')
                 ->label('رقم الهاتف الخاص')
@@ -94,7 +77,7 @@ class MemorizerImporter extends Importer
                 ->label('العنوان')
                 ->rules(['nullable', 'string'])
                 ->guess(['العنوان', 'المقر', 'السكن']),
-                
+
             ImportColumn::make('birth_date')
                 ->label('تاريخ الإزدياد')
                 ->rules(['nullable', 'date'])
@@ -104,15 +87,6 @@ class MemorizerImporter extends Importer
                 })
                 ->example('2000-01-01'),
 
-            ImportColumn::make('sex')
-                ->label('الجنس')
-                ->rules(['nullable', 'string'])
-                ->guess(['الجنس'])
-                ->example('ذكر')
-                ->fillRecordUsing(function (Memorizer $record, ?string $state) {
-                    $record->sex = $this->mapSex($state ?? 'ذكر');
-                }),
-     
 
         ];
     }
@@ -151,7 +125,7 @@ class MemorizerImporter extends Importer
                 ->helperText('إذا تم تحديد أستاذ(ة)، سيتم تجاهل عمود الأستاذ(ة) في ملف الاستيراد'),
 
 
-   
+
             Checkbox::make('updateExisting')
                 ->label('تحديث السجلات الموجودة'),
         ];
