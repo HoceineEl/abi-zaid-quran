@@ -47,9 +47,18 @@ class AssociationStatsOverview extends BaseWidget
                 ->descriptionIcon('heroicon-m-users')
                 ->chart([7, 3, 4, 5, 6, $uniqueStudents])
                 ->color('success'),
-
             Stat::make('المدفوعات الشهرية', Number::format($monthlyPayments) . ' درهم')
-                ->description(sprintf('%d طالب لم يدفع بعد', $unpaidStudents))
+                ->description(sprintf(
+                    'دفع: %d | لم يدفع: %d',
+                    Memorizer::whereHas('payments', function ($query) {
+                        $query->whereMonth('payment_date', now()->month)
+                            ->whereYear('payment_date', now()->year);
+                    })->where('exempt', false)->count(),
+                    Memorizer::whereDoesntHave('payments', function ($query) {
+                        $query->whereMonth('payment_date', now()->month)
+                            ->whereYear('payment_date', now()->year);
+                    })->where('exempt', false)->count()
+                ))
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->chart([2000, 1500, 2400, $monthlyPayments])
                 ->color('warning'),

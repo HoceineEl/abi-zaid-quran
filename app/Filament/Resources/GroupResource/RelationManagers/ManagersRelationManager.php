@@ -32,6 +32,7 @@ class ManagersRelationManager extends RelationManager
                         return match ($state) {
                             'admin' => 'مشرف',
                             'follower' => 'متابع',
+                            'teacher' => 'أستاذ بالجمعية',
                         };
                     }),
                 TextColumn::make('phone')->label('الهاتف'),

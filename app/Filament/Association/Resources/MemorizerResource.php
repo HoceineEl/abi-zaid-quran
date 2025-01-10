@@ -163,7 +163,6 @@ class MemorizerResource extends Resource
                     ->toggleable()
                     ->badge()
                     ->color('indigo')
-                    ->url(fn(Memorizer $record) => GroupResource::getUrl('edit', ['record' => $record->group]))
                     ->sortable()
                     ->label('المجموعة'),
                 TextColumn::make('phone')
@@ -227,7 +226,7 @@ class MemorizerResource extends Resource
             ->actions([
                 ActionGroup::make([
                     Tables\Actions\EditAction::make()->slideOver(),
-
+                    MemorizersRelationManager::getTroublesAction(),
                 ]),
                 Action::make('generate_badge')
                     ->tooltip('إنشاء بطاقة')
@@ -310,7 +309,7 @@ class MemorizerResource extends Resource
                         $records = Memorizer::find($records);
                         foreach ($records as $record) {
                             $record->payments()->create([
-                                'amount' => 100,
+                                'amount' => $record->group->price ?? 70,
                                 'payment_date' => now(),
                             ]);
                         }

@@ -24,7 +24,7 @@ class Group extends Model
 
     public function managers(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'group_manager', 'group_id', 'manager_id');
+        return $this->belongsToMany(User::class, 'group_manager', 'group_id', 'manager_id')->where('role','!=','teacher');
     }
 
     public function progresses(): HasManyThrough

@@ -1,7 +1,7 @@
-<div class="bg-white p-4 rounded-lg shadow" style="direction: rtl;">
+<div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow" style="direction: rtl;">
     <div class="text-center mb-4">
-        <h2 class="text-xl font-bold">{{ $group->name }}</h2>
-        <p class="text-gray-600">تقرير الحضور والتقييم ليوم {{ \Carbon\Carbon::parse($date)->format('Y/m/d') }}</p>
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white">{{ $group->name }}</h2>
+        <p class="text-gray-600 dark:text-gray-400">تقرير الحضور والتقييم ليوم {{ \Carbon\Carbon::parse($date)->format('Y/m/d') }}</p>
     </div>
 
     <style>
@@ -16,11 +16,23 @@
             --warning-color: #d97706;
         }
 
+        :root[data-theme="dark"] {
+            --border-color: #374151;
+            --bg-header: #1f2937;
+            --bg-secondary: #111827;
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --success-color: #34d399;
+            --danger-color: #f87171;
+            --warning-color: #fbbf24;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 1rem;
             font-family: 'Almarai', sans-serif;
+            color: var(--text-primary);
         }
 
         th, td {
@@ -50,10 +62,9 @@
     <table>
         <thead>
             <tr>
-                <th>#</th>
-                <th>الإسم</th>
-                <th>الحضور</th>
-                <th>التقييم</th>
+                <th class="dark:text-gray-200">الإسم</th>
+                <th class="dark:text-gray-200">الحضور</th>
+                <th class="dark:text-gray-200">التقييم</th>
             </tr>
         </thead>
         <tbody>
@@ -64,21 +75,19 @@
                     $statusClass = $status === 'حاضر' ? 'status-present' : 'status-absent';
                     
                     $scoreColor = match($attendance?->score ?? '') {
-                        'ممتاز' => 'text-emerald-600',
-                        'حسن' => 'text-green-600',
-                        'جيد' => 'text-blue-600',
-                        'لا بأس به' => 'text-amber-600',
-                        'لم يحفظ' => 'text-red-600',
-                        'لم يستظهر' => 'text-rose-600',
-                        default => 'text-gray-600'
+                        'ممتاز' => 'text-emerald-600 dark:text-emerald-400',
+                        'حسن' => 'text-green-600 dark:text-green-400',
+                        'جيد' => 'text-blue-600 dark:text-blue-400',
+                        'لا بأس به' => 'text-amber-600 dark:text-amber-400',
+                        'لم يحفظ' => 'text-red-600 dark:text-red-400',
+                        'لم يستظهر' => 'text-rose-600 dark:text-rose-400',
+                        default => 'text-gray-600 dark:text-gray-400'
                     };
 
                     $notes = $attendance?->notes ? implode('، ', array_map(fn($note) => \App\Enums\Troubles::from($note)->getLabel(), $attendance->notes)) : '';
                 @endphp
                 <tr>
-                    <td>{{ $index + 1 }}</td>
-                    <td class="text-right">{{ $memorizer->name }}</td>
-                    <td dir="ltr">{{ $memorizer->phone }}</td>
+                    <td class="text-right dark:text-gray-200">{{ $memorizer->name }}</td>
                     <td class="{{ $statusClass }}">{{ $status }}</td>
                     <td class="{{ $scoreColor }}">
                         {{ $attendance?->score ?? '—' }}
@@ -88,7 +97,7 @@
         </tbody>
     </table>
 
-    <div class="mt-4 text-sm text-gray-600 text-left">
+    <div class="mt-4 text-sm text-gray-600 dark:text-gray-400 text-left">
         تم إنشاء هذا التقرير في {{ now()->format('H:i') }}
     </div>
-</div> 
+</div>

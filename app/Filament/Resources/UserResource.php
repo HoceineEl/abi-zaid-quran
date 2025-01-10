@@ -52,6 +52,7 @@ class UserResource extends Resource
                     ->options([
                         'admin' => 'مشرف',
                         'follower' => 'متابع',
+                        'teacher' => 'أستاذ بالجمعية',
                     ])
                     ->required(),
                 TextInput::make('password')
@@ -76,6 +77,7 @@ class UserResource extends Resource
                         return match ($state) {
                             'admin' => 'مشرف',
                             'follower' => 'متابع',
+                            'teacher' => 'أستاذ بالجمعية',
                         };
                     }),
                 TextColumn::make('phone')->label('الهاتف'),

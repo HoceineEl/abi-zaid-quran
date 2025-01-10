@@ -31,7 +31,11 @@ class Memorizer extends Model
 
     protected $appends = [
         'number',
+        'has_payment_this_month',
+        'has_reminder_this_month'
     ];
+
+    protected $with = ['payments', 'reminderLogs'];
 
     public function number(): Attribute
     {
@@ -62,15 +66,18 @@ class Memorizer extends Model
     public function hasPaymentThisMonth(): Attribute
     {
         return Attribute::make(
-            get: fn() => $this->payments()->whereMonth('payment_date', now()->month)->exists() || $this->exempt,
+            get: fn() => $this->payments->where('payment_date', '>=', now()->startOfMonth())
+                ->where('payment_date', '<=', now()->endOfMonth())
+                ->isNotEmpty() || $this->exempt,
         );
     }
-
 
     public function hasReminderThisMonth(): Attribute
     {
         return Attribute::make(
-            get: fn() => $this->reminderLogs()->whereMonth('created_at', now()->month)->exists(),
+            get: fn() => $this->reminderLogs->where('created_at', '>=', now()->startOfMonth())
+                ->where('created_at', '<=', now()->endOfMonth())
+                ->isNotEmpty(),
         );
     }
 
@@ -120,8 +127,7 @@ class Memorizer extends Model
         return $this->belongsTo(Guardian::class);
     }
 
-
-    public function getMessageToSend($messageType): string
+    public function getMessageToSend(string $messageType): string
     {
         $studentPrefix = $this->sex === 'male' ? "الطالب" : "الطالبة";
         $arabicDate = now()->translatedFormat('l j F Y');
@@ -174,6 +180,26 @@ class Memorizer extends Model
     public function todayAttendance(): HasOne
     {
         return $this->hasOne(Attendance::class)->whereDate('date', now()->toDateString());
+    }
+
+    public function attendancesWithTroubles(): Attribute
+    {
+        return Attribute::make(
+            get: fn() => $this->attendances()->where(function ($query) {
+                $query->where('notes', '!=', null)
+                    ->orWhere('notes', '!=', [])
+                    ->orWhere('custom_note', '!=', null);
+            })->get(),
+        );
+    }
+
+    public function hasTroubles(): HasMany
+    {
+        return $this->hasMany(Attendance::class)->where(function ($query) {
+            $query->where('notes', '!=', null)
+                ->orWhere('notes', '!=', [])
+                ->orWhere('custom_note', '!=', null);
+        });
     }
 
     public function troubles(): Attribute

@@ -36,6 +36,7 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Mpdf\Mpdf;
 
 class MemorizersRelationManager extends RelationManager
@@ -132,9 +133,10 @@ class MemorizersRelationManager extends RelationManager
                         return $query
                             ->when(
                                 $data['trouble_threshold'],
-                                fn(Builder $query, $threshold): Builder => $query->whereHas('attendances', function (Builder $query) use ($threshold) {
-                                    $query->whereJsonLength('notes', '>=', $threshold);
-                                })
+                                fn(Builder $query, $threshold): Builder => $query->whereHas('hasTroubles', function (Builder $query) use ($threshold) {
+                                    $query->select(DB::raw('COUNT(*) as trouble_count'))
+                                        ->having('trouble_count', '>=', $threshold);
+                                }, '>=', 1)
                             );
                     })
                     ->indicator('الأكثر مشاكل'),
@@ -150,7 +152,7 @@ class MemorizersRelationManager extends RelationManager
                     self::getTroublesAction(),
                     Action::make('send_whatsapp')
                         ->label('إرسال رسالة واتساب')
-                        ->icon('heroicon-o-chat-bubble-left-ellipsis')
+                        ->icon('tabler-brand-whatsapp')
                         ->color('success')
                         ->hidden(function (Memorizer $record) {
                             return !$record->phone && !$record->guardian?->phone;
@@ -342,7 +344,7 @@ class MemorizersRelationManager extends RelationManager
                         ->label('المبلغ')
                         ->helperText('المبلغ المستحق للشهر')
                         ->numeric()
-                        ->default(fn() => $record->group->price ?? 100),
+                        ->default(fn() => $record->group->price ?? 70),
                 ];
             })
             ->action(function (Memorizer $record, array $data) {
@@ -391,15 +393,13 @@ class MemorizersRelationManager extends RelationManager
             ->modalCancelAction(false)
             ->infolist(fn(Memorizer $record) => self::getTroublesInfolist($record));
     }
-
     public static function getTroublesInfolist(Memorizer $record): Infolist
     {
         return Infolist::make()
             ->record($record)
             ->schema([
-                RepeatableEntry::make('attendances')
+                RepeatableEntry::make('attendancesWithTroubles')
                     ->label('قائمة المشاكل')
-                    ->hidden(fn($state) => empty($state))
                     ->schema([
                         TextEntry::make('date')
                             ->label('التاريخ')
@@ -407,7 +407,18 @@ class MemorizersRelationManager extends RelationManager
                         TextEntry::make('notes')
                             ->label('المشاكل')
                             ->badge()
-                            ->getStateUsing(fn($record) =>  array_map(fn($note) => \App\Enums\Troubles::tryFrom($note)?->getLabel(), $record->notes)),
+                            ->hidden(fn($state) => empty($state))
+                            ->getStateUsing(fn($record) => $record->notes ? array_map(fn($note) => \App\Enums\Troubles::tryFrom($note)?->getLabel(), $record->notes) : []),
+                        TextEntry::make('score')
+                            ->label('التقييم')
+                            ->badge()
+                            ->hidden(fn($state) => empty($state))
+                            ->getStateUsing(fn($record) => $record->score),
+                        TextEntry::make('custom_note')
+                            ->label('التعليق الخاص')
+                            ->badge()
+                            ->hidden(fn($state) => empty($state))
+                            ->getStateUsing(fn($record) => $record->custom_note),
                     ])
                     ->grid(2)
             ]);

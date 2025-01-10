@@ -24,6 +24,9 @@ class ReminderLogsRelationManager extends RelationManager
                     ->label('النوع')
                     ->formatStateUsing(fn(string $state): string => match ($state) {
                         'payment' => 'تذكير بالدفع',
+                        'absence' => 'تذكير بالغياب',
+                        'trouble' => 'تذكير بالشغب',
+                        'no_memorization' => 'تذكير بعدم الحفظ',
                         default => $state,
                     }),
                 Tables\Columns\TextColumn::make('phone_number')

@@ -25,8 +25,10 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Support\Enums\ActionSize;
 use App\Models\User;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Actions\Action as ActionsAction;
 use Filament\Tables\Actions\ActionGroup;
+use Illuminate\Support\Str;
 
 class AttendanceTeacherRelationManager extends RelationManager
 {
@@ -80,7 +82,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                             return 'danger';
                         }
 
-                        return 'warning';
+                        return '';
                     })
                     ->iconPosition('before')
                     ->sortable()
@@ -111,7 +113,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                 Action::make('send_whatsapp')
                     ->tooltip('إرسال رسالة واتساب')
                     ->label('')
-                    ->icon('heroicon-o-chat-bubble-left-ellipsis')
+                    ->icon('tabler-message-circle')
                     ->color('success')
                     ->hidden(function (Memorizer $record) {
                         return !$record->phone;
@@ -130,7 +132,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                                 'no_memorization' => 'info'
                             ])
                             ->icons([
-                                'absence' => 'heroicon-o-exclamation-circle',
+                                'absence' => 'heroicon-o-x-circle',
                                 'trouble' => 'heroicon-o-exclamation-circle',
                                 'no_memorization' => 'heroicon-o-exclamation-circle'
                             ])
@@ -176,10 +178,17 @@ class AttendanceTeacherRelationManager extends RelationManager
                             return;
                         }
                         $phone = preg_replace('/[^0-9]/', '', $phone);
-                        $message = urlencode($data['message']);
-                        $whatsappUrl = "https://wa.me/{$phone}?text={$message}";
+                        $originalMessage = $data['message'];
+                        $message = urlencode($originalMessage);
+                        $whatsappUrl = route('memorizer-' . $data['message_type'] . '-whatsapp', [$phone, $message, $record->id]);
+                        $record->reminderLogs()->create([
+                            'type' => $data['message_type'],
+                            'phone_number' => $phone,
+                            'message' => Str::of($originalMessage)->limit(50),
+                            'is_parent' => true,
+                        ]);
 
-                        return redirect()->away($whatsappUrl);
+                        return redirect($whatsappUrl);
                     }),
 
                 Action::make('mark_present')
@@ -222,11 +231,18 @@ class AttendanceTeacherRelationManager extends RelationManager
 
                         return $attendance;
                     })
+                    ->form([
+                        Toggle::make('send_message')
+                            ->label('إرسال الرسالة الي الولي ؟')
+                            ->helperText('سيتم تحويلك تلقائياً لإرسال رسالة غياب للولي. هذا مهم للتوثيق وحمايتك في حال حدوث أي مشكلة , نسأل الله السلامة.')
+                            ->default(true),
+                    ])
                     ->requiresConfirmation()
-                    ->modalHeading('تأكيد تسجيل الغياب')
-                    ->modalDescription('هل أنت متأكد من تسجيل الغياب لهذا الطالب؟')
-                    ->modalSubmitActionLabel('تأكيد الغياب')
-                    ->action(function (Memorizer $record) {
+                    ->modalDescription('')
+                    ->modalHeading('تأكيد تسجيل الغياب وإرسال الرسالة الي الولي')
+                    ->modalSubmitActionLabel('تأكيد والإرسال')
+                    ->action(function (Memorizer $record, array $data) {
+                        // Create or update attendance record
                         Attendance::updateOrCreate(
                             [
                                 'memorizer_id' => $record->id,
@@ -241,6 +257,35 @@ class AttendanceTeacherRelationManager extends RelationManager
                             ->title('تم تسجيل الغياب بنجاح')
                             ->success()
                             ->send();
+
+                        // Only proceed with WhatsApp message if enabled
+                        if (!$data['send_message']) {
+                            return;
+                        }
+
+                        // Get phone number, checking both student and guardian
+                        $phone = $record->phone ?? $record->guardian?->phone;
+                        if (!$phone) {
+                            return;
+                        }
+
+                        // Clean phone number and prepare message
+                        $phone = preg_replace('/[^0-9]/', '', $phone);
+                        $originalMessage = $record->getMessageToSend('absence');
+                        $message = urlencode($originalMessage);
+
+                        // Use route helper for consistent URL generation
+                        $whatsappUrl = "https://wa.me/{$phone}?text={$message}";
+
+                        $record->reminderLogs()->create([
+                            'type' => 'absence',
+                            'phone_number' => $record->phone,
+                            'is_parent' => true,
+                            'message' => Str::of($originalMessage)->limit(50),
+                        ]);
+
+
+                        return redirect()->away($whatsappUrl);
                     }),
 
                 Action::make('clear_attendance')
@@ -408,7 +453,7 @@ class AttendanceTeacherRelationManager extends RelationManager
             ], ActionsPosition::BeforeColumns)
             ->headerActions([
                 Action::make('export_table')
-                    ->label('تصدير كصورة')
+                    ->label('إرسال التقرير اليومي')
                     ->icon('heroicon-o-share')
                     ->size(ActionSize::Small)
                     ->color('success')

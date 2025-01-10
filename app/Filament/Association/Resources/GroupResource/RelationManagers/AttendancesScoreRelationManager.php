@@ -190,7 +190,7 @@ class AttendancesScoreRelationManager extends RelationManager
             ->recordUrl(null)
             ->headerActions([
                 Action::make('export_table')
-                    ->label('تصدير كصورة')
+                    ->label('إرسال التقرير اليومي')
                     ->icon('heroicon-o-share')
                     ->size(ActionSize::Small)
                     ->color('success')

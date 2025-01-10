@@ -39,7 +39,7 @@ class MemorizerImporter extends Importer
                     if (isset($options['group_id'])) {
                         $record->memo_group_id = $options['group_id'];
                     } else {
-                        $group = MemoGroup::firstOrCreate(['name' => $state], ['price' => 100, 'teacher_id' => $options['teacher_id'] ?? null ]);
+                        $group = MemoGroup::firstOrCreate(['name' => $state], ['price' => 70, 'teacher_id' => $options['teacher_id'] ?? null ]);
                         $record->memo_group_id = $group->id;
                     }
                 }),

@@ -44,7 +44,7 @@ class GroupResource extends Resource
                 TextInput::make('price')
                     ->label('الثمن الذي تدفع هذه المجموعة ')
                     ->suffix('درهم')
-                    ->default(100)
+                    ->default(70)
                     ->required(),
                 Select::make('teacher_id')
                     ->options(fn() => User::where('role', 'teacher')->pluck('name', 'id'))
