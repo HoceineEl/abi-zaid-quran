@@ -16,14 +16,17 @@ class Dashboard extends BaseDashboard
     {
         return [
             FilterAction::make()
+                ->modalDescription('اختر الفترة المراد عرض الإحصائيات عليها')
                 ->form([
                     DatePicker::make('date_from')
                         ->label('من تاريخ')
-                        ->default(now()->startOfYear())
+                        ->default(now()->startOfMonth())
+                        ->helperText('سيتم عرض جميع الإحصائيات والبيانات بدءاً من هذا التاريخ')
                         ->required(),
                     DatePicker::make('date_to')
                         ->label('إلى تاريخ')
-                        ->default(now())
+                        ->default(now()->endOfMonth())
+                        ->helperText('سيتم عرض جميع الإحصائيات والبيانات حتى نهاية هذا التاريخ')
                         ->required(),
                 ]),
         ];

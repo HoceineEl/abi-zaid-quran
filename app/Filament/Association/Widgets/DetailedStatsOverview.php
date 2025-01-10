@@ -71,7 +71,7 @@ class DetailedStatsOverview extends BaseWidget
 
     protected function getPaymentsStat(Carbon $startDate, Carbon $endDate): Stat
     {
-        $totalPayments = Payment::whereBetween('payment_date', [$startDate, $endDate])
+        $totalPayments = Payment::whereBetween('created_at', [$startDate, $endDate])
             ->sum('amount');
 
         return Stat::make('إجمالي المدفوعات', number_format($totalPayments) . ' درهم')

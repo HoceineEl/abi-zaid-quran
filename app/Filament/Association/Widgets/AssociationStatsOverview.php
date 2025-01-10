@@ -28,7 +28,7 @@ class AssociationStatsOverview extends BaseWidget
         $uniqueStudents = Memorizer::whereBetween('created_at', [$dateFrom, $dateTo])->count();
 
         // Calculate total payments for the filtered period
-        $periodPayments = Payment::whereBetween('payment_date', [$dateFrom, $dateTo])
+        $periodPayments = Payment::whereBetween('created_at', [$dateFrom, $dateTo])
             ->sum('amount');
 
         // Get students who haven't paid in the filtered period
