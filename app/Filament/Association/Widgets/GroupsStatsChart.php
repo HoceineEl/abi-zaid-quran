@@ -5,10 +5,13 @@ namespace App\Filament\Association\Widgets;
 use App\Models\MemoGroup;
 use App\Models\Memorizer;
 use Filament\Widgets\ChartWidget;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Illuminate\Support\Facades\DB;
 
 class GroupsStatsChart extends ChartWidget
 {
+    use InteractsWithPageFilters;
+
     protected static ?string $heading = 'إحصائيات المجموعات';
     protected static ?string $maxHeight = '300px';
     protected static ?string $pollingInterval = '30s';
@@ -26,9 +29,16 @@ class GroupsStatsChart extends ChartWidget
 
     protected function getData(): array
     {
+        $dateFrom = $this->filters['date_from'] ?? now()->startOfYear();
+        $dateTo = $this->filters['date_to'] ?? now();
+
         $query = MemoGroup::query()
-            ->select('memo_groups.name', DB::raw('COUNT(memorizers.id) as students_count'))
-            ->leftJoin('memorizers', 'memo_groups.id', '=', 'memorizers.memo_group_id')
+            ->select('memo_groups.name')
+            ->selectRaw('COUNT(DISTINCT memorizers.id) as students_count')
+            ->leftJoin('memorizers', function ($join) use ($dateFrom, $dateTo) {
+                $join->on('memo_groups.id', '=', 'memorizers.memo_group_id')
+                    ->whereBetween('memorizers.created_at', [$dateFrom, $dateTo]);
+            })
             ->groupBy('memo_groups.id', 'memo_groups.name');
 
         if ($this->filter === 'active') {

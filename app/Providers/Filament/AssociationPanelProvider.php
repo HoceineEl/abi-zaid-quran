@@ -27,6 +27,10 @@ use App\Filament\Association\Widgets\AttendanceChart;
 use App\Filament\Association\Widgets\GroupsStatsChart;
 use App\Filament\Association\Widgets\PaymentsChart;
 use App\Filament\Pages\CustomLogin;
+use App\Filament\Association\Widgets\MemorizationProgressStats;
+use App\Filament\Association\Widgets\AttendanceTrendsWidget;
+use App\Filament\Association\Widgets\ComprehensivePerformanceWidget;
+use App\Filament\Pages\Dashboard;
 
 class AssociationPanelProvider extends PanelProvider
 {
@@ -54,7 +58,7 @@ class AssociationPanelProvider extends PanelProvider
             ->discoverResources(in: app_path('Filament/Association/Resources'), for: 'App\\Filament\\Association\\Resources')
             ->discoverPages(in: app_path('Filament/Association/Pages'), for: 'App\\Filament\\Association\\Pages')
             ->pages([
-                Pages\Dashboard::class,
+                Dashboard::class,
                 ScanAttendance::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Association/Widgets'), for: 'App\\Filament\\Association\\Widgets')
@@ -64,6 +68,9 @@ class AssociationPanelProvider extends PanelProvider
                 AttendanceChart::class,
                 GroupsStatsChart::class,
                 PaymentsChart::class,
+                MemorizationProgressStats::class,
+                AttendanceTrendsWidget::class,
+                ComprehensivePerformanceWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,

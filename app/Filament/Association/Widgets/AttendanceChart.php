@@ -4,48 +4,44 @@ namespace App\Filament\Association\Widgets;
 
 use App\Models\Attendance;
 use Filament\Widgets\ChartWidget;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Illuminate\Support\Carbon;
 
 class AttendanceChart extends ChartWidget
 {
-    protected static ?string $heading = 'إحصائيات الحضور الأسبوعية';
+    use InteractsWithPageFilters;
+
+    protected static ?string $heading = 'إحصائيات الحضور';
     protected static ?string $maxHeight = '300px';
     protected static ?string $pollingInterval = '30s';
 
     protected function getData(): array
     {
-        $data = collect(range(6, 0))->map(function ($daysAgo) {
-            $date = now()->subDays($daysAgo);
+        $dateFrom = $this->filters['date_from'] ?? now()->startOfYear();
+        $dateTo = $this->filters['date_to'] ?? now();
 
-            $present = Attendance::whereDate('date', $date)
-                ->whereNotNull('check_in_time')
-                ->count();
-
-            $absent = Attendance::whereDate('date', $date)
-                ->whereNull('check_in_time')
-                ->count();
-
-            return [
-                'date' => $date->format('Y-m-d'),
-                'حضور' => $present,
-                'غياب' => $absent,
-            ];
-        });
+        $data = Attendance::whereBetween('date', [$dateFrom, $dateTo])
+            ->selectRaw('DATE(date) as date')
+            ->selectRaw('COUNT(CASE WHEN check_in_time IS NOT NULL THEN 1 END) as present')
+            ->selectRaw('COUNT(CASE WHEN check_in_time IS NULL THEN 1 END) as absent')
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get();
 
         return [
             'datasets' => [
                 [
                     'label' => 'حضور',
-                    'data' => $data->pluck('حضور'),
+                    'data' => $data->pluck('present'),
                     'backgroundColor' => '#10B981',
                 ],
                 [
                     'label' => 'غياب',
-                    'data' => $data->pluck('غياب'),
+                    'data' => $data->pluck('absent'),
                     'backgroundColor' => '#EF4444',
                 ],
             ],
-            'labels' => $data->map(fn($item) => Carbon::parse($item['date'])->format('d/m')),
+            'labels' => $data->map(fn($item) => Carbon::parse($item->date)->format('d/m')),
         ];
     }
 
