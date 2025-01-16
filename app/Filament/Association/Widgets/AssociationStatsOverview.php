@@ -12,6 +12,7 @@ use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Illuminate\Support\Number;
+use Illuminate\Support\Carbon;
 
 class AssociationStatsOverview extends BaseWidget
 {
@@ -21,8 +22,8 @@ class AssociationStatsOverview extends BaseWidget
 
     protected function getStats(): array
     {
-        $dateFrom = $this->filters['date_from'] ?? now()->startOfYear();
-        $dateTo = $this->filters['date_to'] ?? now();
+        $dateFrom = $this->filters['date_from'] ? Carbon::parse($this->filters['date_from']) : now()->startOfYear();
+        $dateTo = $this->filters['date_to'] ? Carbon::parse($this->filters['date_to']) : now();
 
         // حساب عدد الطلاب الفريدين حسب رقم الهاتف
         $uniqueStudents = Memorizer::whereBetween('created_at', [$dateFrom, $dateTo])->count();
