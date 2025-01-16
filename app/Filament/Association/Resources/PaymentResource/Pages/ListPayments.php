@@ -17,21 +17,7 @@ class ListPayments extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make()->modal()->slideOver()
-                ->action(function (array $data) {
-                    foreach ($data['payments'] as $payment) {
-                        \App\Models\Payment::create([
-                            'memorizer_id' => $data['memorizer_id'],
-                            'amount' => $payment['paid_amount_month'],
-                            'payment_date' => $payment['payment_date']
-                        ]);
-                    }
-
-                    Notification::make()
-                        ->title('تم إضافة الدفعات بنجاح')
-                        ->success()
-                        ->send();
-                }),
+            Actions\CreateAction::make(),
         ];
     }
 }

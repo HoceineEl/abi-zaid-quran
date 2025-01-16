@@ -145,7 +145,6 @@ class StudentsRelationManager extends RelationManager
                         ->icon('heroicon-o-document-duplicate')
                         ->color('primary')
                         ->visible(fn() => auth()->user()->isAdministrator())
-
                         ->form([
                             Forms\Components\Select::make('source_group_id')
                                 ->label('المجموعة المصدر')
@@ -345,8 +344,8 @@ class StudentsRelationManager extends RelationManager
                                 ->label('الرسالة')
                                 ->required(),
                         ])
+                        // ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
                         ->hidden()
-                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
                         ->action(function (array $data) {
                             $students = $this->selectedTableRecords;
                             foreach ($students as $studentId) {
@@ -357,9 +356,10 @@ class StudentsRelationManager extends RelationManager
                         })->deselectRecordsAfterCompletion(),
                 ]),
                 BulkAction::make('set_as_absent')
-                    ->label('تسجيلهم كغائبين')
+                    ->label('غائبين')
                     ->color('danger')
                     ->icon('heroicon-o-exclamation-circle')
+                    ->requiresConfirmation()
                     ->modalSubmitActionLabel('تأكيد')
                     ->form([
                         Toggle::make('send_msg')
@@ -402,11 +402,12 @@ class StudentsRelationManager extends RelationManager
                         }
                     })->deselectRecordsAfterCompletion(),
                 Tables\Actions\BulkAction::make('set_prgress')
-                    ->label('تسجيلهم كحاضرين')
+                    ->label('حاضرين')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
                     ->deselectRecordsAfterCompletion()
+                    ->requiresConfirmation()
                     ->action(function () {
                         $students = $this->selectedTableRecords;
                         foreach ($students as $studentId) {
@@ -483,7 +484,6 @@ class StudentsRelationManager extends RelationManager
             $number = '+' . $number;
         }
 
-
         // Get gender-specific terms
         $genderTerms = $record->sex === 'female' ? [
             'prefix' => 'أختي الطالبة',
@@ -495,40 +495,47 @@ class StudentsRelationManager extends RelationManager
             'verb' => 'تنس'
         ];
         $name = trim($record->name);
-        // Default message template
-        $message = <<<MSG
+
+        // Message for onsite groups
+        if ($ownerRecord->is_onsite) {
+            $message = <<<MSG
+السلام عليكم ورحمة الله وبركاته
+{$genderTerms['prefix']} {$name}،
+لقد تم تسجيل غيابكم عن حصة القرآن الحضورية، نرجوا أن يكون المانع خيرا، كما ونحثّكم على أن تحرصوا على الحضور الحصة المقبلة إن شاء الله. زادكم الله حرصا
+MSG;
+        } else {
+            // Default message template
+            $message = <<<MSG
 السلام عليكم ورحمة الله وبركاته
 *{$genderTerms['prefix']} {$name}*،
 نذكر{$genderTerms['pronoun']} بالواجب المقرر اليوم، لعل المانع خير. 🌟
 MSG;
 
-        // Customize message based on group type
-        if (str_contains($ownerRecord->type, 'سرد')) {
-            $message = <<<MSG
+            // Customize message based on group type
+            if (str_contains($ownerRecord->type, 'سرد')) {
+                $message = <<<MSG
 السلام عليكم ورحمة الله وبركاته
 *{$genderTerms['prefix']} {$name}*،
 نذكر{$genderTerms['pronoun']} بواجب اليوم من السرد ✨
 المرجو المبادرة قبل غلق المجموعة
 _زاد{$genderTerms['pronoun']} الله حرصا_ 🌙
 MSG;
-        } elseif (str_contains($ownerRecord->type, 'مراجعة') || str_contains($ownerRecord->name, 'مراجعة')) {
-            $message = <<<MSG
+            } elseif (str_contains($ownerRecord->type, 'مراجعة') || str_contains($ownerRecord->name, 'مراجعة')) {
+                $message = <<<MSG
 السلام عليكم ورحمة الله وبركاته
 *{$genderTerms['prefix']} {$name}*
 لا {$genderTerms['verb']} الاستظهار في مجموعة المراجعة ✨
 _بارك الله في{$genderTerms['pronoun']} وزاد{$genderTerms['pronoun']} حرصا_ 🌟
 MSG;
-        } elseif (str_contains($ownerRecord->type, 'عتصام') || str_contains($ownerRecord->name, 'عتصام')) {
-            $message = <<<MSG
+            } elseif (str_contains($ownerRecord->type, 'عتصام') || str_contains($ownerRecord->name, 'عتصام')) {
+                $message = <<<MSG
 السلام عليكم ورحمة الله وبركاته
 *{$genderTerms['prefix']} {$name}*
 لا {$genderTerms['verb']} استظهار واجب الاعتصام
 _بارك الله في{$genderTerms['pronoun']} وزاد{$genderTerms['pronoun']} حرصا_ 🌟
 MSG;
+            }
         }
-
-
-
 
         $url = route('whatsapp', ['number' => $number, 'message' => $message, 'student_id' => $record->id]);
         // Open in new tab

@@ -13,6 +13,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Actions\ActionGroup;
@@ -64,7 +65,7 @@ class PaymentResource extends Resource
                                 }
                                 return $equalShare;
                             })
-                         
+
                             ->required(),
                         DatePicker::make('payment_date')
                             ->default(function ($get) {
@@ -115,7 +116,24 @@ class PaymentResource extends Resource
 
             ->actions([
                 ActionGroup::make([
-                    Tables\Actions\EditAction::make()->modal()->slideOver(),
+                    Tables\Actions\EditAction::make()
+                        ->slideOver()
+                        ->form([
+                            TextInput::make('amount')
+                                ->label('المبلغ')
+                                ->required(),
+                            DatePicker::make('payment_date')
+                                ->label('تاريخ الدفع')
+                                ->required(),
+
+                        ])
+                        ->action(function (Payment $record, array $data) {
+                            $record->update($data);
+                            Notification::make()
+                                ->title('تم تعديل الدفعة بنجاح')
+                                ->success()
+                                ->send();
+                        }),
                     Tables\Actions\DeleteAction::make(),
                 ])
             ])
@@ -137,6 +155,7 @@ class PaymentResource extends Resource
     {
         return [
             'index' => Pages\ListPayments::route('/'),
+            'create' => Pages\CreatePayment::route('/create'),
         ];
     }
 }

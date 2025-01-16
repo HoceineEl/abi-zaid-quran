@@ -27,6 +27,7 @@ use Filament\Support\Enums\ActionSize;
 use App\Models\User;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Actions\Action as ActionsAction;
+use Filament\Support\Colors\Color;
 use Filament\Tables\Actions\ActionGroup;
 use Illuminate\Support\Str;
 
@@ -110,87 +111,7 @@ class AttendanceTeacherRelationManager extends RelationManager
 
             ])
             ->actions([
-                Action::make('send_whatsapp')
-                    ->tooltip('إرسال رسالة واتساب')
-                    ->label('')
-                    ->icon('tabler-message-circle')
-                    ->color('success')
-                    ->hidden(function (Memorizer $record) {
-                        return !$record->phone;
-                    })
-                    ->form([
-                        ToggleButtons::make('message_type')
-                            ->label('نوع الرسالة')
-                            ->options([
-                                'absence' => 'رسالة غياب',
-                                'trouble' => 'رسالة شغب',
-                                'no_memorization' => 'رسالة عدم الحفظ'
-                            ])
-                            ->colors([
-                                'absence' => 'danger',
-                                'trouble' => 'warning',
-                                'no_memorization' => 'info'
-                            ])
-                            ->icons([
-                                'absence' => 'heroicon-o-x-circle',
-                                'trouble' => 'heroicon-o-exclamation-circle',
-                                'no_memorization' => 'heroicon-o-exclamation-circle'
-                            ])
-                            ->default(function (Memorizer $record) {
-                                $attendance = $record->attendances()
-                                    ->whereDate('date', now()->toDateString())
-                                    ->first();
-
-                                if (!$attendance) {
-                                    return 'absence';
-                                }
-
-                                if ($attendance->notes) {
-                                    return 'trouble';
-                                }
-
-                                if (
-                                    $attendance->score === MemorizationScore::NOT_MEMORIZED->value ||
-                                    $attendance->score === MemorizationScore::NOT_REVIEWED->value
-                                ) {
-                                    return 'no_memorization';
-                                }
-
-                                return 'absence';
-                            })
-                            ->reactive()
-                            ->afterStateUpdated(function ($set, $record, $state) {
-                                $set('message', $record->getMessageToSend($state));
-                            })
-                            ->inline()
-                            ->required(),
-                        Textarea::make('message')
-                            ->label('نص الرسالة')
-                            ->afterStateHydrated(function ($set, $record, $get) {
-                                $state = $get('message_type');
-                                $set('message', $record->getMessageToSend($state));
-                            })
-                            ->rows(8),
-                    ])
-                    ->action(function (Memorizer $record, array $data) {
-                        $phone = $record->phone;
-                        if (!$phone) {
-                            return;
-                        }
-                        $phone = preg_replace('/[^0-9]/', '', $phone);
-                        $originalMessage = $data['message'];
-                        $message = urlencode($originalMessage);
-                        $whatsappUrl = route('memorizer-' . $data['message_type'] . '-whatsapp', [$phone, $message, $record->id]);
-                        $record->reminderLogs()->create([
-                            'type' => $data['message_type'],
-                            'phone_number' => $phone,
-                            'message' => Str::of($originalMessage)->limit(50),
-                            'is_parent' => true,
-                        ]);
-
-                        return redirect($whatsappUrl);
-                    }),
-
+                self::sendNotificationAction(),
                 Action::make('mark_present')
                     ->tooltip('تسجيل حضور')
                     ->label('')
@@ -480,7 +401,7 @@ class AttendanceTeacherRelationManager extends RelationManager
             ])
             ->bulkActions([
                 BulkAction::make('mark_attendance_bulk')
-                    ->label('تسجيل الحضور للمحددين')
+                    ->label('تسجيل الحضور')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->action(function ($livewire) {
@@ -502,7 +423,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                     }),
 
                 BulkAction::make('mark_absence_bulk')
-                    ->label('تسجيل الغياب للمحددين')
+                    ->label('تسجيل الغياب')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
                     ->requiresConfirmation()
@@ -531,7 +452,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                     }),
 
                 BulkAction::make('send_whatsapp_bulk')
-                    ->label('إرسال رسائل واتساب للمحددين')
+                    ->label('إرسال رسائل واتساب')
                     ->icon('heroicon-o-chat-bubble-left-ellipsis')
                     ->color('success')
                     ->hidden()
@@ -584,5 +505,100 @@ class AttendanceTeacherRelationManager extends RelationManager
                     }),
             ])
             ->paginated(false);
+    }
+
+    public static function sendNotificationAction() : Action
+    {
+        return      Action::make('send_whatsapp')
+            ->tooltip('إرسال رسالة واتساب')
+            ->label('')
+            ->icon('tabler-message-circle')
+            ->color('success')
+            ->hidden(function (Memorizer $record) {
+                return !$record->phone;
+            })
+            ->form([
+                ToggleButtons::make('message_type')
+                    ->label('نوع الرسالة')
+                    ->options([
+                        'absence' => 'رسالة غياب',
+                        'trouble' => 'رسالة شغب',
+                        'no_memorization' => 'رسالة عدم الحفظ',
+                        'late' => 'رسالة تأخر'
+                    ])
+                    ->colors([
+                        'absence' => 'danger',
+                        'trouble' => 'warning',
+                        'no_memorization' => 'info',
+                        'late' => Color::Orange
+                    ])
+                    ->icons([
+                        'absence' => 'heroicon-o-x-circle',
+                        'trouble' => 'heroicon-o-exclamation-circle',
+                        'no_memorization' => 'heroicon-o-exclamation-circle',
+                        'late' => 'heroicon-o-clock'
+                    ])
+                    ->default(function (Memorizer $record) {
+                        $attendance = $record->attendances()
+                            ->whereDate('date', now()->toDateString())
+                            ->first();
+
+                        if (!$attendance) {
+                            return 'absence';
+                        }
+
+                        if ($attendance->notes) {
+                            // Check if any of the notes indicate lateness
+                            $notes = is_array($attendance->notes) ? $attendance->notes : [];
+                            if (in_array(Troubles::TARDY->value, $notes)) {
+                                return 'late';
+                            }
+                            return 'trouble';
+                        }
+
+                        if (
+                            $attendance->score === MemorizationScore::NOT_MEMORIZED->value
+                        ) {
+                            return 'no_memorization';
+                        }
+
+                        if ($attendance->check_in_time) {
+                            return 'late';
+                        }
+
+                        return 'absence';
+                    })
+                    ->reactive()
+                    ->afterStateUpdated(function ($set, Memorizer $record, $state) {
+                        $set('message', $record->getMessageToSend($state));
+                    })
+                    ->inline()
+                    ->required(),
+                Textarea::make('message')
+                    ->label('نص الرسالة')
+                    ->afterStateHydrated(function ($set, $record, $get) {
+                        $state = $get('message_type');
+                        $set('message', $record->getMessageToSend($state));
+                    })
+                    ->rows(8),
+            ])
+            ->action(function (Memorizer $record, array $data) {
+                $phone = $record->phone;
+                if (!$phone) {
+                    return;
+                }
+                $phone = preg_replace('/[^0-9]/', '', $phone);
+                $originalMessage = $data['message'];
+                $message = urlencode($originalMessage);
+                $whatsappUrl = route('memorizer-' . $data['message_type'] . '-whatsapp', [$phone, $message, $record->id]);
+                $record->reminderLogs()->create([
+                    'type' => $data['message_type'],
+                    'phone_number' => $phone,
+                    'message' => Str::of($originalMessage)->limit(50),
+                    'is_parent' => true,
+                ]);
+
+                return redirect($whatsappUrl);
+            });
     }
 }

@@ -150,79 +150,9 @@ class MemorizersRelationManager extends RelationManager
                     Tables\Actions\DeleteAction::make(),
                     Tables\Actions\ViewAction::make(),
                     self::getTroublesAction(),
-                    Action::make('send_whatsapp')
-                        ->label('إرسال رسالة واتساب')
-                        ->icon('tabler-brand-whatsapp')
-                        ->color('success')
-                        ->hidden(function (Memorizer $record) {
-                            return !$record->phone && !$record->guardian?->phone;
-                        })
-                        ->form([
-                            ToggleButtons::make('message_type')
-                                ->label('نوع الرسالة')
-                                ->options([
-                                    'absence' => 'رسالة غياب',
-                                    'trouble' => 'رسالة شغب',
-                                    'no_memorization' => 'رسالة عدم الحفظ'
-                                ])
-                                ->colors([
-                                    'absence' => 'danger',
-                                    'trouble' => 'warning',
-                                    'no_memorization' => 'info'
-                                ])
-                                ->icons([
-                                    'absence' => 'heroicon-o-exclamation-circle',
-                                    'trouble' => 'heroicon-o-exclamation-circle',
-                                    'no_memorization' => 'heroicon-o-exclamation-circle'
-                                ])
-                                ->default(function (Memorizer $record) {
-                                    $attendance = $record->attendances()
-                                        ->whereDate('date', now()->toDateString())
-                                        ->first();
-
-                                    if (!$attendance) {
-                                        return 'absence';
-                                    }
-
-                                    if ($attendance->notes) {
-                                        return 'trouble';
-                                    }
-
-                                    if (
-                                        $attendance->score === MemorizationScore::NOT_MEMORIZED->value ||
-                                        $attendance->score === MemorizationScore::NOT_REVIEWED->value
-                                    ) {
-                                        return 'no_memorization';
-                                    }
-
-                                    return 'absence';
-                                })
-                                ->reactive()
-                                ->afterStateUpdated(function ($set, $record, $state) {
-                                    $set('message', $record->getMessageToSend($state));
-                                })
-                                ->inline()
-                                ->required(),
-                            Textarea::make('message')
-                                ->label('نص الرسالة')
-                                ->afterStateHydrated(function ($set, $record, $get) {
-                                    $state = $get('message_type');
-                                    $set('message', $record->getMessageToSend($state));
-                                })
-                                ->rows(8),
-                        ])
-                        ->action(function (Memorizer $record, array $data) {
-                            $phone = $record->phone ?? $record->guardian?->phone;
-                            if (!$phone) {
-                                return;
-                            }
-
-                            $phone = preg_replace('/[^0-9]/', '', $phone);
-                            $message = urlencode($data['message']);
-                            $whatsappUrl = "https://wa.me/{$phone}?text={$message}";
-
-                            return redirect()->away($whatsappUrl);
-                        }),
+                    AttendanceTeacherRelationManager::sendNotificationAction()
+                    ->label('إرسال رسالة واتساب'),
+                            
                 ]),
 
                 Action::make('send_payment_reminders')

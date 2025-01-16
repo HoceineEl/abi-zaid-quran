@@ -73,6 +73,9 @@ class GroupResource extends Resource
                             ->label('نوع المجموعة')
                             ->reactive()
                             ->hidden(fn(Get $get) => $get('custom_type') === false),
+                        Toggle::make('is_onsite')
+                            ->label('مجموعة الحصة الحضورية')
+                            ->default(false),
                     ]),
             ])
             ->disabled(! Core::canChange());
