@@ -9,7 +9,7 @@ use Illuminate\Support\Carbon;
 
 class AttendanceTrendsWidget extends ChartWidget
 {
-    protected static ?string $heading = 'اتجاهات الحضور الأسبوعية';
+    protected static ?string $heading = 'تحليل نسب الحضور الأسبوعية';
     protected static ?string $maxHeight = '300px';
     protected static ?string $pollingInterval = '300s';
 
@@ -29,15 +29,15 @@ class AttendanceTrendsWidget extends ChartWidget
 
             return [
                 'date' => $date->format('Y-m-d'),
-                'نسبة الحضور' => $attendanceRate,
+                'معدل الحضور' => $attendanceRate,
             ];
         });
 
         return [
             'datasets' => [
                 [
-                    'label' => 'نسبة الحضور',
-                    'data' => $data->pluck('نسبة الحضور'),
+                    'label' => 'معدل الحضور اليومي',
+                    'data' => $data->pluck('معدل الحضور'),
                     'fill' => true,
                     'backgroundColor' => 'rgba(16, 185, 129, 0.1)',
                     'borderColor' => '#10B981',

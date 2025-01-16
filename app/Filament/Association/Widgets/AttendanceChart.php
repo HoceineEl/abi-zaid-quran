@@ -11,7 +11,7 @@ class AttendanceChart extends ChartWidget
 {
     use InteractsWithPageFilters;
 
-    protected static ?string $heading = 'إحصائيات الحضور';
+    protected static ?string $heading = 'سجل الحضور والغياب';
     protected static ?string $maxHeight = '300px';
     protected static ?string $pollingInterval = '30s';
 
@@ -31,12 +31,12 @@ class AttendanceChart extends ChartWidget
         return [
             'datasets' => [
                 [
-                    'label' => 'حضور',
+                    'label' => 'الطلاب الحاضرون',
                     'data' => $data->pluck('present'),
                     'backgroundColor' => '#10B981',
                 ],
                 [
-                    'label' => 'غياب',
+                    'label' => 'الطلاب الغائبون',
                     'data' => $data->pluck('absent'),
                     'backgroundColor' => '#EF4444',
                 ],

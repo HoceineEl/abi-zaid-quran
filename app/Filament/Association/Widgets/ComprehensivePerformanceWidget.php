@@ -50,20 +50,20 @@ class ComprehensivePerformanceWidget extends BaseWidget
         $overallScore = round(($consistencyRate + $paymentCompliance) / 2, 1);
 
         return [
-            Stat::make('معدل الانتظام', $consistencyRate . '%')
-                ->description('نسبة الطلاب المنتظمين في الحضور')
+            Stat::make('معدل الانضباط في الحضور', $consistencyRate . '%')
+                ->description('نسبة الطلاب المنتظمين في الحضور خلال الفترة المحددة')
                 ->descriptionIcon('heroicon-m-clock')
                 ->chart([60, 70, 80, $consistencyRate])
                 ->color('success'),
 
-            Stat::make('نسبة الالتزام بالدفع', $paymentCompliance . '%')
-                ->description('نسبة الطلاب الملتزمين بالدفع')
+            Stat::make('معدل الالتزام بالرسوم', $paymentCompliance . '%')
+                ->description('نسبة الطلاب المسددين للرسوم في موعدها')
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->chart([75, 80, 85, $paymentCompliance])
                 ->color('warning'),
 
-            Stat::make('الأداء العام', $overallScore . '%')
-                ->description('تقييم شامل للأداء العام للمدرسة')
+            Stat::make('التقييم الشامل', $overallScore . '%')
+                ->description('التقييم العام لأداء المؤسسة التعليمية')
                 ->descriptionIcon('heroicon-m-chart-bar')
                 ->chart([70, 75, 80, $overallScore])
                 ->color('info'),

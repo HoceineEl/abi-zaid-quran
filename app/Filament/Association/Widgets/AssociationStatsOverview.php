@@ -25,20 +25,20 @@ class AssociationStatsOverview extends BaseWidget
         $dateFrom = $this->filters['date_from'] ? Carbon::parse($this->filters['date_from']) : now()->startOfYear();
         $dateTo = $this->filters['date_to'] ? Carbon::parse($this->filters['date_to']) : now();
 
-        // حساب عدد الطلاب الفريدين حسب رقم الهاتف
+        // إحصاء عدد الطلاب المسجلين في الفترة المحددة
         $uniqueStudents = Memorizer::whereBetween('created_at', [$dateFrom, $dateTo])->count();
 
-        // حساب إجمالي المدفوعات للفترة المحددة
+        // حساب إجمالي الرسوم المحصّلة في الفترة المحددة
         $periodPayments = Payment::whereBetween('created_at', [$dateFrom, $dateTo])
             ->sum('amount');
 
-        // حساب عدد الطلاب الذين لم يسددوا الرسوم في الفترة المحددة
+        // إحصاء الطلاب غير المسددين للرسوم في الفترة المحددة
         $unpaidStudents = Memorizer::whereDoesntHave('payments', function ($query) use ($dateFrom, $dateTo) {
             $query->whereBetween('payment_date', [$dateFrom, $dateTo]);
         })->where('exempt', false)->count();
 
         return [
-            Stat::make('العدد الإجمالي للطلاب', Number::format($uniqueStudents))
+            Stat::make('إحصائيات الطلاب المسجلين', Number::format($uniqueStudents))
                 ->description(sprintf(
                     'الطلاب: %d | الطالبات: %d',
                     Memorizer::whereHas('teacher', function ($query) {
@@ -52,55 +52,56 @@ class AssociationStatsOverview extends BaseWidget
                 ->chart([7, 3, 4, 5, 6, $uniqueStudents])
                 ->color('success'),
 
-            Stat::make('المدفوعات من ' . $dateFrom->format('d/m/Y') . ' حتى ' . $dateTo->format('d/m/Y'), Number::format($periodPayments) . ' درهم')
-                ->description(new \Illuminate\Support\HtmlString(sprintf('
+            Stat::make('الرسوم المحصّلة للفترة من ' . $dateFrom->format('d/m/Y') . ' إلى ' . $dateTo->format('d/m/Y'), Number::format($periodPayments) . ' درهم')
+                ->description(new \Illuminate\Support\HtmlString(sprintf(
+                    '
                     <div class="flex flex-col gap-1">
-                        <div>الطلاب المسددون: %d</div>
-                        <div>الطالبات المسددات: %d</div>
-                        <div>الطلاب غير المسددين: %d</div>
-                        <div>الطالبات غير المسددات: %d</div>
+                        <div>الطلاب المسدّدون للرسوم: %d</div>
+                        <div>الطالبات المسدّدات للرسوم: %d</div>
+                        <div>الطلاب غير المسدّدين للرسوم: %d</div>
+                        <div>الطالبات غير المسدّدات للرسوم: %d</div>
                     </div>',
                     Memorizer::whereHas('payments', function ($query) use ($dateFrom, $dateTo) {
                         $query->whereBetween('payment_date', [$dateFrom, $dateTo]);
                     })
-                    ->whereHas('teacher', function ($query) {
-                        $query->where('sex', 'male');
-                    })
-                    ->where('exempt', false)
-                    ->count(),
+                        ->whereHas('teacher', function ($query) {
+                            $query->where('sex', 'male');
+                        })
+                        ->where('exempt', false)
+                        ->count(),
                     Memorizer::whereHas('payments', function ($query) use ($dateFrom, $dateTo) {
                         $query->whereBetween('payment_date', [$dateFrom, $dateTo]);
                     })
-                    ->whereHas('teacher', function ($query) {
-                        $query->where('sex', 'female');
-                    })
-                    ->where('exempt', false)
-                    ->count(),
+                        ->whereHas('teacher', function ($query) {
+                            $query->where('sex', 'female');
+                        })
+                        ->where('exempt', false)
+                        ->count(),
                     Memorizer::whereDoesntHave('payments', function ($query) use ($dateFrom, $dateTo) {
                         $query->whereBetween('payment_date', [$dateFrom, $dateTo]);
                     })
-                    ->whereHas('teacher', function ($query) {
-                        $query->where('sex', 'male');
-                    })
-                    ->where('exempt', false)
-                    ->count(),
+                        ->whereHas('teacher', function ($query) {
+                            $query->where('sex', 'male');
+                        })
+                        ->where('exempt', false)
+                        ->count(),
                     Memorizer::whereDoesntHave('payments', function ($query) use ($dateFrom, $dateTo) {
                         $query->whereBetween('payment_date', [$dateFrom, $dateTo]);
                     })
-                    ->whereHas('teacher', function ($query) {
-                        $query->where('sex', 'female');
-                    })
-                    ->where('exempt', false)
-                    ->count()
+                        ->whereHas('teacher', function ($query) {
+                            $query->where('sex', 'female');
+                        })
+                        ->where('exempt', false)
+                        ->count()
                 )))
                 ->chart([2000, 1500, 2400, $periodPayments])
                 ->color('warning'),
 
-            Stat::make('عدد الحلقات النشطة', MemoGroup::count())
+            Stat::make('عدد الحلقات القرآنية النشطة', MemoGroup::count())
                 ->descriptionIcon('heroicon-m-user-group')
                 ->color('success'),
 
-            Stat::make('عدد المعلمين والمعلمات', User::where('role', 'teacher')->count())
+            Stat::make('إحصائيات هيئة التدريس', User::where('role', 'teacher')->count())
                 ->description(sprintf(
                     'المعلمون: %d | المعلمات: %d',
                     User::where('role', 'teacher')->where('sex', 'male')->count(),

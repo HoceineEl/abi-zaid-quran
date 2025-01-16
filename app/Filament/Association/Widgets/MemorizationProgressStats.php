@@ -45,20 +45,20 @@ class MemorizationProgressStats extends BaseWidget
             END'));
 
         return [
-            Stat::make('الطلاب المتميزون', $excellentCount)
-                ->description('عدد الطلاب الذين حصلوا على تقدير ممتاز')
+            Stat::make('الطلاب المتفوقون في الحفظ', $excellentCount)
+                ->description('عدد الطلاب الحاصلين على تقدير ممتاز في الحفظ')
                 ->descriptionIcon('heroicon-m-star')
                 ->chart([2, 4, 6, 8, 10, $excellentCount])
                 ->color('success'),
 
-            Stat::make('متوسط التقييم', number_format($averageScore ?? 0, 1) . ' / 5')
-                ->description('متوسط تقييم جميع الطلاب للفترة')
+            Stat::make('المعدل العام للحفظ', number_format($averageScore ?? 0, 1) . ' / 5')
+                ->description('متوسط تقييم مستوى الحفظ لجميع الطلاب')
                 ->descriptionIcon('heroicon-m-academic-cap')
                 ->chart([3, 3.5, 4, $averageScore])
                 ->color('info'),
 
-            Stat::make('يحتاجون للمتابعة', $needsImprovementCount)
-                ->description('عدد الطلاب الذين يحتاجون لدعم إضافي')
+            Stat::make('الطلاب المحتاجون للدعم', $needsImprovementCount)
+                ->description('عدد الطلاب المحتاجين لتحسين مستوى الحفظ')
                 ->descriptionIcon('heroicon-m-exclamation-circle')
                 ->chart([5, 4, 3, $needsImprovementCount])
                 ->color('danger'),

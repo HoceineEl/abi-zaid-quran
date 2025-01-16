@@ -12,7 +12,7 @@ class GroupsStatsChart extends ChartWidget
 {
     use InteractsWithPageFilters;
 
-    protected static ?string $heading = 'إحصائيات المجموعات';
+    protected static ?string $heading = 'إحصائيات الحلقات القرآنية';
     protected static ?string $maxHeight = '300px';
     protected static ?string $pollingInterval = '30s';
 
@@ -21,9 +21,9 @@ class GroupsStatsChart extends ChartWidget
     protected function getFilters(): ?array
     {
         return [
-            'all' => 'جميع المجموعات',
-            'active' => 'المجموعات النشطة',
-            'inactive' => 'المجموعات غير النشطة',
+            'all' => 'جميع الحلقات القرآنية',
+            'active' => 'الحلقات القرآنية النشطة',
+            'inactive' => 'الحلقات القرآنية غير النشطة',
         ];
     }
 
@@ -52,7 +52,7 @@ class GroupsStatsChart extends ChartWidget
         return [
             'datasets' => [
                 [
-                    'label' => 'عدد الطلاب',
+                    'label' => 'عدد الطلاب في كل حلقة',
                     'data' => $groups->pluck('students_count')->toArray(),
                     'backgroundColor' => '#10B981',
                 ],

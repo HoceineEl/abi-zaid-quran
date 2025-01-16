@@ -11,7 +11,7 @@ class PaymentsChart extends ChartWidget
 {
     use InteractsWithPageFilters;
 
-    protected static ?string $heading = 'إحصائيات المدفوعات';
+    protected static ?string $heading = 'تحليل الرسوم المحصّلة';
     protected static ?string $maxHeight = '300px';
 
     protected function getData(): array
@@ -28,7 +28,7 @@ class PaymentsChart extends ChartWidget
         return [
             'datasets' => [
                 [
-                    'label' => 'المدفوعات اليومية (درهم)',
+                    'label' => 'الرسوم المحصّلة يومياً (درهم)',
                     'data' => $payments->pluck('total')->toArray(),
                     'borderColor' => '#10B981',
                     'fill' => 'start',

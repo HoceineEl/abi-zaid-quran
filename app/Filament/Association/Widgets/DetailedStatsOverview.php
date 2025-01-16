@@ -23,10 +23,10 @@ class DetailedStatsOverview extends BaseWidget
     {
         return [
             DatePicker::make('fromDate')
-                ->label('من تاريخ')
+                ->label('تاريخ البداية')
                 ->default(now()->startOfMonth()),
             DatePicker::make('toDate')
-                ->label('إلى تاريخ')
+                ->label('تاريخ النهاية')
                 ->default(now()->endOfMonth()),
         ];
     }
@@ -51,7 +51,6 @@ class DetailedStatsOverview extends BaseWidget
 
     protected function getAverageAttendanceStat(Carbon $startDate, Carbon $endDate): Stat
     {
-        // Fixed query to properly calculate daily attendance
         $attendanceData = DB::table('attendances')
             ->whereBetween('date', [$startDate, $endDate])
             ->whereNotNull('check_in_time')
@@ -62,8 +61,8 @@ class DetailedStatsOverview extends BaseWidget
         $avgAttendance = $attendanceData->average('daily_count') ?? 0;
         $attendanceTrend = $attendanceData->pluck('daily_count')->toArray();
 
-        return Stat::make('متوسط الحضور اليومي', number_format($avgAttendance, 1))
-            ->description('متوسط عدد الطلاب الحاضرين يومياً')
+        return Stat::make('معدل الحضور اليومي', number_format($avgAttendance, 1))
+            ->description('متوسط عدد الطلاب الحاضرين في اليوم الواحد')
             ->descriptionIcon('heroicon-m-user-group')
             ->chart($attendanceTrend)
             ->color('success');
@@ -74,22 +73,21 @@ class DetailedStatsOverview extends BaseWidget
         $totalPayments = Payment::whereBetween('created_at', [$startDate, $endDate])
             ->sum('amount');
 
-        return Stat::make('إجمالي المدفوعات', number_format($totalPayments) . ' درهم')
-            ->description('خلال الفترة المحددة')
+        return Stat::make('إجمالي الرسوم المحصّلة', number_format($totalPayments) . ' درهم')
+            ->description('مجموع الرسوم المحصّلة خلال الفترة المحددة')
             ->descriptionIcon('heroicon-m-banknotes')
             ->color('warning');
     }
 
     protected function getAveragePaymentStat(Carbon $startDate, Carbon $endDate): Stat
     {
-        // Calculate average payment per student with proper error handling
         $avgPayment = Payment::whereBetween('payment_date', [$startDate, $endDate])
             ->select(DB::raw('COALESCE(AVG(amount), 0) as avg_amount'))
             ->first()
             ->avg_amount ?? 0;
 
-        return Stat::make('متوسط الدفع للطالب', number_format($avgPayment, 1) . ' درهم')
-            ->description('متوسط المبلغ المدفوع لكل طالب')
+        return Stat::make('متوسط الرسوم للطالب الواحد', number_format($avgPayment, 1) . ' درهم')
+            ->description('معدل الرسوم المدفوعة للطالب خلال الفترة المحددة')
             ->descriptionIcon('heroicon-m-currency-dollar')
             ->color('info');
     }
@@ -100,8 +98,8 @@ class DetailedStatsOverview extends BaseWidget
         $exemptStudents = Memorizer::where('exempt', true)->count();
         $exemptPercentage = $totalStudents > 0 ? round(($exemptStudents / $totalStudents) * 100, 1) : 0;
 
-        return Stat::make('نسبة الطلاب المعفيين', $exemptPercentage . '%')
-            ->description(sprintf('%d طالب معفي من أصل %d', $exemptStudents, $totalStudents))
+        return Stat::make('نسبة الإعفاء من الرسوم', $exemptPercentage . '%')
+            ->description(sprintf('عدد المعفيين: %d طالباً من إجمالي %d', $exemptStudents, $totalStudents))
             ->descriptionIcon('heroicon-m-shield-check')
             ->color('primary');
     }
@@ -109,8 +107,8 @@ class DetailedStatsOverview extends BaseWidget
     protected function getFallbackStats(): array
     {
         return [
-            Stat::make('خطأ في البيانات', '---')
-                ->description('حدث خطأ أثناء تحميل الإحصائيات')
+            Stat::make('تعذر جلب البيانات', '---')
+                ->description('حدث خطأ أثناء استرجاع الإحصائيات')
                 ->color('danger'),
         ];
     }
