@@ -22,8 +22,8 @@ class AssociationStatsOverview extends BaseWidget
 
     protected function getStats(): array
     {
-        $dateFrom = $this->filters['date_from'] ? Carbon::parse($this->filters['date_from']) : now()->startOfYear();
-        $dateTo = $this->filters['date_to'] ? Carbon::parse($this->filters['date_to']) : now();
+        $dateFrom = isset($this->filters['date_from']) ? Carbon::parse($this->filters['date_from']) : now()->startOfYear();
+        $dateTo = isset($this->filters['date_to']) ? Carbon::parse($this->filters['date_to']) : now();
 
         // إحصاء عدد الطلاب المسجلين في الفترة المحددة
         $uniqueStudents = Memorizer::whereBetween('created_at', [$dateFrom, $dateTo])->count();
@@ -56,10 +56,10 @@ class AssociationStatsOverview extends BaseWidget
                 ->description(new \Illuminate\Support\HtmlString(sprintf(
                     '
                     <div class="flex flex-col gap-1">
-                        <div>الطلاب المسدّدون للرسوم: %d</div>
-                        <div>الطالبات المسدّدات للرسوم: %d</div>
-                        <div>الطلاب غير المسدّدين للرسوم: %d</div>
-                        <div>الطالبات غير المسدّدات للرسوم: %d</div>
+                        <div class="text-info-500">الطلاب المسدّدون للرسوم: %d</div>
+                        <div class="text-warning-500">الطالبات المسدّدات للرسوم: %d</div>
+                        <div class="text-info-500">الطلاب غير المسدّدين للرسوم: %d</div>
+                        <div class="text-warning-500">الطالبات غير المسدّدات للرسوم: %d</div>
                     </div>',
                     Memorizer::whereHas('payments', function ($query) use ($dateFrom, $dateTo) {
                         $query->whereBetween('payment_date', [$dateFrom, $dateTo]);
@@ -94,8 +94,7 @@ class AssociationStatsOverview extends BaseWidget
                         ->where('exempt', false)
                         ->count()
                 )))
-                ->chart([2000, 1500, 2400, $periodPayments])
-                ->color('warning'),
+                ->chart([2000, 1500, 2400, $periodPayments]),
 
             Stat::make('عدد الحلقات القرآنية النشطة', MemoGroup::count())
                 ->descriptionIcon('heroicon-m-user-group')
