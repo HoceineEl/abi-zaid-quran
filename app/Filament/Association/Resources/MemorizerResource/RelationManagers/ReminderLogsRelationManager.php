@@ -27,8 +27,26 @@ class ReminderLogsRelationManager extends RelationManager
                         'absence' => 'تذكير بالغياب',
                         'trouble' => 'تذكير بالشغب',
                         'no_memorization' => 'تذكير بعدم الحفظ',
+                        'late' => 'تذكير بالتأخر',
                         default => $state,
+                    })
+                    ->icon(fn(string $state): string => match ($state) {
+                        'payment' => 'heroicon-o-credit-card',
+                        'absence' => 'heroicon-o-user-group',
+                        'trouble' => 'heroicon-o-user-group',
+                        'no_memorization' => 'heroicon-o-user-group',
+                        'late' => 'heroicon-o-user-group',
+                        default => 'heroicon-o-user-group',
+                    })
+                    ->color(fn(string $state): string => match ($state) {
+                        'payment' => 'success',
+                        'absence' => 'danger',
+                        'trouble' => 'warning',
+                        'no_memorization' => 'info',
+                        'late' => 'warning',
+                        default => 'secondary',
                     }),
+
                 Tables\Columns\TextColumn::make('phone_number')
                     ->label('رقم الهاتف')
                     ->extraCellAttributes(['dir' => 'ltr'])
