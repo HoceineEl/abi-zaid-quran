@@ -56,10 +56,10 @@ class AssociationStatsOverview extends BaseWidget
                 ->description(new \Illuminate\Support\HtmlString(sprintf(
                     '
                     <div class="flex flex-col gap-1">
-                        <div class="text-info-500">الطلاب المسدّدون للرسوم: %d</div>
-                        <div class="text-warning-500">الطالبات المسدّدات للرسوم: %d</div>
-                        <div class="text-info-500">الطلاب غير المسدّدين للرسوم: %d</div>
-                        <div class="text-warning-500">الطالبات غير المسدّدات للرسوم: %d</div>
+                        <div class="text-info-500">الطلاب المسددون: %d</div>
+                        <div class="text-warning-500">الطالبات المسددات: %d</div>
+                        <div class="text-info-500">الطلاب غير المسددين: %d</div>
+                        <div class="text-warning-500">الطالبات غير المسددات: %d</div>
                     </div>',
                     Memorizer::whereHas('payments', function ($query) use ($dateFrom, $dateTo) {
                         $query->whereBetween('payment_date', [$dateFrom, $dateTo]);

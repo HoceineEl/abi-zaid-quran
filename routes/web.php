@@ -88,4 +88,18 @@ Route::middleware('auth')->group(function () {
         $message = urlencode($message);
         return view('redirects.whatsapp', ['number' => $number, 'message' => $message]);
     })->name('memorizer-no_memorization-whatsapp');
+    Route::get('/send-late-whatsapp/{number}/{message}/{memorizer_id}', function ($number, $message, $memorizer_id) {
+        $message = urldecode($message);
+        $memorizer = Memorizer::find($memorizer_id);
+        // Create reminder log
+        $memorizer->reminderLogs()->create([
+            'type' => 'late',
+            'phone_number' => $number,
+            'message' => '',
+            'is_parent' => true,
+        ]);
+
+        $message = urlencode($message);
+        return view('redirects.whatsapp', ['number' => $number, 'message' => $message]);
+    })->name('memorizer-late-whatsapp');
 });
