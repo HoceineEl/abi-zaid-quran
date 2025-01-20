@@ -303,7 +303,7 @@ class StudentsRelationManager extends RelationManager
                         }),
                 ]),
                 Action::make('export_table')
-                    ->label('تصدير كصورة')
+                    ->label('إرسال التقرير')
                     ->icon('heroicon-o-share')
                     ->size(ActionSize::Small)
                     ->color('success')

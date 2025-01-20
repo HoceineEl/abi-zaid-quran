@@ -133,78 +133,102 @@
             font-size: 0.9rem;
         }
     </style>
-    
-    <table class="export-table">
-        <thead>
-            <tr>
-                <th class="index-column">#</th>
-                <th>الاسم</th>
-                <th>رقم الهاتف</th>
-                <th>المدينة</th>
-                <th>الحالة اليوم</th>
-                <th>ملاحظات</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach ($students as $index => $student)
-                @php
-                    $todayProgress = $student->progresses->where('date', now()->format('Y-m-d'))->first();
-                    $consecutiveAbsentDays = $student->consecutiveAbsentDays;
-                    $status = $todayProgress?->status ?? 'pending';
-                @endphp
-                <tr>
-                    <td class="index-column">{{ $index + 1 }}</td>
-                    <td>
-                        <span class="student-name {{ $status }}">{{ $student->name }}</span>
-                    </td>
-                    <td>
-                        <span class="phone-number {{ $consecutiveAbsentDays > 0 ? 'consecutive-absent' : '' }}">
-                            {{ $student->phone }}
-                        </span>
-                    </td>
-                    <td>
-                        <span class="city">{{ $student->city }}</span>
-                    </td>
-                    <td>
-                        <span class="status-{{ $status }} status-icon">
-                            @if (!$todayProgress)
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                                </svg>
-                            @else
-                                @switch($todayProgress->status)
-                                    @case('memorized')
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                                        </svg>
-                                    @break
 
-                                    @case('absent')
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                    @break
+    @php
+        $chunks = $students->chunk(25);
+        $totalPages = $chunks->count();
+    @endphp
 
-                                    @default
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+    @foreach ($chunks as $pageIndex => $studentsChunk)
+        <div class="table-page" data-page="{{ $pageIndex + 1 }}">
+            <table class="export-table">
+                <thead>
+                    <tr>
+                        <th class="index-column">#</th>
+                        <th>الاسم</th>
+                        <th>رقم الهاتف</th>
+                        <th>المدينة</th>
+                        <th>الحالة اليوم</th>
+                        <th>ملاحظات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($studentsChunk as $index => $student)
+                        @php
+                            $todayProgress = $student->progresses->where('date', now()->format('Y-m-d'))->first();
+                            $consecutiveAbsentDays = $student->consecutiveAbsentDays;
+                            $status = $todayProgress?->status ?? 'pending';
+                        @endphp
+                        <tr>
+                            <td class="index-column">{{ $pageIndex * 25 + $index + 1 }}</td>
+                            <td>
+                                <span class="student-name {{ $status }}">{{ $student->name }}</span>
+                            </td>
+                            <td>
+                                <span class="phone-number {{ $consecutiveAbsentDays > 0 ? 'consecutive-absent' : '' }}">
+                                    {{ $student->phone }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="city">{{ $student->city }}</span>
+                            </td>
+                            <td>
+                                <span class="status-{{ $status }} status-icon">
+                                    @if (!$todayProgress)
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                            stroke-width="2" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                                         </svg>
-                                @endswitch
-                            @endif
-                        </span>
-                    </td>
-                    <td>
-                        @if ($student->needsCall())
-                            <span class="consecutive-absent">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.25 9.75v-4.5m0 4.5h4.5m-4.5 0l6-6m-3 18c-8.284 0-15-6.716-15-15V4.5A2.25 2.25 0 014.5 2.25h1.372c.516 0 .966.351 1.091.852l1.106 4.423c.11.44-.054.902-.417 1.173l-1.293.97a1.062 1.062 0 00-.38 1.21 12.035 12.035 0 007.143 7.143c.441.162.928-.004 1.21-.38l.97-1.293c.271-.363.734-.527 1.173-.417l4.423 1.106c.5.125.852.575.852 1.091V19.5a2.25 2.25 0 01-2.25 2.25h-2.25z" />
-                                </svg>
-                                <small>(يحتاج اتصال)</small>
-                            </span>
-                        @endif
-                    </td>
-                </tr>
-            @endforeach
-        </tbody>
-    </table>
+                                    @else
+                                        @switch($todayProgress->status)
+                                            @case('memorized')
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                    stroke-width="2" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                                </svg>
+                                            @break
+
+                                            @case('absent')
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                    stroke-width="2" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                            @break
+
+                                            @default
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                    stroke-width="2" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                                </svg>
+                                        @endswitch
+                                    @endif
+                                </span>
+                            </td>
+                            <td>
+                                @if ($student->needsCall())
+                                    <span class="consecutive-absent">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                            stroke-width="2" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M14.25 9.75v-4.5m0 4.5h4.5m-4.5 0l6-6m-3 18c-8.284 0-15-6.716-15-15V4.5A2.25 2.25 0 014.5 2.25h1.372c.516 0 .966.351 1.091.852l1.106 4.423c.11.44-.054.902-.417 1.173l-1.293.97a1.062 1.062 0 00-.38 1.21 12.035 12.035 0 007.143 7.143c.441.162.928-.004 1.21-.38l.97-1.293c.271-.363.734-.527 1.173-.417l4.423 1.106c.5.125.852.575.852 1.091V19.5a2.25 2.25 0 01-2.25 2.25h-2.25z" />
+                                        </svg>
+                                        <small>(يحتاج اتصال)</small>
+                                    </span>
+                                @endif
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+            @if ($totalPages > 1)
+                <div class="page-indicator" style="text-align: center; margin-top: 10px; color: var(--text-secondary);">
+                    صفحة {{ $pageIndex + 1 }} من {{ $totalPages }}
+                </div>
+            @endif
+        </div>
+    @endforeach
 </div>
