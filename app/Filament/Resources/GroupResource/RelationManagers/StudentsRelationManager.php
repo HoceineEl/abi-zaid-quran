@@ -139,6 +139,42 @@ class StudentsRelationManager extends RelationManager
             )
             ->paginated(false)
             ->headerActions([
+                Action::make('make_others_as_absent')
+                    ->label('تسجيل البقية كغائبين')
+                    ->color('danger')
+                    ->icon('heroicon-o-exclamation-circle')
+                    ->modalSubmitActionLabel('تأكيد')
+                    ->size(ActionSize::ExtraSmall)
+                    ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
+                    ->action(function () {
+                        $selectedDate = $this->tableFilters['date']['value'] ?? now()->format('Y-m-d');
+                        $this->ownerRecord->students->filter(function ($student) use ($selectedDate) {
+                            return $student->progresses->where('date', $selectedDate)
+                                ->count() == 0 || $student->progresses->where('date', $selectedDate)->where('status', null)->count();
+                        })->each(function ($student) use ($selectedDate) {
+                            if ($student->progresses->where('date', $selectedDate)->count() == 0) {
+                                $student->progresses()->create([
+                                    'date' => $selectedDate,
+                                    'status' => 'absent',
+                                    'comment' => null,
+                                    'page_id' => null,
+                                    'lines_from' => null,
+                                    'lines_to' => null,
+                                ]);
+                            } else {
+                                $student->progresses()->where('date', $selectedDate)
+                                    ->update([
+                                        'status' => 'absent',
+                                        'comment' => null,
+                                    ]);
+                            }
+                        });
+
+                        Notification::make()
+                            ->title('تم تسجيل الغائبين بنجاح')
+                            ->success()
+                            ->send();
+                    }),
                 ActionsActionGroup::make([
                     Action::make('copy_students_from_other_groups')
                         ->label('نسخ الطلاب من مجموعات أخرى')
@@ -201,52 +237,7 @@ class StudentsRelationManager extends RelationManager
                         ->icon('heroicon-o-plus-circle')
                         ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
                         ->slideOver(),
-                    Action::make('make_others_as_absent')
-                        ->label('تسجيل البقية كغائبين')
-                        ->color('danger')
-                        ->icon('heroicon-o-exclamation-circle')
-                        ->form([
-                            Toggle::make('send_msg')
-                                ->label('أكيد إرسال رسالة تذكير')
-                                ->reactive()
-                                ->default(false),
-                            Textarea::make('message')
-                                ->hint('السلام عليكم وإسم الطالب سيتم إضافته تلقائياً في  الرسالة.')
-                                ->reactive()
-                                ->hidden(fn(Get $get) => ! $get('send_msg'))
-                                ->default('لم ترسلوا الواجب المقرر اليوم، لعل المانع خير.')
-                                ->label('الرسالة')
-                                ->required(),
-                        ])
-                        ->modalSubmitActionLabel('تأكيد')
-                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
-                        ->action(function (array $data) {
-                            $selectedDate = $this->tableFilters['date']['value'] ?? now()->format('Y-m-d');
-                            $this->ownerRecord->students->filter(function ($student) use ($selectedDate) {
-                                return $student->progresses->where('date', $selectedDate)
-                                    ->count() == 0 || $student->progresses->where('date', $selectedDate)->where('status', null)->count();
-                            })->each(function ($student) use ($selectedDate, $data) {
-                                if ($student->progresses->where('date', $selectedDate)->count() == 0) {
-                                    $student->progresses()->create([
-                                        'date' => $selectedDate,
-                                        'status' => 'absent',
-                                        'comment' => 'message_sent',
-                                        'page_id' => null,
-                                        'lines_from' => null,
-                                        'lines_to' => null,
-                                    ]);
-                                } else {
-                                    $student->progresses()->where('date', $selectedDate)->update([
-                                        'status' => 'absent',
-                                        'comment' => 'message_sent',
-                                    ]);
-                                }
-                                if ($data['send_msg']) {
-                                    $msg = $data['message'];
-                                    Core::sendSpecifMessageToStudent($student, $msg);
-                                }
-                            });
-                        }),
+
                     Action::make('send_msg_to_others')
                         ->label('إرسال رسالة تذكير للبقية')
                         ->icon('heroicon-o-chat-bubble-oval-left')
@@ -407,7 +398,6 @@ class StudentsRelationManager extends RelationManager
                     ->color('success')
                     ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
                     ->deselectRecordsAfterCompletion()
-                    ->requiresConfirmation()
                     ->action(function () {
                         $students = $this->selectedTableRecords;
                         foreach ($students as $studentId) {

@@ -135,7 +135,7 @@
     </style>
 
     @php
-        $chunks = $students->chunk(25);
+        $chunks = $students->chunk(50);
         $totalPages = $chunks->count();
     @endphp
 
