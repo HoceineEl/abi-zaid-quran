@@ -299,11 +299,10 @@ class StudentsRelationManager extends RelationManager
                     ->size(ActionSize::Small)
                     ->color('success')
                     ->action(function () {
-                        $selectedDate = $this->tableFilters['date']['value'] ?? now()->format('Y-m-d');
 
                         $students = $this->ownerRecord->students()
                             ->withCount(['progresses as attendance_count' => function ($query) {
-                                $query->where('date', now()->format('Y-m-d'))->where('status', 'memorized');
+                                $query->where('date', now()->subMinutes(30)->format('Y-m-d'))->where('status', 'memorized');
                             }])
                             ->orderByDesc('attendance_count')
                             ->get();

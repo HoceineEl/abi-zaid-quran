@@ -31,6 +31,10 @@
 
                     // Format Georgian date
                     const date = new Date();
+                    // Adjust date if it's between midnight and 4 AM
+                    if (date.getHours() >= 0 && date.getHours() < 4) {
+                        date.setDate(date.getDate() - 1);
+                    }
                     const dayNames = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة',
                         'السبت'
                     ];
