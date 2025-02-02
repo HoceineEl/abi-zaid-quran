@@ -1,7 +1,8 @@
 <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow" style="direction: rtl;">
     <div class="text-center mb-4">
         <h2 class="text-xl font-bold text-gray-900 dark:text-white">{{ $group->name }}</h2>
-        <p class="text-gray-600 dark:text-gray-400">تقرير الحضور والتقييم ليوم {{ \Carbon\Carbon::parse($date)->format('Y/m/d') }}</p>
+        <p class="text-gray-600 dark:text-gray-400">تقرير الحضور والتقييم ليوم
+            {{ \Carbon\Carbon::parse($date)->format('Y/m/d') }}</p>
     </div>
 
     <style>
@@ -35,7 +36,8 @@
             color: var(--text-primary);
         }
 
-        th, td {
+        th,
+        td {
             border: 1px solid var(--border-color);
             padding: 12px;
             text-align: center;
@@ -68,23 +70,28 @@
             </tr>
         </thead>
         <tbody>
-            @foreach($memorizers as $index => $memorizer)
+            @foreach ($memorizers as $index => $memorizer)
                 @php
                     $attendance = $memorizer->attendances->first();
                     $status = $attendance ? ($attendance->check_in_time ? 'حاضر' : 'غائب') : 'غائب';
                     $statusClass = $status === 'حاضر' ? 'status-present' : 'status-absent';
-                    
-                    $scoreColor = match($attendance?->score ?? '') {
+
+                    $scoreColor = match ($attendance?->score ?? '') {
                         'ممتاز' => 'text-emerald-600 dark:text-emerald-400',
                         'حسن' => 'text-green-600 dark:text-green-400',
                         'جيد' => 'text-blue-600 dark:text-blue-400',
                         'لا بأس به' => 'text-amber-600 dark:text-amber-400',
                         'لم يحفظ' => 'text-red-600 dark:text-red-400',
                         'لم يستظهر' => 'text-rose-600 dark:text-rose-400',
-                        default => 'text-gray-600 dark:text-gray-400'
+                        default => 'text-gray-600 dark:text-gray-400',
                     };
 
-                    $notes = $attendance?->notes ? implode('، ', array_map(fn($note) => \App\Enums\Troubles::from($note)->getLabel(), $attendance->notes)) : '';
+                    $notes = $attendance?->notes
+                        ? implode(
+                            '، ',
+                            array_map(fn($note) => \App\Enums\Troubles::from($note)->getLabel(), $attendance->notes),
+                        )
+                        : '';
                 @endphp
                 <tr>
                     <td class="text-right dark:text-gray-200">{{ $memorizer->name }}</td>

@@ -147,6 +147,54 @@ class ProgressesRelationManager extends RelationManager
                     ->visible(fn() => Auth::user()->isAdministrator())
                     ->exporter(ProgressExporter::class)
                     ->icon('heroicon-o-arrow-down-tray'),
+                Action::make('export_progress_table')
+                    ->label('تصدير التقرير')
+                    ->icon('heroicon-o-share')
+                    ->color('success')
+                    ->action(function () {
+                        $dateFrom = $this->dateFrom ?? now()->subDays(4)->format('Y-m-d');
+                        $dateTo = $this->dateTo ?? now()->format('Y-m-d');
+
+                        // Get date range
+                        $dateRange = new \DatePeriod(
+                            new \DateTime($dateFrom),
+                            new \DateInterval('P1D'),
+                            (new \DateTime($dateTo))->modify('+1 day')
+                        );
+
+                        // Calculate status per day for each student
+                        $statusPerDay = $this->ownerRecord->students
+                            ->mapWithKeys(function ($student) use ($dateFrom, $dateTo) {
+                                return [
+                                    $student->id => $student->progresses
+                                        ->whereBetween('date', [$dateFrom, $dateTo])
+                                        ->groupBy('date')
+                                        ->map(function ($group) {
+                                            return $group->groupBy('status');
+                                        }),
+                                ];
+                            });
+
+                        $students = $this->ownerRecord->students()
+                            ->withCount(['progresses as attendance_count' => function ($query) use ($dateFrom, $dateTo) {
+                                $query->whereBetween('date', [$dateFrom, $dateTo])
+                                    ->where('status', 'memorized');
+                            }])
+                            ->orderByDesc('attendance_count')
+                            ->get();
+
+                        $html = view('components.progress-export-table', [
+                            'students' => $students,
+                            'group' => $this->ownerRecord,
+                            'dateRange' => $dateRange,
+                            'statusPerDay' => $statusPerDay,
+                        ])->render();
+
+                        $this->dispatch('export-table', [
+                            'html' => $html,
+                            'groupName' => $this->ownerRecord->name
+                        ]);
+                    }),
             ])
             ->filters([
                 Filter::make('date')
