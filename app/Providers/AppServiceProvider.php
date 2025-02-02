@@ -7,6 +7,7 @@ use Filament\Actions\MountableAction;
 use Filament\Pages\Page;
 use Filament\Support\Enums\Alignment;
 use Filament\Support\Facades\FilamentView;
+use Filament\Tables\Columns\Column;
 use Filament\View\PanelsRenderHook;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\ServiceProvider;
@@ -39,6 +40,11 @@ class AppServiceProvider extends ServiceProvider
                 ->modalSubmitActionLabel(__('حفظ'))
             ;
         });
+
+        Column::configureUsing(function (Column $column) {
+            $column->toggleable();
+        });
+
         Model::unguard();
     }
 }

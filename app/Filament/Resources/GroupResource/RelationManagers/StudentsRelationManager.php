@@ -6,6 +6,7 @@ use App\Classes\Core;
 use App\Helpers\ProgressFormHelper;
 use App\Models\Group;
 use App\Models\Student;
+use Carbon\Carbon;
 use Filament\Forms;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
@@ -114,6 +115,11 @@ class StudentsRelationManager extends RelationManager
                         };
                     }),
                 TextColumn::make('city')->label('المدينة'),
+                TextColumn::make('created_at')
+                    ->label('انضم منذ')
+                    ->since()
+                    ->toggleable()
+                    ->toggledHiddenByDefault(),
             ])
 
             ->reorderable('order_no', true)

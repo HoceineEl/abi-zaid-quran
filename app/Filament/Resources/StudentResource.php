@@ -84,6 +84,11 @@ class StudentResource extends Resource
                         };
                     }),
                 TextColumn::make('city')->label('المدينة'),
+                TextColumn::make('created_at')
+                    ->label('انضم منذ')
+                    ->since()
+                    ->toggleable()
+                    ->toggledHiddenByDefault(),
             ])
             ->filters([
                 //
