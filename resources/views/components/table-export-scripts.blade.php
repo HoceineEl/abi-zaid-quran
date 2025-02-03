@@ -22,18 +22,12 @@
                 for (const page of tablePages) {
                     const wrapper = document.createElement('div');
                     wrapper.style.background = isDarkMode ? '#111827' : 'white';
-                    wrapper.style.padding = '40px';
+                    wrapper.style.padding = '20px';
                     wrapper.style.direction = 'rtl';
+                    wrapper.style.width = '800px';
                     wrapper.style.fontFamily = 'Almarai, sans-serif';
                     wrapper.style.color = isDarkMode ? '#f9fafb' : '#1f2937';
                     wrapper.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
-
-                    // Add title with both dates
-                    const title = document.createElement('div');
-                    title.style.textAlign = 'center';
-                    title.style.marginBottom = '30px';
-                    title.style.fontFamily = 'Almarai, sans-serif';
-                    title.style.color = isDarkMode ? '#f9fafb' : '#1f2937';
 
                     // Format Georgian date
                     const date = new Date();
@@ -59,6 +53,13 @@
                         month: 'long',
                         year: 'numeric'
                     }).format(date);
+
+                    // Add title with both dates
+                    const title = document.createElement('div');
+                    title.style.textAlign = 'center';
+                    title.style.marginBottom = '20px';
+                    title.style.fontFamily = 'Almarai, sans-serif';
+                    title.style.color = isDarkMode ? '#f9fafb' : '#1f2937';
 
                     const hijriTitle = document.createElement('h2');
                     const pageNumber = page.getAttribute('data-page');
@@ -92,27 +93,27 @@
                     }
 
                     // Add the current page
-                    const pageClone = page.cloneNode(true);
-                    wrapper.appendChild(pageClone);
+                    wrapper.appendChild(page.cloneNode(true));
 
-                    // Calculate dimensions after adding content
+                    // Add footer
+                    const footer = document.createElement('div');
+                    footer.style.marginTop = '20px';
+                    footer.style.textAlign = 'left';
+                    footer.style.fontSize = '12px';
+                    footer.style.color = isDarkMode ? '#9ca3af' : '#666';
+                    footer.style.fontFamily = 'Almarai, sans-serif';
+                    footer.textContent = `تم التصدير في: ${formattedDate}`;
+                    wrapper.appendChild(footer);
+
                     document.body.appendChild(wrapper);
-                    const contentWidth = pageClone.querySelector('table').offsetWidth;
-                    const contentHeight = wrapper.offsetHeight;
 
-                    // Set wrapper size with some padding
-                    const padding = 80; // 40px on each side
-                    wrapper.style.width = (contentWidth + padding) + 'px';
-                    wrapper.style.minWidth = '800px';
-
-                    // Convert to image with calculated dimensions
+                    // Convert to image
                     const canvas = await html2canvas(wrapper, {
                         scale: 2,
                         backgroundColor: isDarkMode ? '#111827' : '#ffffff',
                         useCORS: true,
                         logging: false,
-                        width: contentWidth + padding,
-                        height: contentHeight,
+                        windowWidth: 800,
                     });
 
                     // Get blob
