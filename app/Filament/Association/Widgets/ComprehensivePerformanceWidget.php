@@ -19,16 +19,16 @@ class ComprehensivePerformanceWidget extends BaseWidget
 
     protected function getStats(): array
     {
-        $dateFrom = $this->filters['date_from'] ?? now()->startOfYear();
-        $dateTo = $this->filters['date_to'] ?? now();
+        $yearStart = now()->startOfYear();
+        $yearEnd = now()->endOfYear();
 
         // Calculate consistency rate
-        $consistentStudents = Memorizer::whereHas('attendances', function ($query) use ($dateFrom, $dateTo) {
+        $consistentStudents = Memorizer::whereHas('attendances', function ($query) use ($yearStart, $yearEnd) {
             $query->select('memorizer_id')
-                ->whereBetween('date', [$dateFrom, $dateTo])
+                ->whereBetween('date', [$yearStart, $yearEnd])
                 ->whereNotNull('check_in_time')
                 ->groupBy('memorizer_id')
-                ->havingRaw('COUNT(DISTINCT date) >= ?', [Carbon::parse($dateTo)->diffInDays($dateFrom) * 0.8]);
+                ->havingRaw('COUNT(DISTINCT date) >= ?', [Carbon::parse($yearEnd)->diffInDays($yearStart) * 0.8]);
         })->count();
 
         $totalStudents = Memorizer::count();
@@ -37,8 +37,8 @@ class ComprehensivePerformanceWidget extends BaseWidget
             : 0;
 
         // Calculate payment compliance
-        $paidStudents = Memorizer::whereHas('payments', function ($query) use ($dateFrom, $dateTo) {
-            $query->whereBetween('payment_date', [$dateFrom, $dateTo]);
+        $paidStudents = Memorizer::whereHas('payments', function ($query) use ($yearStart, $yearEnd) {
+            $query->whereBetween('payment_date', [$yearStart, $yearEnd]);
         })->where('exempt', false)->count();
 
         $nonExemptStudents = Memorizer::where('exempt', false)->count();
@@ -50,20 +50,20 @@ class ComprehensivePerformanceWidget extends BaseWidget
         $overallScore = round(($consistencyRate + $paymentCompliance) / 2, 1);
 
         return [
-            Stat::make('معدل الانضباط في الحضور', $consistencyRate . '%')
-                ->description('نسبة الطلاب المنتظمين في الحضور خلال الفترة المحددة')
+            Stat::make('معدل الانضباط في الحضور للسنة الحالية', $consistencyRate . '%')
+                ->description('نسبة الطلاب المنتظمين في الحضور خلال السنة الحالية')
                 ->descriptionIcon('heroicon-m-clock')
                 ->chart([60, 70, 80, $consistencyRate])
                 ->color('success'),
 
-            Stat::make('معدل الالتزام بالرسوم', $paymentCompliance . '%')
-                ->description('نسبة الطلاب المسددين للرسوم في موعدها')
+            Stat::make('معدل الالتزام بالرسوم للسنة الحالية', $paymentCompliance . '%')
+                ->description('نسبة الطلاب المسددين للرسوم في موعدها خلال السنة الحالية')
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->chart([75, 80, 85, $paymentCompliance])
                 ->color('warning'),
 
-            Stat::make('التقييم الشامل', $overallScore . '%')
-                ->description('التقييم العام لأداء المؤسسة التعليمية')
+            Stat::make('التقييم الشامل للسنة الحالية', $overallScore . '%')
+                ->description('التقييم العام لأداء المؤسسة التعليمية للسنة الحالية')
                 ->descriptionIcon('heroicon-m-chart-bar')
                 ->chart([70, 75, 80, $overallScore])
                 ->color('info'),

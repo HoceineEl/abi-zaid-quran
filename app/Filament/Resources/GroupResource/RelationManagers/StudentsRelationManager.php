@@ -515,6 +515,13 @@ MSG;
 المرجو المبادرة قبل غلق المجموعة
 _زاد{$genderTerms['pronoun']} الله حرصا_ 🌙
 MSG;
+            } elseif (str_contains($ownerRecord->type, 'ثبيت') || str_contains($ownerRecord->name, 'تَّثبيت')) {
+                $message = <<<MSG
+                السلام عليكم ورحمة الله وبركاته
+                *{$genderTerms['prefix']} {$name}*
+                لا {$genderTerms['verb']} الاستظهار في مجموعة التثبيت ✨
+                _بارك الله في{$genderTerms['pronoun']} وزاد{$genderTerms['pronoun']} حرصا_ 🌟
+                MSG;
             } elseif (str_contains($ownerRecord->type, 'مراجعة') || str_contains($ownerRecord->name, 'مراجعة')) {
                 $message = <<<MSG
 السلام عليكم ورحمة الله وبركاته
@@ -529,13 +536,6 @@ MSG;
 لا {$genderTerms['verb']} استظهار واجب الاعتصام
 _بارك الله في{$genderTerms['pronoun']} وزاد{$genderTerms['pronoun']} حرصا_ 🌟
 MSG;
-            } elseif (str_contains($ownerRecord->type, 'تثبيت') || str_contains($ownerRecord->name, 'تَّثبيت')) {
-                $message = <<<MSG
-                السلام عليكم ورحمة الله وبركاته
-                *{$genderTerms['prefix']} {$name}*
-                لا {$genderTerms['verb']} الاستظهار في مجموعة التثبيت ✨
-                _بارك الله في{$genderTerms['pronoun']} وزاد{$genderTerms['pronoun']} حرصا_ 🌟
-                MSG;
             }
         }
 

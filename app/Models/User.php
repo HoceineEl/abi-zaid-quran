@@ -57,11 +57,11 @@ class User extends Authenticatable implements FilamentUser
     public function canAccessPanel(Panel $panel): bool
     {
         if ($panel->getId() === 'association') {
-            return str_ends_with($this->email, '@association.com');
+            return str_ends_with($this->email, '@association.com') && $this->isAdministrator();
         }
         if ($panel->getId() === 'teacher') {
             return $this->isTeacher();
-        }elseif($panel->getId() === 'quran-program'){
+        } elseif ($panel->getId() === 'quran-program') {
             return !$this->isTeacher();
         }
 

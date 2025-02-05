@@ -76,28 +76,21 @@
                     $status = $attendance ? ($attendance->check_in_time ? 'حاضر' : 'غائب') : 'غائب';
                     $statusClass = $status === 'حاضر' ? 'status-present' : 'status-absent';
 
-                    $scoreColor = match ($attendance?->score ?? '') {
-                        'ممتاز' => 'text-emerald-600 dark:text-emerald-400',
-                        'حسن' => 'text-green-600 dark:text-green-400',
-                        'جيد' => 'text-blue-600 dark:text-blue-400',
-                        'لا بأس به' => 'text-amber-600 dark:text-amber-400',
-                        'لم يحفظ' => 'text-red-600 dark:text-red-400',
-                        'لم يستظهر' => 'text-rose-600 dark:text-rose-400',
+                    $scoreColor = match ($attendance?->score ?? null) {
+                        \App\Enums\MemorizationScore::EXCELLENT => 'text-emerald-600 dark:text-emerald-400',
+                        \App\Enums\MemorizationScore::VERY_GOOD => 'text-green-600 dark:text-green-400',
+                        \App\Enums\MemorizationScore::GOOD => 'text-blue-600 dark:text-blue-400',
+                        \App\Enums\MemorizationScore::FAIR => 'text-amber-600 dark:text-amber-400',
+                        \App\Enums\MemorizationScore::POOR => 'text-red-600 dark:text-red-400',
+                        \App\Enums\MemorizationScore::NOT_MEMORIZED => 'text-rose-600 dark:text-rose-400',
                         default => 'text-gray-600 dark:text-gray-400',
                     };
-
-                    $notes = $attendance?->notes
-                        ? implode(
-                            '، ',
-                            array_map(fn($note) => \App\Enums\Troubles::from($note)->getLabel(), $attendance->notes),
-                        )
-                        : '';
                 @endphp
                 <tr>
                     <td class="text-right dark:text-gray-200">{{ $memorizer->name }}</td>
                     <td class="{{ $statusClass }}">{{ $status }}</td>
                     <td class="{{ $scoreColor }}">
-                        {{ $attendance?->score ?? '—' }}
+                        {{ $attendance?->score?->getLabel() ?? '—' }}
                     </td>
                 </tr>
             @endforeach

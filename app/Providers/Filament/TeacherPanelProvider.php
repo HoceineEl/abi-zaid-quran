@@ -39,7 +39,6 @@ class TeacherPanelProvider extends PanelProvider
                 'indigo' => Color::Indigo,
             ])
             ->font('Cairo')
-            ->login(CustomLogin::class)
             ->viteTheme('resources/css/filament/association/theme.css')
             ->defaultThemeMode(ThemeMode::Light)
             ->databaseNotifications()
@@ -68,6 +67,10 @@ class TeacherPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ])
-            ->renderHook(PanelsRenderHook::BODY_START, fn() => view('components.attendance-export-scripts'));
+            ->renderHook(
+                PanelsRenderHook::BODY_START,
+
+                fn() => view('components.attendance-export-scripts')
+            );
     }
 }

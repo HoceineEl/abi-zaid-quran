@@ -26,7 +26,7 @@ class AssociationStatsOverview extends BaseWidget
         $dateTo = isset($this->filters['date_to']) ? Carbon::parse($this->filters['date_to']) : now();
 
         // إحصاء عدد الطلاب المسجلين في الفترة المحددة
-        $uniqueStudents = Memorizer::whereBetween('created_at', [$dateFrom, $dateTo])->count();
+        $uniqueStudents = Memorizer::count();
 
         // حساب إجمالي الرسوم المحصّلة في الفترة المحددة
         $periodPayments = Payment::whereBetween('created_at', [$dateFrom, $dateTo])
@@ -43,10 +43,10 @@ class AssociationStatsOverview extends BaseWidget
                     'الطلاب: %d | الطالبات: %d',
                     Memorizer::whereHas('teacher', function ($query) {
                         $query->where('sex', 'male');
-                    })->whereBetween('created_at', [$dateFrom, $dateTo])->count(),
+                    })->count(),
                     Memorizer::whereHas('teacher', function ($query) {
                         $query->where('sex', 'female');
-                    })->whereBetween('created_at', [$dateFrom, $dateTo])->count()
+                    })->count()
                 ))
                 ->descriptionIcon('heroicon-m-users')
                 ->chart([7, 3, 4, 5, 6, $uniqueStudents])

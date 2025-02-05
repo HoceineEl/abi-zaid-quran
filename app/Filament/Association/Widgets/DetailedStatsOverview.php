@@ -16,26 +16,11 @@ class DetailedStatsOverview extends BaseWidget
 {
     protected static ?string $pollingInterval = '30s';
 
-    public ?string $fromDate = null;
-    public ?string $toDate = null;
-
-    protected function getFormSchema(): array
-    {
-        return [
-            DatePicker::make('fromDate')
-                ->label('تاريخ البداية')
-                ->default(now()->startOfMonth()),
-            DatePicker::make('toDate')
-                ->label('تاريخ النهاية')
-                ->default(now()->endOfMonth()),
-        ];
-    }
-
     protected function getStats(): array
     {
         try {
-            $startDate = $this->fromDate ? Carbon::parse($this->fromDate) : now()->startOfMonth();
-            $endDate = $this->toDate ? Carbon::parse($this->toDate) : now()->endOfMonth();
+            $startDate = now()->startOfYear();
+            $endDate = now()->endOfYear();
 
             return [
                 $this->getAverageAttendanceStat($startDate, $endDate),
@@ -61,8 +46,8 @@ class DetailedStatsOverview extends BaseWidget
         $avgAttendance = $attendanceData->average('daily_count') ?? 0;
         $attendanceTrend = $attendanceData->pluck('daily_count')->toArray();
 
-        return Stat::make('معدل الحضور اليومي', number_format($avgAttendance, 1))
-            ->description('متوسط عدد الطلاب الحاضرين في اليوم الواحد')
+        return Stat::make('معدل الحضور اليومي للسنة', number_format($avgAttendance, 1))
+            ->description('متوسط عدد الطلاب الحاضرين في اليوم الواحد خلال السنة')
             ->descriptionIcon('heroicon-m-user-group')
             ->chart($attendanceTrend)
             ->color('success');
@@ -73,8 +58,8 @@ class DetailedStatsOverview extends BaseWidget
         $totalPayments = Payment::whereBetween('created_at', [$startDate, $endDate])
             ->sum('amount');
 
-        return Stat::make('إجمالي الرسوم المحصّلة', number_format($totalPayments) . ' درهم')
-            ->description('مجموع الرسوم المحصّلة خلال الفترة المحددة')
+        return Stat::make('إجمالي الرسوم المحصّلة للسنة', number_format($totalPayments) . ' درهم')
+            ->description('مجموع الرسوم المحصّلة خلال السنة الحالية')
             ->descriptionIcon('heroicon-m-banknotes')
             ->color('warning');
     }
@@ -86,8 +71,8 @@ class DetailedStatsOverview extends BaseWidget
             ->first()
             ->avg_amount ?? 0;
 
-        return Stat::make('متوسط الرسوم للطالب الواحد', number_format($avgPayment, 1) . ' درهم')
-            ->description('معدل الرسوم المدفوعة للطالب خلال الفترة المحددة')
+        return Stat::make('متوسط الرسوم السنوي للطالب', number_format($avgPayment, 1) . ' درهم')
+            ->description('معدل الرسوم المدفوعة للطالب خلال السنة الحالية')
             ->descriptionIcon('heroicon-m-currency-dollar')
             ->color('info');
     }

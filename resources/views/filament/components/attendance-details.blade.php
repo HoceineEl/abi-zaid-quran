@@ -20,17 +20,17 @@
             <div class="flex items-center gap-2">
                 @php
                     $scoreColor = match($attendance->score) {
-                        'ممتاز' => 'emerald',
-                        'حسن' => 'green',
-                        'جيد' => 'blue',
-                        'لا بأس به' => 'amber',
-                        'لم يحفظ' => 'red',
-                        'لم يستظهر' => 'rose',
+                        \App\Enums\MemorizationScore::EXCELLENT => 'emerald',
+                        \App\Enums\MemorizationScore::VERY_GOOD => 'green',
+                        \App\Enums\MemorizationScore::GOOD => 'blue',
+                        \App\Enums\MemorizationScore::FAIR => 'amber',
+                        \App\Enums\MemorizationScore::POOR => 'red',
+                        \App\Enums\MemorizationScore::NOT_MEMORIZED => 'rose',
                         default => 'gray'
                     };
                 @endphp
                 <span class="inline-flex items-center justify-center px-3 py-1 text-sm font-medium rounded-full bg-{{ $scoreColor }}-100 text-{{ $scoreColor }}-700">
-                    {{ $attendance->score }}
+                    {{ $attendance->score->getLabel() }}
                 </span>
             </div>
         </div>
@@ -77,4 +77,4 @@
             تم تسجيل هذه المعلومات في {{ \Carbon\Carbon::parse($date)->format('Y/m/d') }}
         </div>
     </div>
-</div> 
+</div>

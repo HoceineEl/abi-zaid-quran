@@ -85,11 +85,15 @@ class PaymentResource extends Resource
             ->columns([
                 TextColumn::make('memorizer.name')
                     ->searchable()
+                    ->sortable()
                     ->label('الطالب'),
                 TextColumn::make('amount')
+                    ->numeric()
+                    ->sortable()
                     ->label('المبلغ'),
                 TextColumn::make('payment_date')
                     ->searchable()
+                    ->sortable()
                     ->label('تاريخ الدفع'),
             ])
             ->filters([
@@ -99,6 +103,7 @@ class PaymentResource extends Resource
                             return [$month => now()->month($month)->translatedFormat('F')];
                         });
                     })
+                    ->default(now()->month)
                     ->query(fn(Builder $query, $state) =>  $query->when($state['value'], fn($query) => $query->whereMonth('payment_date', $state['value'])))
                     ->label('الشهر'),
                 SelectFilter::make('year')
@@ -137,6 +142,9 @@ class PaymentResource extends Resource
                     Tables\Actions\DeleteAction::make(),
                 ])
             ])
+            ->emptyStateHeading('لا توجد دفعات مسجلة للفترة المحددة في الفلتر')
+            ->emptyStateDescription('يمكنك إضافة دفعات جديدة بالضغط على زر الإضافة')
+            ->emptyStateIcon('heroicon-o-banknotes')
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
