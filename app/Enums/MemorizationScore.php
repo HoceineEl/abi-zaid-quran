@@ -2,17 +2,22 @@
 
 namespace App\Enums;
 
-enum MemorizationScore: string
-{
-    case EXCELLENT = 'ممتاز';
-    case VERY_GOOD = 'جيد جداً';
-    case GOOD = 'جيد';
-    case FAIR = 'لا بأس به';
-    case POOR = 'لم يحفظ';
-    case NOT_MEMORIZED = 'لم يستظهر';
+use Filament\Support\Contracts\HasColor;
+use Filament\Support\Contracts\HasLabel;
+use Filament\Support\Contracts\HasIcon;
 
-    public function getColor(): string
+enum MemorizationScore: string implements HasColor, HasLabel, HasIcon
+{
+    case EXCELLENT = 'excellent';
+    case VERY_GOOD = 'very_good';
+    case GOOD = 'good';
+    case FAIR = 'fair';
+    case POOR = 'poor';
+    case NOT_MEMORIZED = 'not_memorized';
+
+    public function getColor(): string|array|null
     {
+
         return match ($this) {
             self::EXCELLENT => 'success',
             self::VERY_GOOD => 'info',
@@ -22,7 +27,19 @@ enum MemorizationScore: string
         };
     }
 
-    public function getIcon(): string
+    public function getLabel(): ?string
+    {
+        return match ($this) {
+            self::EXCELLENT => 'ممتاز',
+            self::VERY_GOOD => 'جيد جداً',
+            self::GOOD => 'جيد',
+            self::FAIR => 'لا بأس به',
+            self::POOR => 'لم يحفظ',
+            self::NOT_MEMORIZED => 'لم يستظهر',
+        };
+    }
+
+    public function getIcon(): ?string
     {
         return match ($this) {
             self::EXCELLENT => 'heroicon-o-star',

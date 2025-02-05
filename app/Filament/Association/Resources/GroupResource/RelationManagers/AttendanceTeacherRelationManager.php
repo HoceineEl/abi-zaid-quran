@@ -98,16 +98,7 @@ class AttendanceTeacherRelationManager extends RelationManager
 
                         return $attendance?->score;
                     })
-                    ->badge()
-                    ->color(fn(string|null $state) => match ($state) {
-                        'ممتاز' => 'success',
-                        'حسن' => 'info',
-                        'جيد' => 'warning',
-                        'لا بأس به' => 'gray',
-                        'لم يحفظ' => 'danger',
-                        'لم يستظهر' => 'danger',
-                        default => null,
-                    }),
+                    ->badge(),
 
             ])
             ->actions([
@@ -249,7 +240,6 @@ class AttendanceTeacherRelationManager extends RelationManager
                                     ->label('تقييم اليوم')
                                     ->columnSpanFull()
                                     ->inline()
-
                                     ->options(MemorizationScore::class)
                                     ->required()
                                     ->default(function (Memorizer $record) {
@@ -507,7 +497,7 @@ class AttendanceTeacherRelationManager extends RelationManager
             ->paginated(false);
     }
 
-    public static function sendNotificationAction() : Action
+    public static function sendNotificationAction(): Action
     {
         return      Action::make('send_whatsapp')
             ->tooltip('إرسال رسالة واتساب')

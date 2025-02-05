@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\MemorizationScore;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -24,6 +25,7 @@ class Attendance extends Model
         'check_in_time' => 'datetime',
         'check_out_time' => 'datetime',
         'notes' => 'array',
+        'score' => MemorizationScore::class,
     ];
 
     public function memorizer(): BelongsTo
