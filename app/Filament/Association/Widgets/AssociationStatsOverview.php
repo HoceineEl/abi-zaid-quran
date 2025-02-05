@@ -29,9 +29,7 @@ class AssociationStatsOverview extends BaseWidget
         $uniqueStudents = Memorizer::count();
 
         // حساب إجمالي الرسوم المحصّلة في الفترة المحددة
-        $periodPayments = Payment::whereBetween('created_at', [$dateFrom, $dateTo])
-            ->sum('amount');
-
+        $periodPayments = Payment::whereBetween('payment_date', [$dateFrom, $dateTo])->sum('amount');
         // إحصاء الطلاب غير المسددين للرسوم في الفترة المحددة
         $unpaidStudents = Memorizer::whereDoesntHave('payments', function ($query) use ($dateFrom, $dateTo) {
             $query->whereBetween('payment_date', [$dateFrom, $dateTo]);
@@ -52,7 +50,7 @@ class AssociationStatsOverview extends BaseWidget
                 ->chart([7, 3, 4, 5, 6, $uniqueStudents])
                 ->color('success'),
 
-            Stat::make('الرسوم المحصّلة للفترة من ' . $dateFrom->format('d/m/Y') . ' إلى ' . $dateTo->format('d/m/Y'), Number::format($periodPayments) . ' درهم')
+            Stat::make('الرسوم المحصّلة للفترة من ' . $dateFrom->format('d/m') . ' إلى ' . $dateTo->format('d/m'), Number::format($periodPayments) . ' درهم')
                 ->description(new \Illuminate\Support\HtmlString(sprintf(
                     '
                     <div class="flex flex-col gap-1">
