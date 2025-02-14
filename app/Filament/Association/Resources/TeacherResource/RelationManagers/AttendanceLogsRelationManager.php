@@ -45,6 +45,7 @@ class AttendanceLogsRelationManager extends RelationManager
 
                 Tables\Columns\IconColumn::make('check_in_time')
                     ->label('الحالة')
+                    ->getStateUsing(fn(Attendance $record) => $record->check_in_time ? true : false)
                     ->boolean()
                     ->trueIcon('tabler-user-check')
                     ->falseIcon('tabler-user-x')

@@ -115,12 +115,17 @@ class PaymentResource extends Resource
                     ->default(now()->year)
                     ->query(fn(Builder $query, $state) => $query->when($state['value'], fn($query) => $query->whereYear('payment_date', $state['value'])))
                     ->label('السنة'),
-
-
             ])
-
             ->actions([
                 ActionGroup::make([
+                    Tables\Actions\Action::make('show_receipt')
+                        ->label('عرض الإيصال')
+                        ->icon('heroicon-o-printer')
+                        ->modalContent(fn(Payment $record) => view('filament.resources.payment-resource.pages.receipt-preview', [
+                            'payments' => collect([$record])
+                        ]))
+                        ->modalWidth('4xl')
+                        ->slideOver(),
                     Tables\Actions\EditAction::make()
                         ->slideOver()
                         ->form([
@@ -130,7 +135,6 @@ class PaymentResource extends Resource
                             DatePicker::make('payment_date')
                                 ->label('تاريخ الدفع')
                                 ->required(),
-
                         ])
                         ->action(function (Payment $record, array $data) {
                             $record->update($data);

@@ -581,12 +581,6 @@ class AttendanceTeacherRelationManager extends RelationManager
                 $originalMessage = $data['message'];
                 $message = urlencode($originalMessage);
                 $whatsappUrl = route('memorizer-' . $data['message_type'] . '-whatsapp', [$phone, $message, $record->id]);
-                $record->reminderLogs()->create([
-                    'type' => $data['message_type'],
-                    'phone_number' => $phone,
-                    'message' => Str::of($originalMessage)->limit(50),
-                    'is_parent' => true,
-                ]);
 
                 return redirect($whatsappUrl);
             });

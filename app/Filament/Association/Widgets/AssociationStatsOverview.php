@@ -29,11 +29,11 @@ class AssociationStatsOverview extends BaseWidget
         $uniqueStudents = Memorizer::count();
 
         // حساب إجمالي الرسوم المحصّلة في الفترة المحددة
-        $periodPayments = Payment::whereBetween('payment_date', [$dateFrom, $dateTo])->sum('amount');
+        $periodPayments = Payment::whereBetween('created_at', [$dateFrom, $dateTo])->sum('amount');
         // إحصاء الطلاب غير المسددين للرسوم في الفترة المحددة
-        $unpaidStudents = Memorizer::whereDoesntHave('payments', function ($query) use ($dateFrom, $dateTo) {
-            $query->whereBetween('payment_date', [$dateFrom, $dateTo]);
-        })->where('exempt', false)->count();
+        // $unpaidStudents = Memorizer::whereDoesntHave('payments', function ($query) use ($dateFrom, $dateTo) {
+        //     $query->whereBetween('created_at', [$dateFrom, $dateTo]);
+        // })->where('exempt', false)->count();
 
         return [
             Stat::make('إحصائيات الطلاب المسجلين', Number::format($uniqueStudents))

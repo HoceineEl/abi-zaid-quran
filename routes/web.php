@@ -3,7 +3,9 @@
 use App\Models\Memorizer;
 use App\Models\Student;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 use App\Models\ReminderLog;
+use App\Http\Controllers\PaymentReceiptController;
 
 Route::view('/', 'welcome');
 
@@ -67,7 +69,7 @@ Route::middleware('auth')->group(function () {
         $memorizer->reminderLogs()->create([
             'type' => 'trouble',
             'phone_number' => $number,
-            'message' => '',
+            'message' => Str::of($message)->limit(50),
             'is_parent' => true,
         ]);
 
@@ -81,7 +83,7 @@ Route::middleware('auth')->group(function () {
         $memorizer->reminderLogs()->create([
             'type' => 'no_memorization',
             'phone_number' => $number,
-            'message' => '',
+            'message' => Str::of($message)->limit(50),
             'is_parent' => true,
         ]);
 
@@ -95,11 +97,13 @@ Route::middleware('auth')->group(function () {
         $memorizer->reminderLogs()->create([
             'type' => 'late',
             'phone_number' => $number,
-            'message' => '',
+            'message' => Str::of($message)->limit(50),
             'is_parent' => true,
         ]);
 
         $message = urlencode($message);
         return view('redirects.whatsapp', ['number' => $number, 'message' => $message]);
     })->name('memorizer-late-whatsapp');
+
+    Route::get('payments/receipt', [PaymentReceiptController::class, 'show'])->name('payments.receipt');
 });

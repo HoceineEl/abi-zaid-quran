@@ -66,7 +66,7 @@ class DetailedStatsOverview extends BaseWidget
 
     protected function getAveragePaymentStat(Carbon $startDate, Carbon $endDate): Stat
     {
-        $avgPayment = Payment::whereBetween('payment_date', [$startDate, $endDate])
+        $avgPayment = Payment::whereBetween('created_at', [$startDate, $endDate])
             ->select(DB::raw('COALESCE(AVG(amount), 0) as avg_amount'))
             ->first()
             ->avg_amount ?? 0;

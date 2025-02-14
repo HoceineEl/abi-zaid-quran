@@ -4,6 +4,7 @@ namespace App\Filament\Association\Resources\TeacherResource\RelationManagers;
 
 use App\Models\ReminderLog;
 use App\Models\User;
+use Carbon\Carbon;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -99,20 +100,17 @@ class ReminderLogsRelationManager extends RelationManager
                 Filter::make('created_at')
                     ->label('تاريخ الإرسال')
                     ->form([
-                        DatePicker::make('created_from')
-                            ->label('من تاريخ'),
-                        DatePicker::make('created_until')
-                            ->label('إلى تاريخ'),
+                        DatePicker::make('created_at')
+                            ->default(now())
+                            ->label('تاريخ'),
+
                     ])
+                    ->indicateUsing(fn($state) => $state['created_at'] ? Carbon::parse($state['created_at'])->translatedFormat('d M Y') : null)
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
                             ->when(
-                                $data['created_from'],
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
-                            )
-                            ->when(
-                                $data['created_until'],
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                                $data['created_at'],
+                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', $date),
                             );
                     })
             ])

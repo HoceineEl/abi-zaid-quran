@@ -128,6 +128,7 @@ class TeacherResource extends Resource
     {
         return [
             AttendanceLogsRelationManager::class,
+            ReminderLogsRelationManager::class,
         ];
     }
 

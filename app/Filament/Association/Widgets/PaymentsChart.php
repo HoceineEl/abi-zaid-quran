@@ -19,8 +19,8 @@ class PaymentsChart extends ChartWidget
         $dateFrom = $this->filters['date_from'] ?? now()->startOfYear();
         $dateTo = $this->filters['date_to'] ?? now();
 
-        $payments = Payment::whereBetween('payment_date', [$dateFrom, $dateTo])
-            ->selectRaw('DATE(payment_date) as date, SUM(amount) as total')
+        $payments = Payment::whereBetween('created_at', [$dateFrom, $dateTo])
+            ->selectRaw('DATE(created_at) as date, SUM(amount) as total')
             ->groupBy('date')
             ->orderBy('date')
             ->get();
