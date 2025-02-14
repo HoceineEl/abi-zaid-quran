@@ -3,6 +3,8 @@
 namespace App\Filament\Association\Resources;
 
 use App\Filament\Association\Resources\TeacherResource\Pages;
+use App\Filament\Association\Resources\TeacherResource\RelationManagers\ReminderLogsRelationManager;
+use App\Filament\Association\Resources\TeacherResource\RelationManagers\AttendanceLogsRelationManager;
 use App\Models\User;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\ToggleButtons;
@@ -57,8 +59,7 @@ class TeacherResource extends Resource
 
                 TextInput::make('phone')
                     ->label('رقم الهاتف')
-                    ->maxLength(255)
-                 ,
+                    ->maxLength(255),
 
                 ToggleButtons::make('sex')
                     ->label('الجنس')
@@ -113,6 +114,7 @@ class TeacherResource extends Resource
                 //
             ])
             ->actions([
+                Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
@@ -125,7 +127,7 @@ class TeacherResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            AttendanceLogsRelationManager::class,
         ];
     }
 
@@ -134,6 +136,7 @@ class TeacherResource extends Resource
         return [
             'index' => Pages\ListTeachers::route('/'),
             'create' => Pages\CreateTeacher::route('/create'),
+            'view' => Pages\ViewTeacher::route('/{record}'),
             'edit' => Pages\EditTeacher::route('/{record}/edit'),
         ];
     }

@@ -101,4 +101,18 @@ class User extends Authenticatable implements FilamentUser
     {
         return $this->role === 'teacher';
     }
+
+    public function reminderLogs(): HasMany
+    {
+        return $this->hasMany(ReminderLog::class, 'created_by');
+    }
+
+    public function attendanceLogs(): HasMany
+    {
+        return $this->hasMany(Attendance::class, 'created_by');
+    }
+    public function memoGroups(): HasMany
+    {
+        return $this->hasMany(MemoGroup::class, 'teacher_id');
+    }
 }

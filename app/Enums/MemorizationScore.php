@@ -9,20 +9,21 @@ use Filament\Support\Contracts\HasIcon;
 enum MemorizationScore: string implements HasColor, HasLabel, HasIcon
 {
     case EXCELLENT = 'excellent';
+    case GOOD = 'good'; 
     case VERY_GOOD = 'very_good';
-    case GOOD = 'good';
     case FAIR = 'fair';
+    case ACCEPTABLE = 'acceptable';
     case POOR = 'poor';
     case NOT_MEMORIZED = 'not_memorized';
 
     public function getColor(): string|array|null
     {
-
         return match ($this) {
             self::EXCELLENT => 'success',
+            self::GOOD => 'success',
             self::VERY_GOOD => 'info',
-            self::GOOD => 'warning',
-            self::FAIR => 'gray',
+            self::FAIR => 'warning',
+            self::ACCEPTABLE => 'gray',
             self::POOR, self::NOT_MEMORIZED => 'danger',
         };
     }
@@ -31,9 +32,10 @@ enum MemorizationScore: string implements HasColor, HasLabel, HasIcon
     {
         return match ($this) {
             self::EXCELLENT => 'ممتاز',
-            self::VERY_GOOD => 'جيد جداً',
             self::GOOD => 'جيد',
-            self::FAIR => 'لا بأس به',
+            self::VERY_GOOD => 'حسن',
+            self::FAIR => 'مستحسن', 
+            self::ACCEPTABLE => 'لا بأس به',
             self::POOR => 'لم يحفظ',
             self::NOT_MEMORIZED => 'لم يستظهر',
         };
@@ -42,11 +44,13 @@ enum MemorizationScore: string implements HasColor, HasLabel, HasIcon
     public function getIcon(): ?string
     {
         return match ($this) {
-            self::EXCELLENT => 'heroicon-o-star',
-            self::VERY_GOOD => 'heroicon-o-hand-thumb-up',
-            self::GOOD => 'heroicon-o-check-circle',
-            self::FAIR => 'heroicon-o-minus-circle',
-            self::POOR, self::NOT_MEMORIZED => 'heroicon-o-x-circle',
+            self::EXCELLENT => 'tabler-star-filled',
+            self::GOOD => 'tabler-thumb-up',
+            self::VERY_GOOD => 'tabler-award',
+            self::FAIR => 'tabler-circle-check',
+            self::ACCEPTABLE => 'tabler-mood-neutral',
+            self::POOR => 'tabler-thumb-down',
+            self::NOT_MEMORIZED => 'tabler-circle-x',
         };
     }
 }

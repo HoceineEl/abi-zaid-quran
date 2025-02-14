@@ -24,6 +24,7 @@
                         \App\Enums\MemorizationScore::VERY_GOOD => 'green',
                         \App\Enums\MemorizationScore::GOOD => 'blue',
                         \App\Enums\MemorizationScore::FAIR => 'amber',
+                        \App\Enums\MemorizationScore::ACCEPTABLE => 'gray',
                         \App\Enums\MemorizationScore::POOR => 'red',
                         \App\Enums\MemorizationScore::NOT_MEMORIZED => 'rose',
                         default => 'gray'
