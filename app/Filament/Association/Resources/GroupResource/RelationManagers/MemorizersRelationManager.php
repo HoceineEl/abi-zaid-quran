@@ -19,6 +19,7 @@ use Filament\Infolists\Components\Grid;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Infolist;
+use Filament\Notifications\Actions\Action as ActionsAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Support\Colors\Color;
@@ -151,8 +152,8 @@ class MemorizersRelationManager extends RelationManager
                     Tables\Actions\ViewAction::make(),
                     self::getTroublesAction(),
                     AttendanceTeacherRelationManager::sendNotificationAction()
-                    ->label('إرسال رسالة واتساب'),
-                            
+                        ->label('إرسال رسالة واتساب'),
+
                 ]),
 
                 Action::make('send_payment_reminders')
@@ -278,14 +279,26 @@ class MemorizersRelationManager extends RelationManager
                 ];
             })
             ->action(function (Memorizer $record, array $data) {
-                $record->payments()->create([
+                $payment = $record->payments()->create([
                     'amount' => $data['amount'],
                     'payment_date' => now(),
                 ]);
 
+                $paymentIds = $payment->id;
+                $receiptUrl = route('payments.receipt', ['payments' => $paymentIds]);
+
                 Notification::make()
-                    ->title('تم تسجيل الدفعة بنجاح')
+                    ->title('تم إضافة الدفعات بنجاح')
                     ->success()
+                    ->persistent()
+                    ->actions([
+                        ActionsAction::make('print_receipt')
+                            ->label('طباعة الإيصال')
+                            ->icon('heroicon-o-printer')
+                            ->button()
+                            ->color('success')
+                            ->url($receiptUrl, shouldOpenInNewTab: true)
+                    ])
                     ->send();
             });
     }
