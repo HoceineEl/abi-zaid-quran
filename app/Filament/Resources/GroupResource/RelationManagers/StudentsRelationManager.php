@@ -5,9 +5,11 @@ namespace App\Filament\Resources\GroupResource\RelationManagers;
 use App\Classes\Core;
 use App\Helpers\ProgressFormHelper;
 use App\Models\Group;
+use App\Models\GroupMessageTemplate;
 use App\Models\Student;
 use Carbon\Carbon;
 use Filament\Forms;
+use Filament\Forms\Components\Tabs;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
@@ -244,34 +246,178 @@ class StudentsRelationManager extends RelationManager
                         ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
                         ->slideOver(),
 
+                    Action::make('manage_message_templates')
+                        ->label('إدارة قوالب الرسائل')
+                        ->icon('heroicon-o-chat-bubble-left-right')
+                        ->color('primary')
+                        ->size(ActionSize::Small)
+                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
+                        ->form([
+                            Tabs::make('Message Templates')
+                                ->tabs([
+                                    Tabs\Tab::make('إضافة قالب جديد')
+                                        ->icon('heroicon-o-plus-circle')
+                                        ->schema([
+                                            Forms\Components\TextInput::make('name')
+                                                ->label('اسم القالب')
+                                                ->required(),
+                                            Textarea::make('content')
+                                                ->label('محتوى الرسالة')
+                                                ->required()
+                                                ->helperText('يمكنك استخدام المتغيرات التالية: {{student_name}}, {{group_name}}, {{curr_date}}, {{prefix}}, {{pronoun}}, {{verb}}')
+                                                ->columnSpanFull(),
+                                            Toggle::make('is_default')
+                                                ->label('قالب افتراضي')
+                                                ->helperText('إذا تم تحديد هذا الخيار، سيتم استخدام هذا القالب كقالب افتراضي للمجموعة')
+                                                ->default(false),
+                                        ]),
+                                    Tabs\Tab::make('قوالب الرسائل الحالية')
+                                        ->icon('heroicon-o-clipboard-document-list')
+                                        ->schema([
+                                            Forms\Components\Repeater::make('templates')
+                                                ->label('')
+                                                ->schema([
+                                                    Forms\Components\TextInput::make('name')
+                                                        ->label('اسم القالب')
+                                                        ->required(),
+                                                    Textarea::make('content')
+                                                        ->label('محتوى الرسالة')
+                                                        ->required()
+                                                        ->helperText('يمكنك استخدام المتغيرات التالية: {{student_name}}, {{group_name}}, {{curr_date}}, {{prefix}}, {{pronoun}}, {{verb}}')
+                                                        ->columnSpanFull(),
+                                                    Toggle::make('is_default')
+                                                        ->label('قالب افتراضي')
+                                                        ->helperText('إذا تم تحديد هذا الخيار، سيتم استخدام هذا القالب كقالب افتراضي للمجموعة')
+                                                        ->default(false),
+                                                    Forms\Components\Hidden::make('id'),
+                                                ])
+                                                ->itemLabel(fn(array $state): ?string => $state['name'] ?? null)
+                                                ->collapsible()
+                                                ->defaultItems(0)
+                                                ->reorderable(false)
+                                                ->addable(false)
+                                                ->deletable(true)
+                                                ->deleteAction(
+                                                    fn(Forms\Components\Actions\Action $action) => $action->requiresConfirmation()
+                                                )
+                                        ]),
+                                ])
+                                ->activeTab(0)
+                        ])
+                        ->action(function (array $data) {
+                            // Handle new template creation
+                            if (!empty($data['name']) && !empty($data['content'])) {
+                                // If this is set as default, unset any existing defaults
+                                if (!empty($data['is_default']) && $data['is_default']) {
+                                    $this->ownerRecord->messageTemplates()->update(['is_default' => false]);
+                                }
+
+                                // Create the new template
+                                $this->ownerRecord->messageTemplates()->create([
+                                    'name' => $data['name'],
+                                    'content' => $data['content'],
+                                    'is_default' => !empty($data['is_default']) ? $data['is_default'] : false,
+                                ]);
+
+                                Notification::make()
+                                    ->title('تم إضافة قالب الرسالة بنجاح')
+                                    ->success()
+                                    ->send();
+                            }
+
+                            // Handle existing templates updates
+                            if (!empty($data['templates'])) {
+                                foreach ($data['templates'] as $templateData) {
+                                    if (!empty($templateData['id'])) {
+                                        $template = GroupMessageTemplate::find($templateData['id']);
+
+                                        if ($template) {
+                                            // If this is set as default, unset any existing defaults
+                                            if (!empty($templateData['is_default']) && $templateData['is_default']) {
+                                                $this->ownerRecord->messageTemplates()
+                                                    ->where('id', '!=', $template->id)
+                                                    ->update(['is_default' => false]);
+                                            }
+
+                                            $template->update([
+                                                'name' => $templateData['name'],
+                                                'content' => $templateData['content'],
+                                                'is_default' => !empty($templateData['is_default']) ? $templateData['is_default'] : false,
+                                            ]);
+                                        }
+                                    }
+                                }
+
+                                Notification::make()
+                                    ->title('تم تحديث قوالب الرسائل بنجاح')
+                                    ->success()
+                                    ->send();
+                            }
+                        })
+                        ->mutateFormDataUsing(function (array $data) {
+                            // Load existing templates
+                            $templates = $this->ownerRecord->messageTemplates()->get();
+                            $data['templates'] = $templates->map(function ($template) {
+                                return [
+                                    'id' => $template->id,
+                                    'name' => $template->name,
+                                    'content' => $template->content,
+                                    'is_default' => $template->is_default,
+                                ];
+                            })->toArray();
+
+                            return $data;
+                        }),
                     Action::make('send_msg_to_others')
                         ->label('إرسال رسالة تذكير للبقية')
                         ->icon('heroicon-o-chat-bubble-oval-left')
                         ->color('warning')
                         ->form([
+                            Forms\Components\Select::make('template_id')
+                                ->label('اختر قالب الرسالة')
+                                ->options(function () {
+                                    return $this->ownerRecord->messageTemplates()->pluck('name', 'id')
+                                        ->prepend('رسالة مخصصة', 'custom');
+                                })
+                                ->default('custom')
+                                ->reactive(),
                             Textarea::make('message')
-                                ->hint('السلام عليكم وإسم الطالب سيتم إضافته تلقائياً في  الرسالة.')
+                                ->hint('يمكنك استخدام المتغيرات التالية: {{student_name}}, {{group_name}}, {{curr_date}}, {{prefix}}, {{pronoun}}, {{verb}}')
                                 ->default('لم ترسلوا الواجب المقرر اليوم، لعل المانع خير.')
                                 ->label('الرسالة')
-                                ->required(),
+                                ->required()
+                                ->hidden(fn(Get $get) => $get('template_id') !== 'custom'),
                         ])
                         ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
                         ->action(function (array $data) {
                             $selectedDate = $this->tableFilters['date']['value'] ?? now()->format('Y-m-d');
+
+                            // Get the message content
+                            $messageTemplate = '';
+                            if ($data['template_id'] === 'custom') {
+                                $messageTemplate = $data['message'];
+                            } else {
+                                $template = GroupMessageTemplate::find($data['template_id']);
+                                if ($template) {
+                                    $messageTemplate = $template->content;
+                                } else {
+                                    $messageTemplate = $data['message'] ?? 'لم ترسلوا الواجب المقرر اليوم، لعل المانع خير.';
+                                }
+                            }
+
                             $this->ownerRecord->students->filter(function ($student) use ($selectedDate) {
                                 return $student->progresses->where('date', $selectedDate)->count() == 0;
-                            })->each(function ($student) use ($selectedDate, $data) {
+                            })->each(function ($student) use ($selectedDate, $messageTemplate) {
                                 $student->progresses()->create([
                                     'date' => $selectedDate,
-                                    'status' => null,
-                                    'comment' => 'message_sent',
+                                    'status' => 'absent',
                                     'page_id' => null,
-                                    'lines_from' => null,
-                                    'lines_to' => null,
+                                    'ayah_id' => null,
+                                    'note' => 'تم تسجيل الغياب تلقائيا',
                                 ]);
                                 if ($selectedDate == now()->format('Y-m-d')) {
-                                    $msg = $data['message'];
-                                    Core::sendSpecifMessageToStudent($student, $msg);
+                                    $processedMessage = Core::processMessageTemplate($messageTemplate, $student, $this->ownerRecord);
+                                    Core::sendSpecifMessageToStudent($student, $processedMessage);
                                 }
                             });
                         }),
@@ -280,21 +426,44 @@ class StudentsRelationManager extends RelationManager
                         ->icon('heroicon-o-chat-bubble-oval-left')
                         ->color('danger')
                         ->form([
+                            Forms\Components\Select::make('template_id')
+                                ->label('اختر قالب الرسالة')
+                                ->options(function () {
+                                    return $this->ownerRecord->messageTemplates()->pluck('name', 'id')
+                                        ->prepend('رسالة مخصصة', 'custom');
+                                })
+                                ->default('custom')
+                                ->reactive(),
                             Textarea::make('message')
-                                ->hint('السلام عليكم وإسم الطالب سيتم إضافته تلقائياً في  الرسالة.')
+                                ->hint('يمكنك استخدام المتغيرات التالية: {{student_name}}, {{group_name}}, {{curr_date}}, {{prefix}}, {{pronoun}}, {{verb}}')
                                 ->default('لم ترسلوا الواجب المقرر اليوم، لعل المانع خير.')
                                 ->label('الرسالة')
-                                ->required(),
+                                ->required()
+                                ->hidden(fn(Get $get) => $get('template_id') !== 'custom'),
                         ])
                         ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
                         ->action(function (array $data) {
                             $selectedDate = $this->tableFilters['date']['value'] ?? now()->format('Y-m-d');
+
+                            // Get the message content
+                            $messageTemplate = '';
+                            if ($data['template_id'] === 'custom') {
+                                $messageTemplate = $data['message'];
+                            } else {
+                                $template = GroupMessageTemplate::find($data['template_id']);
+                                if ($template) {
+                                    $messageTemplate = $template->content;
+                                } else {
+                                    $messageTemplate = $data['message'] ?? 'لم ترسلوا الواجب المقرر اليوم، لعل المانع خير.';
+                                }
+                            }
+
                             $this->ownerRecord->students->filter(function ($student) use ($selectedDate) {
                                 return $student->progresses->where('date', $selectedDate)->where('status', 'absent')->count() > 0;
-                            })->each(function ($student) use ($selectedDate, $data) {
+                            })->each(function ($student) use ($selectedDate, $messageTemplate) {
                                 if ($selectedDate == now()->format('Y-m-d')) {
-                                    $msg = $data['message'];
-                                    Core::sendSpecifMessageToStudent($student, $msg);
+                                    $processedMessage = Core::processMessageTemplate($messageTemplate, $student, $this->ownerRecord);
+                                    Core::sendSpecifMessageToStudent($student, $processedMessage);
                                 }
                             });
                         }),
@@ -334,20 +503,42 @@ class StudentsRelationManager extends RelationManager
                         ->icon('heroicon-o-chat-bubble-oval-left')
                         ->color('warning')
                         ->form([
+                            Forms\Components\Select::make('template_id')
+                                ->label('اختر قالب الرسالة')
+                                ->options(function () {
+                                    return $this->ownerRecord->messageTemplates()->pluck('name', 'id')
+                                        ->prepend('رسالة مخصصة', 'custom');
+                                })
+                                ->default('custom')
+                                ->reactive(),
                             Textarea::make('message')
-                                ->hint('السلام عليكم وإسم الطالب سيتم إضافته تلقائياً في  الرسالة.')
+                                ->hint('يمكنك استخدام المتغيرات التالية: {{student_name}}, {{group_name}}, {{curr_date}}, {{prefix}}, {{pronoun}}, {{verb}}')
                                 ->default('لم ترسل الواجب المقرر اليوم، لعل المانع خير.')
                                 ->label('الرسالة')
-                                ->required(),
+                                ->required()
+                                ->hidden(fn(Get $get) => $get('template_id') !== 'custom'),
                         ])
-                        // ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
-                        ->hidden()
+                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
                         ->action(function (array $data) {
                             $students = $this->selectedTableRecords;
+
+                            // Get the message content
+                            $messageTemplate = '';
+                            if ($data['template_id'] === 'custom') {
+                                $messageTemplate = $data['message'];
+                            } else {
+                                $template = GroupMessageTemplate::find($data['template_id']);
+                                if ($template) {
+                                    $messageTemplate = $template->content;
+                                } else {
+                                    $messageTemplate = $data['message'] ?? 'لم ترسل الواجب المقرر اليوم، لعل المانع خير.';
+                                }
+                            }
+
                             foreach ($students as $studentId) {
                                 $student = Student::find($studentId);
-                                $msg = $data['message'];
-                                Core::sendSpecifMessageToStudent($student, $msg);
+                                $processedMessage = Core::processMessageTemplate($messageTemplate, $student, $this->ownerRecord);
+                                Core::sendSpecifMessageToStudent($student, $processedMessage);
                             }
                         })->deselectRecordsAfterCompletion(),
                 ]),
@@ -479,7 +670,7 @@ class StudentsRelationManager extends RelationManager
             $number = '+' . $number;
         }
 
-        // Get gender-specific terms
+        // Get gender-specific terms for fallback templates
         $genderTerms = $record->sex === 'female' ? [
             'prefix' => 'أختي الطالبة',
             'pronoun' => 'ك',
@@ -491,51 +682,62 @@ class StudentsRelationManager extends RelationManager
         ];
         $name = trim($record->name);
 
-        // Message for onsite groups
-        if ($ownerRecord->is_onsite) {
-            $message = <<<MSG
+        // Check if the group has a selected message template
+        if ($ownerRecord->message_id && $ownerRecord->message) {
+            $message = Core::processMessageTemplate($ownerRecord->message->content, $record, $ownerRecord);
+        }
+        // Check if there's a default template in the group's message templates
+        else if ($defaultTemplate = $ownerRecord->messageTemplates()->where('is_default', true)->first()) {
+            $message = Core::processMessageTemplate($defaultTemplate->content, $record, $ownerRecord);
+        }
+        // Use built-in templates based on group type
+        else {
+            // Message for onsite groups
+            if ($ownerRecord->is_onsite) {
+                $message = <<<MSG
 السلام عليكم ورحمة الله وبركاته
 {$genderTerms['prefix']} {$name}،
 لقد تم تسجيل غيابكم عن حصة القرآن الحضورية، نرجوا أن يكون المانع خيرا، كما ونحثّكم على أن تحرصوا على الحضور الحصة المقبلة إن شاء الله. زادكم الله حرصا
 MSG;
-        } else {
-            // Default message template
-            $message = <<<MSG
+            } else {
+                // Default message template
+                $message = <<<MSG
 السلام عليكم ورحمة الله وبركاته
 *{$genderTerms['prefix']} {$name}*،
 نذكر{$genderTerms['pronoun']} بالواجب المقرر اليوم، لعل المانع خير. 🌟
 MSG;
 
-            // Customize message based on group type
-            if (str_contains($ownerRecord->type, 'سرد')) {
-                $message = <<<MSG
+                // Customize message based on group type
+                if (str_contains($ownerRecord->type, 'سرد')) {
+                    $message = <<<MSG
 السلام عليكم ورحمة الله وبركاته
 *{$genderTerms['prefix']} {$name}*،
 نذكر{$genderTerms['pronoun']} بواجب اليوم من السرد ✨
 المرجو المبادرة قبل غلق المجموعة
 _زاد{$genderTerms['pronoun']} الله حرصا_ 🌙
 MSG;
-            } elseif (str_contains($ownerRecord->type, 'ثبيت') || str_contains($ownerRecord->name, 'تَّثبيت')) {
-                $message = <<<MSG
+                } elseif (str_contains($ownerRecord->type, 'ثبيت') || str_contains($ownerRecord->name, 'تَّثبيت')) {
+                    $message = <<<MSG
                 السلام عليكم ورحمة الله وبركاته
                 *{$genderTerms['prefix']} {$name}*
                 لا {$genderTerms['verb']} الاستظهار في مجموعة التثبيت ✨
                 _بارك الله في{$genderTerms['pronoun']} وزاد{$genderTerms['pronoun']} حرصا_ 🌟
                 MSG;
-            } elseif (str_contains($ownerRecord->type, 'مراجعة') || str_contains($ownerRecord->name, 'مراجعة')) {
-                $message = <<<MSG
+                } elseif (str_contains($ownerRecord->type, 'مراجعة') || str_contains($ownerRecord->name, 'مراجعة')) {
+                    $message = <<<MSG
 السلام عليكم ورحمة الله وبركاته
 *{$genderTerms['prefix']} {$name}*
 لا {$genderTerms['verb']} الاستظهار في مجموعة المراجعة ✨
 _بارك الله في{$genderTerms['pronoun']} وزاد{$genderTerms['pronoun']} حرصا_ 🌟
 MSG;
-            } elseif (str_contains($ownerRecord->type, 'عتصام') || str_contains($ownerRecord->name, 'عتصام')) {
-                $message = <<<MSG
+                } elseif (str_contains($ownerRecord->type, 'عتصام') || str_contains($ownerRecord->name, 'عتصام')) {
+                    $message = <<<MSG
 السلام عليكم ورحمة الله وبركاته
 *{$genderTerms['prefix']} {$name}*
 لا {$genderTerms['verb']} استظهار واجب الاعتصام
 _بارك الله في{$genderTerms['pronoun']} وزاد{$genderTerms['pronoun']} حرصا_ 🌟
 MSG;
+                }
             }
         }
 

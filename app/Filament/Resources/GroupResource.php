@@ -20,6 +20,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
+use Filament\Forms\Set;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -77,6 +78,28 @@ class GroupResource extends Resource
                             ->label('مجموعة الحصة الحضورية')
                             ->default(false),
                     ]),
+                Forms\Components\Select::make('message_id')
+                    ->label('قالب الرسائل')
+                    ->relationship('message', 'name')
+                    ->preload()
+                    ->searchable()
+                    ->createOptionForm([
+                        Forms\Components\TextInput::make('name')
+                            ->label('اسم القالب')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\Textarea::make('content')
+                            ->label('محتوى الرسالة')
+                            ->required()
+                            ->helperText('يمكنك استخدام المتغيرات التالية: {student_name}, {group_name}, {curr_date}')
+                            ->columnSpanFull(),
+                    ])
+                    ->createOptionAction(function (Forms\Components\Actions\Action $action) {
+                        return $action
+                            ->modalHeading('إنشاء قالب رسالة جديد')
+                            ->modalSubmitActionLabel('إنشاء')
+                            ->modalWidth('lg');
+                    }),
             ])
             ->disabled(! Core::canChange());
     }

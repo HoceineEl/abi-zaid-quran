@@ -42,11 +42,11 @@ class Student extends Model
 
     public function needsCall(): bool
     {
-        $recentProgresses = $this->progresses()->latest()->limit(3)->get();
+        $recentProgresses = $this->progresses()->latest()->limit(2)->get();
 
         $absentCount = $recentProgresses->where('status', 'absent')->count();
 
-        return $absentCount >= 3;
+        return $absentCount >= 2;
     }
     public function consecutiveAbsentDays(): Attribute
     {

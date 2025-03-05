@@ -62,12 +62,16 @@ class User extends Authenticatable implements FilamentUser
         if ($panel->getId() === 'teacher') {
             return $this->isTeacher();
         } elseif ($panel->getId() === 'quran-program') {
-            return !$this->isTeacher();
+            return !$this->isTeacher() && !$this->hasAssociationAccess();
         }
 
         return true;
     }
 
+    public function hasAssociationAccess(): bool
+    {
+        return str_ends_with($this->email, '@association.com') && $this->isAdministrator();
+    }
 
 
     public function managedGroups(): BelongsToMany

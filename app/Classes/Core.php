@@ -80,7 +80,7 @@ class Core
                 //     ->send();
             } else {
                 Notification::make()
-                    ->title('حدث خطأ أثناء إرسال رسالة واتساب ل '.$user->name)
+                    ->title('حدث خطأ أثناء إرسال رسالة واتساب ل ' . $user->name)
                     ->color('danger')
                     ->icon('heroicon-o-x-circle')
                     ->send();
@@ -100,7 +100,7 @@ class Core
             //     ->send();
         } else {
             Notification::make()
-                ->title('حدث خطأ أثناء إرسال رسالة واتساب للطالب '.$student->name)
+                ->title('حدث خطأ أثناء إرسال رسالة واتساب للطالب ' . $student->name)
                 ->color('danger')
                 ->icon('heroicon-o-x-circle')
                 ->send();
@@ -119,11 +119,46 @@ class Core
             //     ->send();
         } else {
             Notification::make()
-                ->title('حدث خطأ أثناء إرسال رسالة واتساب للطالب '.$student->name)
+                ->title('حدث خطأ أثناء إرسال رسالة واتساب للطالب ' . $student->name)
                 ->color('danger')
                 ->icon('heroicon-o-x-circle')
                 ->send();
         }
+    }
+
+    /**
+     * Process a message template by replacing variables with actual values
+     *
+     * @param string $template The message template with variables
+     * @param Student $student The student object
+     * @param Group|null $group The group object (optional)
+     * @return string The processed message with variables replaced
+     */
+    public static function processMessageTemplate(string $template, Student $student, ?Group $group = null): string
+    {
+        // Get gender-specific terms
+        $genderTerms = $student->sex === 'female' ? [
+            'prefix' => 'أختي الطالبة',
+            'pronoun' => 'ك',
+            'verb' => 'تنسي'
+        ] : [
+            'prefix' => 'أخي الطالب',
+            'pronoun' => 'ك',
+            'verb' => 'تنس'
+        ];
+
+        // Prepare replacements for variables
+        $replacements = [
+            '{student_name}' => trim($student->name),
+            '{group_name}' => $group ? $group->name : '',
+            '{curr_date}' => Carbon::now()->format('Y-m-d'),
+            '{prefix}' => $genderTerms['prefix'],
+            '{pronoun}' => $genderTerms['pronoun'],
+            '{verb}' => $genderTerms['verb'],
+        ];
+
+        // Replace all variables in the template
+        return str_replace(array_keys($replacements), array_values($replacements), $template);
     }
 
     public static function canChange(): bool
