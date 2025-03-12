@@ -494,6 +494,8 @@ class StudentsRelationManager extends RelationManager
                     })
 
             ])
+            ->paginated(true)
+            ->defaultPaginationPageOption(4)
             ->bulkActions([
                 BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),

@@ -73,6 +73,24 @@ class Student extends Model
         );
     }
 
+    public function absenceStatus(): Attribute
+    {
+        return Attribute::make(
+            get: function () {
+                $recentProgresses = $this->progresses()->latest()->limit(3)->get();
+
+                $absentCount = $recentProgresses->where('status', 'absent')->count();
+                if ($absentCount >= 3) {
+                    return 'critical';
+                } elseif ($absentCount >= 2) {
+                    return 'warning';
+                } else {
+                    return 'normal';
+                }
+            }
+        );
+    }
+
     public function getAbsenceAttribute(): int
     {
         return $this->progresses()->where('status', 'absent')->count();
