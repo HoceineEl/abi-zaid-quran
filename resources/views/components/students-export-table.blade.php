@@ -221,17 +221,6 @@
                                 </span>
                             </td>
                             <td>
-                                @if ($student->needsCall())
-                                    <span class="consecutive-absent">
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                            stroke-width="2" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                d="M14.25 9.75v-4.5m0 4.5h4.5m-4.5 0l6-6m-3 18c-8.284 0-15-6.716-15-15V4.5A2.25 2.25 0 014.5 2.25h1.372c.516 0 .966.351 1.091.852l1.106 4.423c.11.44-.054.902-.417 1.173l-1.293.97a1.062 1.062 0 00-.38 1.21 12.035 12.035 0 007.143 7.143c.441.162.928-.004 1.21-.38l.97-1.293c.271-.363.734-.527 1.173-.417l4.423 1.106c.5.125.852.575.852 1.091V19.5a2.25 2.25 0 01-2.25 2.25h-2.25z" />
-                                        </svg>
-                                        <small>(يحتاج اتصال)</small>
-                                    </span>
-                                @endif
-
                                 @if ($absenceStatus === 'critical')
                                     <span class="absence-critical">
                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
@@ -239,7 +228,7 @@
                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                 d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                                         </svg>
-                                        <small>{{ $consecutiveAbsentDays }} أيام غياب متتالية</small>
+                                        <small>يحتاج إنذار ثاني</small>
                                     </span>
                                 @elseif ($absenceStatus === 'warning')
                                     <span class="absence-warning">
@@ -248,7 +237,7 @@
                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                 d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                                         </svg>
-                                        <small>يومان غياب متتاليان</small>
+                                        <small>يحتاج إنذار أول</small>
                                     </span>
                                 @endif
                             </td>

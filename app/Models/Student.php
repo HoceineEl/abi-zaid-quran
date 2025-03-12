@@ -82,7 +82,7 @@ class Student extends Model
                 $absentCount = $recentProgresses->where('status', 'absent')->count();
                 if ($absentCount >= 3) {
                     return 'critical';
-                } elseif ($absentCount >= 2) {
+                } elseif ($absentCount == 2) {
                     return 'warning';
                 } else {
                     return 'normal';
