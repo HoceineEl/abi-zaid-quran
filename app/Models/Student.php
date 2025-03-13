@@ -77,12 +77,23 @@ class Student extends Model
     {
         return Attribute::make(
             get: function () {
-                $recentProgresses = $this->progresses()->latest()->limit(3)->get();
-
-                $absentCount = $recentProgresses->where('status', 'absent')->count();
-                if ($absentCount >= 3) {
+                $recentProgresses = $this->progresses()
+                    ->latest('date')
+                    ->limit(3)
+                    ->orderBy('date', 'asc')
+                    ->get();
+                
+                // Check if the last 3 days are consecutive and absent
+                if (count($recentProgresses) >= 3 && 
+                    $recentProgresses[count($recentProgresses) - 1]->status === 'absent' &&
+                    $recentProgresses[count($recentProgresses) - 2]->status === 'absent' &&
+                    $recentProgresses[count($recentProgresses) - 3]->status === 'absent') {
                     return 'critical';
-                } elseif ($absentCount == 2) {
+                } 
+                // Check if the last 2 days are consecutive and absent
+                elseif (count($recentProgresses) >= 2 && 
+                    $recentProgresses[count($recentProgresses) - 1]->status === 'absent' &&
+                    $recentProgresses[count($recentProgresses) - 2]->status === 'absent') {
                     return 'warning';
                 } else {
                     return 'normal';
