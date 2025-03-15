@@ -78,11 +78,15 @@ class GroupResource extends Resource
                             ->label('مجموعة الحصة الحضورية')
                             ->default(false),
                     ]),
-                Forms\Components\Select::make('message_id')
+                Forms\Components\Select::make('template_id')
                     ->label('قالب الرسائل')
-                    ->relationship('message', 'name')
+                    ->relationship('messageTemplates', 'name')
                     ->preload()
                     ->searchable()
+                    ->dehydrated(false)
+                    ->saveRelationshipsUsing(function (Group $record, $state) {
+                        $record->messageTemplates()->sync($state);
+                    })
                     ->createOptionForm([
                         Forms\Components\TextInput::make('name')
                             ->label('اسم القالب')

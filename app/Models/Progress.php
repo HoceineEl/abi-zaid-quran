@@ -10,6 +10,10 @@ class Progress extends Model
 {
     use HasFactory;
 
+    protected $casts = [
+        'date' => 'date',
+    ];
+
     protected $fillable = [
         'student_id', 'date', 'status', 'page_id', 'lines_from', 'lines_to', 'notes', 'created_by',
         'prog', 'comment',

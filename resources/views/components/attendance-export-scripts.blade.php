@@ -6,7 +6,6 @@
             Livewire.on('export-table', (data) => {
                 // Check if html tag has dark class
                 const isDarkMode = document.documentElement.classList.contains('dark');
-                
                 // Create temporary container
                 const container = document.createElement('div');
                 container.style.position = 'absolute';
@@ -102,11 +101,12 @@
                         shareContainer.style.bottom = '20px';
                         shareContainer.style.right = '20px';
                         shareContainer.style.zIndex = '9999';
-                        shareContainer.style.backgroundColor = isDarkMode ? '#1f2937' : 'white';
+                        shareContainer.style.backgroundColor = isDarkMode ? '#1f2937' :
+                            'white';
                         shareContainer.style.padding = '15px';
                         shareContainer.style.borderRadius = '8px';
-                        shareContainer.style.boxShadow = isDarkMode ? 
-                            '0 2px 10px rgba(0,0,0,0.5)' : 
+                        shareContainer.style.boxShadow = isDarkMode ?
+                            '0 2px 10px rgba(0,0,0,0.5)' :
                             '0 2px 10px rgba(0,0,0,0.1)';
                         shareContainer.style.display = 'flex';
                         shareContainer.style.alignItems = 'center';
@@ -121,7 +121,8 @@
                             </svg>
                             مشاركة التقرير
                         `;
-                        shareButton.style.backgroundColor = isDarkMode ? '#4f46e5' : '#3B82F6';
+                        shareButton.style.backgroundColor = isDarkMode ? '#4f46e5' :
+                            '#3B82F6';
                         shareButton.style.color = 'white';
                         shareButton.style.border = 'none';
                         shareButton.style.padding = '8px 16px';
@@ -135,7 +136,8 @@
                         // Create close button
                         const closeButton = document.createElement('button');
                         closeButton.innerHTML = '×';
-                        closeButton.style.backgroundColor = isDarkMode ? '#374151' : '#f3f4f6';
+                        closeButton.style.backgroundColor = isDarkMode ? '#374151' :
+                            '#f3f4f6';
                         closeButton.style.border = 'none';
                         closeButton.style.borderRadius = '50%';
                         closeButton.style.width = '24px';
@@ -148,12 +150,17 @@
 
                         // Add click handlers
                         shareButton.onclick = function() {
-                            const file = new File([blob], fileName, { type: 'image/png' });
-                            if (navigator.share && navigator.canShare({ files: [file] })) {
+                            const file = new File([blob], fileName, {
+                                type: 'image/png'
+                            });
+                            if (navigator.share && navigator.canShare({
+                                    files: [file]
+                                })) {
                                 navigator.share({
                                     files: [file],
                                     title: `تقرير حضور ${data[0].groupName}`,
-                                }).catch((error) => console.log('Error sharing:', error));
+                                }).catch((error) => console.log('Error sharing:',
+                                    error));
                             }
                         };
 
@@ -181,4 +188,4 @@
             });
         });
     </script>
-@endPushOnce 
+@endPushOnce

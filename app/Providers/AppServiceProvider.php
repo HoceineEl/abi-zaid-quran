@@ -10,6 +10,7 @@ use Filament\Support\Facades\FilamentView;
 use Filament\Tables\Columns\Column;
 use Filament\View\PanelsRenderHook;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
 use LaravelPWA\Services\ManifestService;
 
@@ -44,6 +45,8 @@ class AppServiceProvider extends ServiceProvider
         Column::configureUsing(function (Column $column) {
             $column->toggleable();
         });
+
+        DB::prohibitDestructiveCommands(app()->environment('production'));
 
         Model::unguard();
     }

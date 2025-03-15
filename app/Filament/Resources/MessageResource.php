@@ -3,16 +3,21 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\MessageResource\Pages;
+use App\Models\GroupMessageTemplate;
 use App\Models\Message;
 use Filament\Forms;
+use Filament\Forms\Components\Actions\Action;
+use Filament\Forms\Components\Section;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
+use Filament\Forms\Set;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 
 class MessageResource extends Resource
 {
-    protected static ?string $model = Message::class;
+    protected static ?string $model = GroupMessageTemplate::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-chat-bubble-left-right';
 
@@ -26,17 +31,33 @@ class MessageResource extends Resource
 
     public static function form(Form $form): Form
     {
+        $actions = [];
+        foreach (GroupMessageTemplate::getVariables() as $variable) {
+            $actions[] = Action::make('add_' . $variable)
+                ->label(GroupMessageTemplate::getVariableLabels()[$variable])
+                ->action(function (Set $set, Get $get) use ($variable) {
+                    $content = $get('content');
+                    $content .= $variable;
+                    $set('content', $content);
+                })
+                ->color('primary');
+        }
         return $form
             ->schema([
                 Forms\Components\TextInput::make('name')
                     ->label('اسم القالب')
                     ->required()
                     ->maxLength(255),
-                Forms\Components\Textarea::make('content')
-                    ->label('محتوى الرسالة')
-                    ->required()
-                    ->helperText('يمكنك استخدام المتغيرات التالية: {student_name}, {group_name}, {curr_date}')
-                    ->columnSpanFull(),
+                Section::make('the_content')
+                    ->headerActions($actions)
+                    ->schema([
+                        Forms\Components\Textarea::make('content')
+                            ->label('محتوى الرسالة')
+                            ->required()
+                            ->rows(10)
+                            ->columnSpanFull(),
+                    ])
+                    ->columns(2),
             ]);
     }
 
@@ -60,9 +81,6 @@ class MessageResource extends Resource
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                //
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

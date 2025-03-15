@@ -136,28 +136,21 @@ class Core
      */
     public static function processMessageTemplate(string $template, Student $student, ?Group $group = null): string
     {
-        // Get gender-specific terms
-        $genderTerms = $student->sex === 'female' ? [
-            'prefix' => 'أختي الطالبة',
-            'pronoun' => 'ك',
-            'verb' => 'تنسي'
-        ] : [
-            'prefix' => 'أخي الطالب',
-            'pronoun' => 'ك',
-            'verb' => 'تنس'
-        ];
+        // Set locale to Arabic
+        Carbon::setLocale('ar');
 
-        // Prepare replacements for variables
-        $replacements = [
-            '{student_name}' => trim($student->name),
-            '{group_name}' => $group ? $group->name : '',
-            '{curr_date}' => Carbon::now()->format('Y-m-d'),
-            '{prefix}' => $genderTerms['prefix'],
-            '{pronoun}' => $genderTerms['pronoun'],
-            '{verb}' => $genderTerms['verb'],
-        ];
+        // Get variable values from the GroupMessageTemplate model
+        if ($group) {
+            $replacements = \App\Models\GroupMessageTemplate::getVariableValues($student, $group);
+        } else {
+            // Only replace student_name and curr_date if no group is provided
+            $replacements = [
+                '{student_name}' => trim($student->name),
+                '{curr_date}' => Carbon::now()->translatedFormat('l d F Y'),
+            ];
+        }
 
-        // Replace all variables in the template
+        // Replace only the specified variables in the template
         return str_replace(array_keys($replacements), array_values($replacements), $template);
     }
 

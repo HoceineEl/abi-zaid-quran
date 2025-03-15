@@ -101,11 +101,7 @@ class StudentsRelationManager extends RelationManager
                     ->url(fn($record) => "tel:{$record->phone}")
                     ->badge()
                     ->searchable()
-                    ->icon(function (TextColumn $column, $record) {
-                        $needsCall = $record->needACall;
-                        $column->icon(fn($record) => $needsCall ? 'heroicon-o-exclamation-circle' : 'heroicon-o-check-circle')
-                            ->color(fn(Student $record) => $needsCall ? 'danger' : 'success');
-                    })
+
                     ->label('رقم الهاتف')
                     ->extraCellAttributes(['dir' => 'ltr'])
                     ->alignRight(),
@@ -307,17 +303,25 @@ class StudentsRelationManager extends RelationManager
                         ->action(function (array $data) {
                             // Handle new template creation
                             if (!empty($data['name']) && !empty($data['content'])) {
-                                // If this is set as default, unset any existing defaults
-                                if (!empty($data['is_default']) && $data['is_default']) {
-                                    $this->ownerRecord->messageTemplates()->update(['is_default' => false]);
-                                }
-
                                 // Create the new template
-                                $this->ownerRecord->messageTemplates()->create([
+                                $template = GroupMessageTemplate::create([
                                     'name' => $data['name'],
                                     'content' => $data['content'],
-                                    'is_default' => !empty($data['is_default']) ? $data['is_default'] : false,
                                 ]);
+
+                                // Attach the template to the group
+                                $this->ownerRecord->messageTemplates()->attach($template->id, [
+                                    'is_default' => !empty($data['is_default']) ? $data['is_default'] : false,
+                                    'created_at' => now(),
+                                    'updated_at' => now(),
+                                ]);
+
+                                // If this is set as default, unset any existing defaults
+                                if (!empty($data['is_default']) && $data['is_default']) {
+                                    $this->ownerRecord->messageTemplates()
+                                        ->wherePivot('group_message_template_id', '!=', $template->id)
+                                        ->updateExistingPivot($template->id, ['is_default' => false]);
+                                }
 
                                 Notification::make()
                                     ->title('تم إضافة قالب الرسالة بنجاح')
@@ -332,18 +336,24 @@ class StudentsRelationManager extends RelationManager
                                         $template = GroupMessageTemplate::find($templateData['id']);
 
                                         if ($template) {
-                                            // If this is set as default, unset any existing defaults
-                                            if (!empty($templateData['is_default']) && $templateData['is_default']) {
-                                                $this->ownerRecord->messageTemplates()
-                                                    ->where('id', '!=', $template->id)
-                                                    ->update(['is_default' => false]);
-                                            }
-
+                                            // Update the template
                                             $template->update([
                                                 'name' => $templateData['name'],
                                                 'content' => $templateData['content'],
-                                                'is_default' => !empty($templateData['is_default']) ? $templateData['is_default'] : false,
                                             ]);
+
+                                            // Update the pivot data
+                                            $this->ownerRecord->messageTemplates()->updateExistingPivot($template->id, [
+                                                'is_default' => !empty($templateData['is_default']) ? $templateData['is_default'] : false,
+                                                'updated_at' => now(),
+                                            ]);
+
+                                            // If this is set as default, unset any existing defaults
+                                            if (!empty($templateData['is_default']) && $templateData['is_default']) {
+                                                $this->ownerRecord->messageTemplates()
+                                                    ->wherePivot('group_message_template_id', '!=', $template->id)
+                                                    ->updateExistingPivot($template->id, ['is_default' => false]);
+                                            }
                                         }
                                     }
                                 }
@@ -362,7 +372,7 @@ class StudentsRelationManager extends RelationManager
                                     'id' => $template->id,
                                     'name' => $template->name,
                                     'content' => $template->content,
-                                    'is_default' => $template->is_default,
+                                    'is_default' => $template->pivot->is_default,
                                 ];
                             })->toArray();
 
@@ -401,7 +411,7 @@ class StudentsRelationManager extends RelationManager
                                 if ($template) {
                                     $messageTemplate = $template->content;
                                 } else {
-                                    $messageTemplate = $data['message'] ?? 'لم ترسلوا الواجب المقرر اليوم، لعل المانع خير.';
+                                    $messageTemplate = $data['message'] ?? 'لم ترسل الواجب المقرر اليوم، لعل المانع خير.';
                                 }
                             }
 
@@ -454,7 +464,7 @@ class StudentsRelationManager extends RelationManager
                                 if ($template) {
                                     $messageTemplate = $template->content;
                                 } else {
-                                    $messageTemplate = $data['message'] ?? 'لم ترسلوا الواجب المقرر اليوم، لعل المانع خير.';
+                                    $messageTemplate = $data['message'] ?? 'لم ترسل الواجب المقرر اليوم، لعل المانع خير.';
                                 }
                             }
 
@@ -469,7 +479,7 @@ class StudentsRelationManager extends RelationManager
                         }),
                 ]),
                 Action::make('export_table')
-                    ->label('إرسال التقرير')
+                    ->label('تصدير كشف الحضور')
                     ->icon('heroicon-o-share')
                     ->size(ActionSize::Small)
                     ->color('success')
@@ -482,14 +492,21 @@ class StudentsRelationManager extends RelationManager
                             ->orderByDesc('attendance_count')
                             ->get();
 
+                        // Calculate presence percentage
+                        $totalStudents = $students->count();
+                        $presentStudents = $students->where('attendance_count', '>', 0)->count();
+                        $presencePercentage = $totalStudents > 0 ? round(($presentStudents / $totalStudents) * 100) : 0;
+
                         $html = view('components.students-export-table', [
                             'students' => $students,
                             'group' => $this->ownerRecord,
+                            'presencePercentage' => $presencePercentage,
                         ])->render();
 
                         $this->dispatch('export-table', [
                             'html' => $html,
-                            'groupName' => $this->ownerRecord->name
+                            'groupName' => $this->ownerRecord->name,
+                            'presencePercentage' => $presencePercentage
                         ]);
                     })
 
@@ -670,21 +687,10 @@ class StudentsRelationManager extends RelationManager
             $number = '+' . $number;
         }
 
-        // Get gender-specific terms for fallback templates
-        $genderTerms = $record->sex === 'female' ? [
-            'prefix' => 'أختي الطالبة',
-            'pronoun' => 'ك',
-            'verb' => 'تنسي'
-        ] : [
-            'prefix' => 'أخي الطالب',
-            'pronoun' => 'ك',
-            'verb' => 'تنس'
-        ];
-        $name = trim($record->name);
 
         // Check if the group has a selected message template
-        if ($ownerRecord->message_id && $ownerRecord->message) {
-            $message = Core::processMessageTemplate($ownerRecord->message->content, $record, $ownerRecord);
+        if ($ownerRecord->messageTemplates->count() > 0) {
+            $message = Core::processMessageTemplate($ownerRecord->messageTemplates->first()->content, $record, $ownerRecord);
         }
         // Check if there's a default template in the group's message templates
         else if ($defaultTemplate = $ownerRecord->messageTemplates()->where('is_default', true)->first()) {
@@ -692,6 +698,18 @@ class StudentsRelationManager extends RelationManager
         }
         // Use built-in templates based on group type
         else {
+
+            // Get gender-specific terms for fallback templates
+            $genderTerms = $record->sex === 'female' ? [
+                'prefix' => 'أختي الطالبة',
+                'pronoun' => 'ك',
+                'verb' => 'تنسي'
+            ] : [
+                'prefix' => 'أخي الطالب',
+                'pronoun' => 'ك',
+                'verb' => 'تنس'
+            ];
+            $name = trim($record->name);
             // Message for onsite groups
             if ($ownerRecord->is_onsite) {
                 $message = <<<MSG

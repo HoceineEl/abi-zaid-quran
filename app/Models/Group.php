@@ -39,9 +39,36 @@ class Group extends Model
         return $this->belongsTo(Message::class);
     }
 
-    public function messageTemplates(): HasMany
+    public function messageTemplates(): BelongsToMany
     {
-        return $this->hasMany(GroupMessageTemplate::class);
+        return $this->belongsToMany(GroupMessageTemplate::class, 'group_message_template_pivot')
+            ->withPivot('is_default')
+            ->withTimestamps();
+    }
+
+    /**
+     * Get the default message template for this group
+     */
+    public function getDefaultMessageTemplate(): ?GroupMessageTemplate
+    {
+        return $this->messageTemplates()
+            ->wherePivot('is_default', true)
+            ->first();
+    }
+
+    /**
+     * Set a message template as default for this group
+     */
+    public function setDefaultMessageTemplate(int $templateId): void
+    {
+        // First, unset any existing default templates
+        $this->messageTemplates()
+            ->wherePivot('is_default', true)
+            ->updateExistingPivot($templateId, ['is_default' => false]);
+
+        // Then set the new default template
+        $this->messageTemplates()
+            ->updateExistingPivot($templateId, ['is_default' => true]);
     }
 
     public function getFullNameAttribute(): string

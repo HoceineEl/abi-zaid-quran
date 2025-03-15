@@ -5,7 +5,7 @@
         document.addEventListener('livewire:initialized', () => {
             Livewire.on('export-table', async (data) => {
                 const isDarkMode = document.documentElement.classList.contains('dark');
-
+                console.log(data);
                 // Create temporary container
                 const container = document.createElement('div');
                 container.style.position = 'absolute';
@@ -91,6 +91,34 @@
                         groupTitle.style.color = isDarkMode ? '#f9fafb' : '#1f2937';
                         wrapper.appendChild(groupTitle);
                     }
+                    // Add presence percentage if available
+                    const presenceTitle = document.createElement('h4');
+                    presenceTitle.textContent = `نسبة الحضور: ${data[0].presencePercentage}%`;
+                    presenceTitle.style.textAlign = 'center';
+                    presenceTitle.style.marginBottom = '15px';
+                    presenceTitle.style.fontSize = '1.4rem';
+                    presenceTitle.style.fontFamily = 'Almarai, sans-serif';
+
+                    // Set color based on percentage value
+                    const percentage = parseInt(data[0].presencePercentage);
+                    let percentageColor;
+
+                    if (percentage < 30) {
+                        // Red for low attendance
+                        percentageColor = isDarkMode ? '#EF4444' : '#DC2626';
+                    } else if (percentage < 60) {
+                        // Orange/Yellow for medium attendance
+                        percentageColor = isDarkMode ? '#F59E0B' : '#D97706';
+                    } else if (percentage < 80) {
+                        // Light green for good attendance
+                        percentageColor = isDarkMode ? '#34D399' : '#10B981';
+                    } else {
+                        // Bright green for excellent attendance
+                        percentageColor = isDarkMode ? '#10B981' : '#047857';
+                    }
+
+                    presenceTitle.style.color = percentageColor;
+                    wrapper.appendChild(presenceTitle);
 
                     // Add the current page
                     wrapper.appendChild(page.cloneNode(true));
