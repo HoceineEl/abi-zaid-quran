@@ -87,6 +87,7 @@ class Student extends Model
 
                 $twoDaysEbsentCount = $twoDays->where('status', 'absent')->count();
                 $threeDaysEbsentCount = $threeDays->where('status', 'absent')->count();
+                
                 if (
                     $threeDaysEbsentCount >= 3
                 ) {

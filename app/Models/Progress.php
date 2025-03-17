@@ -10,19 +10,24 @@ class Progress extends Model
 {
     use HasFactory;
 
-    protected $casts = [
-        'date' => 'date',
-    ];
+
 
     protected $fillable = [
-        'student_id', 'date', 'status', 'page_id', 'lines_from', 'lines_to', 'notes', 'created_by',
-        'prog', 'comment',
+        'student_id',
+        'date',
+        'status',
+        'page_id',
+        'lines_from',
+        'lines_to',
+        'notes',
+        'created_by',
+        'prog',
+        'comment',
     ];
 
     protected static function boot(): void
     {
         parent::boot();
-
         static::creating(function ($progress) {
             $progress->created_by = auth()->id();
         });
