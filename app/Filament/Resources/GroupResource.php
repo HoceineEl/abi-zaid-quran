@@ -22,9 +22,11 @@ use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Notifications\Notification;
+use Filament\Resources\Pages\ListRecords;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Actions\Action as ActionsAction;
+use Filament\Tables\Actions\ActionGroup;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -133,59 +135,96 @@ class GroupResource extends Resource
                     ->badge(),
                 TextColumn::make('created_at')->label('تاريخ الإنشاء')
                     ->date('Y-m-d H:i:s'),
-                TextColumn::make('manager_has_set_progress')
-                    ->label('تم تسجيل الحضور؟')
-                    ->getStateUsing(function (Group $record) {
-                        $students = $record->students;
-                        $progresses = $students->map(function ($student) {
-                            return $student->progresses->where('date', now()->format('Y-m-d'))->count();
-                        });
+                // TextColumn::make('manager_has_set_progress')
+                //     ->label('تم تسجيل الحضور؟')
+                //     ->getStateUsing(function (Group $record) {
+                //         $students = $record->students;
+                //         $progresses = $students->map(function ($student) {
+                //             return $student->progresses->where('date', now()->format('Y-m-d'))->count();
+                //         });
 
-                        return $progresses->sum() . '/' . $students->count() . ' من الطلاب مسجلين اليوم';
-                    })
-                    ->searchable(false),
+                //         return $progresses->sum() . '/' . $students->count() . ' من الطلاب مسجلين اليوم';
+                //     })
+                //     ->searchable(false),
             ])
             ->filters([
                 //
             ])
             ->recordUrl(fn(Group $record) => GroupResource::getUrl('edit', ['record' => $record, 'activeRelationManager' => 0]))
             ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\Action::make('send_whatsapp_group')
-                    ->label('أرسل رسالة للغائبين')
-                    ->icon('heroicon-o-users')
-                    ->color('info')
-                    ->action(function (Group $record) {
-                        Core::sendMessageToAbsence($record);
-                    }),
-                Tables\Actions\Action::make('remind_manager')
-                    ->label('تذكير المشرفين ')
-                    ->icon('heroicon-o-bell')
-                    ->visible(function (Group $record) {
-                        $one = auth()->user()->role === 'admin';
-                        $students = $record->students;
-                        $progresses = $students->map(function ($student) {
-                            return $student->progresses->where('date', now()->format('Y-m-d'))->count();
-                        });
-                        $two = $progresses->sum() < $students->count();
 
-                        return $one && $two;
-                    })
-                    ->color('primary')
-                    ->form([
-                        Textarea::make('message')
-                            ->label('الرسالة')
-                            ->default('من فضلكم قوموا بتسجيل الحضور للطلاب اليوم.')
-                            ->rows(10)
-                            ->required(),
-                    ])
-                    ->action(function (array $data, Group $record) {
-                        $data['message'] = $data['message'] ?? 'من فضلكم قوموا بتسجيل الحضور للطلاب اليوم.';
-                        $data['students'] = $record->managers()->pluck('id')->toArray();
-                        $data['message_type'] = 'custom';
-                        Core::sendMessageToSpecific($data, 'manager');
+                Tables\Actions\Action::make('export_attendance')
+                    ->label('تصدير كشف الحضور')
+                    ->icon('heroicon-o-share')
+                    ->color('success')
+                    ->action(function (Group $record, ListRecords $livewire) {
+                        // Get students with attendance information
+                        $students = $record->students()
+                            ->withCount(['progresses as attendance_count' => function ($query) {
+                                $query->where('date', now()->format('Y-m-d'))
+                                    ->where('status', 'memorized');
+                            }])
+                            ->orderByDesc('attendance_count')
+                            ->get();
+
+                        // Calculate presence percentage
+                        $totalStudents = $students->count();
+                        $presentStudents = $students->where('attendance_count', '>', 0)->count();
+                        $presencePercentage = $totalStudents > 0 ? round(($presentStudents / $totalStudents) * 100) : 0;
+
+                        $html = view('components.students-export-table', [
+                            'showAttendanceRemark' => true,
+                            'students' => $students,
+                            'group' => $record,
+                            'presencePercentage' => $presencePercentage,
+                        ])->render();
+
+                        // Dispatch the export event
+                        $livewire->dispatch('export-table', [
+                            'showAttendanceRemark' => true,
+                            'html' => $html,
+                            'groupName' => $record->name,
+                            'presencePercentage' => $presencePercentage
+                        ]);
                     }),
+                ActionGroup::make([
+                    // Tables\Actions\Action::make('send_whatsapp_group')
+                    //     ->label('أرسل رسالة للغائبين')
+                    //     ->icon('heroicon-o-users')
+                    //     ->color('info')
+                    //     ->action(function (Group $record) {
+                    //         Core::sendMessageToAbsence($record);
+                    //     }),
+                    // Tables\Actions\Action::make('remind_manager')
+                    //     ->label('تذكير المشرفين ')
+                    //     ->icon('heroicon-o-bell')
+                    //     ->visible(function (Group $record) {
+                    //         $one = auth()->user()->role === 'admin';
+                    //         $students = $record->students;
+                    //         $progresses = $students->map(function ($student) {
+                    //             return $student->progresses->where('date', now()->format('Y-m-d'))->count();
+                    //         });
+                    //         $two = $progresses->sum() < $students->count();
+
+                    //         return $one && $two;
+                    //     })
+                    //     ->color('primary')
+                    //     ->form([
+                    //         Textarea::make('message')
+                    //             ->label('الرسالة')
+                    //             ->default('من فضلكم قوموا بتسجيل الحضور للطلاب اليوم.')
+                    //             ->rows(10)
+                    //             ->required(),
+                    //     ])
+                    //     ->action(function (array $data, Group $record) {
+                    //         $data['message'] = $data['message'] ?? 'من فضلكم قوموا بتسجيل الحضور للطلاب اليوم.';
+                    //         $data['students'] = $record->managers()->pluck('id')->toArray();
+                    //         $data['message_type'] = 'custom';
+                    //         Core::sendMessageToSpecific($data, 'manager');
+                    //     }),
+                    Tables\Actions\ViewAction::make(),
+                    Tables\Actions\EditAction::make(),
+                ])
             ])
             ->headerActions([
                 ActionsAction::make('send_whatsapp')

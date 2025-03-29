@@ -282,13 +282,13 @@
                                     @if ($attendanceRemark['label'])
                                         <span class="attendance-remark">
                                             {{ $attendanceRemark['label'] }}
-                                            @if ($attendanceRemark['days'])
+                                            {{-- @if ($attendanceRemark['days'])
                                                 <span class="attendance-days">
                                                     {{ $attendanceRemark['days'] }}
                                                     {{ $attendanceRemark['days'] >= 11 ? 'يوماً' : 'أيام' }} متتالية
                                                     بدون غياب
                                                 </span>
-                                            @endif
+                                            @endif --}}
                                         </span>
                                     @endif
                                 </td>
