@@ -35,7 +35,6 @@ class ProgressSeeder extends Seeder
                     'student_id' => $student->id,
                     'date' => $date,
                     'status' => $isPresent ? 'memorized' : 'absent',
-                    'created_by' => $manager->id,
                     'created_at' => $date,
                     'updated_at' => $date,
                 ];

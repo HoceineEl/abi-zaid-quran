@@ -13,11 +13,7 @@ class Group extends Model
 {
     use HasFactory;
 
-    protected $fillable = [
-        'name',
-        'type',
-        'message_id',
-    ];
+
 
     public function students(): HasMany
     {

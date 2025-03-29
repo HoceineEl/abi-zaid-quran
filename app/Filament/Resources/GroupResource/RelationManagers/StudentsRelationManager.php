@@ -118,6 +118,7 @@ class StudentsRelationManager extends RelationManager
                     ->since()
                     ->toggleable()
                     ->toggledHiddenByDefault(),
+           
             ])
 
             ->reorderable('order_no', true)
@@ -498,17 +499,20 @@ class StudentsRelationManager extends RelationManager
                         $presencePercentage = $totalStudents > 0 ? round(($presentStudents / $totalStudents) * 100) : 0;
 
                         $html = view('components.students-export-table', [
+                            'showAttendanceRemark' => true,
                             'students' => $students,
                             'group' => $this->ownerRecord,
                             'presencePercentage' => $presencePercentage,
                         ])->render();
 
                         $this->dispatch('export-table', [
+                            'showAttendanceRemark' => true,
                             'html' => $html,
                             'groupName' => $this->ownerRecord->name,
                             'presencePercentage' => $presencePercentage
                         ]);
-                    })
+                    }),
+              
 
             ])
             ->bulkActions([

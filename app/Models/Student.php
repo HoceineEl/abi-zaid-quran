@@ -87,13 +87,12 @@ class Student extends Model
 
                 $twoDaysEbsentCount = $twoDays->where('status', 'absent')->count();
                 $threeDaysEbsentCount = $threeDays->where('status', 'absent')->count();
-                
+
                 if (
                     $threeDaysEbsentCount >= 3
                 ) {
                     return 'critical';
-                }
-                elseif (
+                } elseif (
                     $twoDaysEbsentCount >= 2
                 ) {
                     return 'warning';
@@ -132,5 +131,41 @@ class Student extends Model
         static::addGlobalScope('ordered', function ($query) {
             $query->orderBy('order_no');
         });
+    }
+
+    public function attendanceRemark(): Attribute
+    {
+        return Attribute::make(
+            get: function () {
+                // Get the recent progress records ordered by date (newest first)
+                $recentProgresses = $this->progresses()
+                    ->latest('date')
+                    ->limit(30) // Look at up to 30 days
+                    ->get();
+
+
+                // Count current streak of days without absence
+                $currentStreak = 0;
+
+                foreach ($recentProgresses as $progress) {
+                    if ($progress->status !== 'absent') {
+                        $currentStreak++;
+                    } else {
+                        break; // Stop counting at first absence
+                    }
+                }
+
+                // Return appropriate remark based on current streak without absence
+                if ($currentStreak >= 16 && $currentStreak <= 30) {
+                    return ['label' => 'ممتاز', 'days' => $currentStreak]; // Excellent
+                } elseif ($currentStreak >= 10 && $currentStreak <= 15) {
+                    return ['label' => 'جيد', 'days' => $currentStreak]; // Good
+                } elseif ($currentStreak >= 7 && $currentStreak <= 9) {
+                    return ['label' => 'حسن', 'days' => $currentStreak]; // Fair
+                } else {
+                    return ['label' => '', 'days' => null];
+                }
+            }
+        );
     }
 }

@@ -117,8 +117,154 @@
                         percentageColor = isDarkMode ? '#10B981' : '#047857';
                     }
 
-                    presenceTitle.style.color = percentageColor;
-                    wrapper.appendChild(presenceTitle);
+                    // Create a better attendance display
+                    const attendanceContainer = document.createElement('div');
+                    attendanceContainer.style.margin = '15px auto 25px';
+                    attendanceContainer.style.padding = '15px';
+                    attendanceContainer.style.borderRadius = '10px';
+                    attendanceContainer.style.backgroundColor = isDarkMode ? 'rgba(31, 41, 55, 0.6)' :
+                        'rgba(249, 250, 251, 0.8)';
+                    attendanceContainer.style.boxShadow = isDarkMode ?
+                        '0 4px 6px -1px rgba(0, 0, 0, 0.2)' : '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+                    attendanceContainer.style.display = 'flex';
+                    attendanceContainer.style.justifyContent = 'center';
+                    attendanceContainer.style.alignItems = 'center';
+                    attendanceContainer.style.flexWrap = 'wrap';
+                    attendanceContainer.style.gap = '30px';
+                    attendanceContainer.style.maxWidth = '700px';
+
+                    // Left side - percentage indicator
+                    const percentageIndicator = document.createElement('div');
+                    percentageIndicator.style.position = 'relative';
+                    percentageIndicator.style.minWidth = '120px';
+                    percentageIndicator.style.textAlign = 'center';
+
+                    // Big percentage display
+                    const percentageDisplay = document.createElement('div');
+                    percentageDisplay.textContent = `${percentage}%`;
+                    percentageDisplay.style.fontSize = '2.5rem';
+                    percentageDisplay.style.fontWeight = 'bold';
+                    percentageDisplay.style.color = percentageColor;
+                    percentageDisplay.style.marginBottom = '5px';
+
+                    // Progress bar beneath the percentage
+                    const progressBar = document.createElement('div');
+                    progressBar.style.width = '100%';
+                    progressBar.style.height = '8px';
+                    progressBar.style.backgroundColor = isDarkMode ? '#4B5563' : '#E5E7EB';
+                    progressBar.style.borderRadius = '4px';
+                    progressBar.style.overflow = 'hidden';
+
+                    const progressFill = document.createElement('div');
+                    progressFill.style.height = '100%';
+                    progressFill.style.width = `${percentage}%`;
+                    progressFill.style.backgroundColor = percentageColor;
+                    progressFill.style.borderRadius = '4px';
+
+                    progressBar.appendChild(progressFill);
+
+                    // Right side - attendance info
+                    const attendanceInfo = document.createElement('div');
+                    attendanceInfo.style.textAlign = 'right';
+                    attendanceInfo.style.flex = '1';
+                    attendanceInfo.style.minWidth = '250px';
+
+                    // Main title
+                    const attendanceTitle = document.createElement('h3');
+                    attendanceTitle.textContent = 'نسبة الحضور';
+                    attendanceTitle.style.fontSize = '1.5rem';
+                    attendanceTitle.style.fontWeight = 'bold';
+                    attendanceTitle.style.marginBottom = '8px';
+                    attendanceTitle.style.color = isDarkMode ? '#f9fafb' : '#1f2937';
+
+                    // Status description
+                    const statusText = document.createElement('p');
+                    let statusMessage = '';
+                    let statusIcon = '';
+
+                    if (percentage < 50) {
+                        statusMessage = 'نسبة منخفضة جداً - يجب اتخاذ إجراءات فورية لتحسين الحضور';
+                        statusIcon = '🔴';
+                    } else if (percentage < 70) {
+                        statusMessage = 'نسبة غير مقبولة - مطلوب تحسين الحضور بشكل كبير';
+                        statusIcon = '⚠️';
+                    } else if (percentage < 80) {
+                        statusMessage = 'نسبة متوسطة - يجب العمل على تحسينها بشكل جدي';
+                        statusIcon = '⚠️';
+                    } else if (percentage < 90) {
+                        statusMessage = 'نسبة جيدة - نحتاج إلى مزيد من التحسين للوصول إلى التميز';
+                        statusIcon = '🔄';
+                    } else if (percentage < 100) {
+                        statusMessage = 'نسبة ممتازة - استمر في المحافظة عليها';
+                        statusIcon = '👏';
+                    } else {
+                        statusMessage = 'نسبة مثالية - بارك الله في جهودكم';
+                        statusIcon = '🌟';
+                    }
+
+                    statusText.innerHTML = `${statusIcon} ${statusMessage}`;
+                    statusText.style.fontSize = '1.1rem';
+                    statusText.style.margin = '0';
+                    statusText.style.color = percentageColor;
+
+                    // Attendance date range if available
+                    const dateRange = document.createElement('p');
+                    dateRange.textContent = data[0].dateRange || 'اليوم';
+                    dateRange.style.fontSize = '0.9rem';
+                    dateRange.style.color = isDarkMode ? '#9CA3AF' : '#6B7280';
+                    dateRange.style.marginTop = '5px';
+
+                    // Assemble the percentage indicator
+                    percentageIndicator.appendChild(percentageDisplay);
+                    percentageIndicator.appendChild(progressBar);
+
+                    // Assemble the info section
+                    attendanceInfo.appendChild(attendanceTitle);
+                    attendanceInfo.appendChild(statusText);
+                    attendanceInfo.appendChild(dateRange);
+
+                    // Assemble the container
+                    attendanceContainer.appendChild(percentageIndicator);
+                    attendanceContainer.appendChild(attendanceInfo);
+                    wrapper.appendChild(attendanceContainer);
+
+                    // Add special congratulatory message for 100% attendance
+                    if (percentage === 100) {
+                        const congratsContainer = document.createElement('div');
+                        congratsContainer.style.margin = '15px auto 20px';
+                        congratsContainer.style.textAlign = 'center';
+                        congratsContainer.style.padding = '15px';
+                        congratsContainer.style.borderRadius = '10px';
+                        congratsContainer.style.backgroundColor = isDarkMode ?
+                            'rgba(16, 185, 129, 0.15)' : 'rgba(4, 120, 87, 0.08)';
+                        congratsContainer.style.maxWidth = '550px';
+                        congratsContainer.style.border = isDarkMode ?
+                            '2px solid rgba(52, 211, 153, 0.5)' : '2px solid rgba(4, 120, 87, 0.2)';
+                        congratsContainer.style.boxShadow = isDarkMode ?
+                            '0 10px 15px -3px rgba(0, 0, 0, 0.3)' :
+                            '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
+
+                        // Congratulatory message
+                        const congratsMessage = document.createElement('div');
+                        congratsMessage.textContent = 'بارك الله في هذه المجموعة المتميزة';
+                        congratsMessage.style.fontSize = '1.5rem';
+                        congratsMessage.style.fontWeight = 'bold';
+                        congratsMessage.style.color = isDarkMode ? '#34D399' : '#047857';
+                        congratsMessage.style.marginBottom = '15px';
+                        congratsMessage.style.textShadow = isDarkMode ?
+                            '0 0 8px rgba(52, 211, 153, 0.5)' : '0 0 8px rgba(4, 120, 87, 0.2)';
+
+                        // Just a single large medal
+                        const medalIcon = document.createElement('div');
+                        medalIcon.textContent = '🥇';
+                        medalIcon.style.fontSize = '5.5rem';
+                        medalIcon.style.lineHeight = '1';
+                        medalIcon.style.margin = '0 auto';
+
+                        congratsContainer.appendChild(congratsMessage);
+                        congratsContainer.appendChild(medalIcon);
+                        wrapper.appendChild(congratsContainer);
+                    }
 
                     // Add the current page
                     wrapper.appendChild(page.cloneNode(true));

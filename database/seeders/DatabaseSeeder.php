@@ -19,7 +19,8 @@ class DatabaseSeeder extends Seeder
             PaymentSeeder::class,
             GroupSeeder::class,
             StudentSeeder::class,
-            ProgressSeeder::class,
+            // ProgressSeeder::class,
+            AttendancePatternSeeder::class,
         ]);
     }
 }

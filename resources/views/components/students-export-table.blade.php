@@ -110,6 +110,28 @@
             font-weight: bold;
         }
 
+        .attendance-remark {
+            color: var(--success-color);
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-top: 5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 4px 0;
+        }
+
+        .attendance-days {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 400;
+            margin-top: 2px;
+            color: var(--text-secondary);
+            direction: rtl;
+        }
+
         .student-name {
             font-weight: 600;
             font-size: 1.2rem;
@@ -160,21 +182,48 @@
         .export-table td:nth-child(4) {
             width: 40%;
         }
+
+        /* Adjust column widths with attendance remark column */
+        .export-table.with-attendance th:nth-child(2),
+        .export-table.with-attendance td:nth-child(2) {
+            width: 30%;
+            text-align: right;
+        }
+
+        .export-table.with-attendance th:nth-child(3),
+        .export-table.with-attendance td:nth-child(3) {
+            width: 15%;
+        }
+
+        .export-table.with-attendance th:nth-child(4),
+        .export-table.with-attendance td:nth-child(4) {
+            width: 35%;
+        }
+
+        .export-table.with-attendance th:nth-child(5),
+        .export-table.with-attendance td:nth-child(5) {
+            width: 20%;
+        }
     </style>
 
     @php
+        $showAttendanceRemark = $showAttendanceRemark ?? false;
+
         $chunks = $students->chunk(50);
         $totalPages = $chunks->count();
     @endphp
 
     @foreach ($chunks as $pageIndex => $studentsChunk)
         <div class="table-page" data-page="{{ $pageIndex + 1 }}">
-            <table class="export-table">
+            <table class="export-table {{ $showAttendanceRemark ? 'with-attendance' : '' }}">
                 <thead>
                     <tr>
                         <th class="index-column">#</th>
                         <th>الاسم</th>
                         <th>تسجيل الحضور</th>
+                        @if ($showAttendanceRemark)
+                            <th>المواظبة </th>
+                        @endif
                         <th>ملاحظات</th>
                     </tr>
                 </thead>
@@ -185,6 +234,7 @@
                             $consecutiveAbsentDays = $student->consecutiveAbsentDays;
                             $absenceStatus = $student->absenceStatus;
                             $status = $todayProgress?->status ?? 'pending';
+                            $attendanceRemark = $student->attendanceRemark;
                         @endphp
                         <tr>
                             <td class="index-column">{{ $pageIndex * 25 + $index + 1 }}</td>
@@ -227,6 +277,22 @@
                                     @endif
                                 </span>
                             </td>
+                            @if ($showAttendanceRemark)
+                                <td>
+                                    @if ($attendanceRemark['label'])
+                                        <span class="attendance-remark">
+                                            {{ $attendanceRemark['label'] }}
+                                            @if ($attendanceRemark['days'])
+                                                <span class="attendance-days">
+                                                    {{ $attendanceRemark['days'] }}
+                                                    {{ $attendanceRemark['days'] >= 11 ? 'يوماً' : 'أيام' }} متتالية
+                                                    بدون غياب
+                                                </span>
+                                            @endif
+                                        </span>
+                                    @endif
+                                </td>
+                            @endif
                             <td>
                                 @if ($absenceStatus === 'critical')
                                     <span class="absence-critical">

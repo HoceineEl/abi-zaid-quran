@@ -12,25 +12,14 @@ class Progress extends Model
 
 
 
-    protected $fillable = [
-        'student_id',
-        'date',
-        'status',
-        'page_id',
-        'lines_from',
-        'lines_to',
-        'notes',
-        'created_by',
-        'prog',
-        'comment',
-    ];
+ 
 
     protected static function boot(): void
     {
         parent::boot();
-        static::creating(function ($progress) {
-            $progress->created_by = auth()->id();
-        });
+        // static::creating(function ($progress) {
+        //     $progress->created_by = auth()->id();
+        // });
     }
 
     public function student(): BelongsTo

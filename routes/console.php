@@ -16,6 +16,12 @@ Artisan::command('send-whatsapp', function () {
     Core::sendMessageToAbsence();
 })->purpose('Send WhatsApp messages to students with absences');
 
+Artisan::command('seed:attendance-patterns', function () {
+    $this->info('Seeding attendance patterns...');
+    $this->call('db:seed', ['--class' => 'Database\\Seeders\\AttendancePatternSeeder']);
+    $this->info('Attendance patterns seeded successfully!');
+})->purpose('Seed random attendance patterns for testing');
+
 // Schedule::call(function () {
 //     $whatsAppService = new WhatsAppService();
 //     $students = Student::with(['progress' => function ($query) {
