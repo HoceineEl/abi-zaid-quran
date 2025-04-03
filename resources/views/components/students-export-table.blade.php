@@ -330,12 +330,7 @@
                     صفحة {{ $pageIndex + 1 }} من {{ $totalPages }}
                 </div>
             @endif
-            @if ($showAttendanceRemark)
-                <div class="attendance-hint">
-                    * تقييم المواظبة يعتمد على عدد أيام الغياب خلال آخر 30 يوم: ممتاز (0 غياب)، جيد (1-3 غياب)، حسن (4-5
-                    غياب)، لا بأس به (6-7 غياب)، متوسط (8-10 غياب)، ضعيف (أكثر من 10 غياب)
-                </div>
-            @endif
+
         </div>
     @endforeach
 </div>
