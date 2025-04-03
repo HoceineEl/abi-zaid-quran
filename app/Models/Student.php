@@ -137,33 +137,28 @@ class Student extends Model
     {
         return Attribute::make(
             get: function () {
-                // Get the recent progress records ordered by date (newest first)
+                // Get the recent progress records for the last 30 days
                 $recentProgresses = $this->progresses()
                     ->latest('date')
-                    ->limit(30) // Look at up to 30 days
+                    ->limit(30)
                     ->get();
 
+                // Count absences in the last 30 days
+                $absenceCount = $recentProgresses->where('status', 'absent')->count();
 
-                // Count current streak of days without absence
-                $currentStreak = 0;
-
-                foreach ($recentProgresses as $progress) {
-                    if ($progress->status !== 'absent') {
-                        $currentStreak++;
-                    } else {
-                        break; // Stop counting at first absence
-                    }
-                }
-
-                // Return appropriate remark based on current streak without absence
-                if ($currentStreak >= 16 && $currentStreak <= 30) {
-                    return ['label' => 'ممتاز', 'days' => $currentStreak]; // Excellent
-                } elseif ($currentStreak >= 10 && $currentStreak <= 15) {
-                    return ['label' => 'جيد', 'days' => $currentStreak]; // Good
-                } elseif ($currentStreak >= 7 && $currentStreak <= 9) {
-                    return ['label' => 'حسن', 'days' => $currentStreak]; // Fair
+                // Return appropriate remark based on absence count
+                if ($absenceCount === 0) {
+                    return ['label' => 'ممتاز', 'days' => $absenceCount, 'color' => '#28a745']; // Green
+                } elseif ($absenceCount >= 1 && $absenceCount <= 3) {
+                    return ['label' => 'جيد', 'days' => $absenceCount, 'color' => '#5cb85c']; // Light Green
+                } elseif ($absenceCount >= 4 && $absenceCount <= 5) {
+                    return ['label' => 'حسن', 'days' => $absenceCount, 'color' => '#8fd19e']; // Lighter Green
+                } elseif ($absenceCount >= 6 && $absenceCount <= 7) {
+                    return ['label' => 'لا بأس به', 'days' => $absenceCount, 'color' => '#ffc107']; // Yellow
+                } elseif ($absenceCount >= 8 && $absenceCount <= 10) {
+                    return ['label' => 'متوسط', 'days' => $absenceCount, 'color' => '#fd7e14']; // Orange
                 } else {
-                    return ['label' => '', 'days' => null];
+                    return ['label' => 'ضعيف', 'days' => $absenceCount, 'color' => '#dc3545']; // Red
                 }
             }
         );

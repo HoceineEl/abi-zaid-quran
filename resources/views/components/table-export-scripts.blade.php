@@ -203,7 +203,7 @@
                     }
 
                     statusText.innerHTML = `${statusIcon} ${statusMessage}`;
-                    statusText.style.fontSize = '1.1rem';
+                    statusText.style.fontSize = '1.4rem';
                     statusText.style.margin = '0';
                     statusText.style.color = percentageColor;
 

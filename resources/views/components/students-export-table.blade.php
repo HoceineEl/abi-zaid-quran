@@ -45,10 +45,11 @@
 
         .export-table th {
             background-color: var(--bg-header);
-            font-weight: 600;
-            font-size: 0.95rem;
+            font-weight: 700;
+            font-size: 1.1rem;
             white-space: nowrap;
             color: var(--text-primary);
+            padding: 20px 16px;
         }
 
         .export-table tr:nth-child(even) {
@@ -106,13 +107,11 @@
 
         .absence-warning {
             color: #3b82f6;
-            /* blue-500 */
             font-weight: bold;
         }
 
         .attendance-remark {
-            color: var(--success-color);
-            font-size: 1.2rem;
+            font-size: 1.6rem;
             font-weight: 700;
             margin-top: 5px;
             display: flex;
@@ -204,6 +203,16 @@
         .export-table.with-attendance td:nth-child(5) {
             width: 20%;
         }
+
+        .attendance-hint {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            text-align: center;
+            margin-top: 10px;
+            padding: 8px;
+            border-top: 1px solid var(--border-color);
+            direction: rtl;
+        }
     </style>
 
     @php
@@ -280,13 +289,11 @@
                             @if ($showAttendanceRemark)
                                 <td>
                                     @if ($attendanceRemark['label'])
-                                        <span class="attendance-remark">
+                                        <span class="attendance-remark" style="color: {{ $attendanceRemark['color'] }}">
                                             {{ $attendanceRemark['label'] }}
-                                            {{-- @if ($attendanceRemark['days'])
+                                            {{-- @if ($attendanceRemark['days'] !== null)
                                                 <span class="attendance-days">
-                                                    {{ $attendanceRemark['days'] }}
-                                                    {{ $attendanceRemark['days'] >= 11 ? 'يوماً' : 'أيام' }} متتالية
-                                                    بدون غياب
+                                                    {{ $attendanceRemark['days'] }} يوم
                                                 </span>
                                             @endif --}}
                                         </span>
@@ -321,6 +328,12 @@
             @if ($totalPages > 1)
                 <div class="page-indicator" style="text-align: center; margin-top: 10px; color: var(--text-secondary);">
                     صفحة {{ $pageIndex + 1 }} من {{ $totalPages }}
+                </div>
+            @endif
+            @if ($showAttendanceRemark)
+                <div class="attendance-hint">
+                    * تقييم المواظبة يعتمد على عدد أيام الغياب خلال آخر 30 يوم: ممتاز (0 غياب)، جيد (1-3 غياب)، حسن (4-5
+                    غياب)، لا بأس به (6-7 غياب)، متوسط (8-10 غياب)، ضعيف (أكثر من 10 غياب)
                 </div>
             @endif
         </div>
