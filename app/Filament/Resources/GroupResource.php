@@ -159,13 +159,7 @@ class GroupResource extends Resource
                     ->color('success')
                     ->action(function (Group $record, ListRecords $livewire) {
                         // Get students with attendance information
-                        $students = $record->students()
-                            ->withCount(['progresses as attendance_count' => function ($query) {
-                                $query->where('date', now()->format('Y-m-d'))
-                                    ->where('status', 'memorized');
-                            }])
-                            ->orderByDesc('attendance_count')
-                            ->get();
+                        $students = StudentsRelationManager::getSortedStudentsForAttendanceReport($record);
 
                         // Calculate presence percentage
                         $totalStudents = $students->count();
@@ -184,7 +178,8 @@ class GroupResource extends Resource
                             'showAttendanceRemark' => true,
                             'html' => $html,
                             'groupName' => $record->name,
-                            'presencePercentage' => $presencePercentage
+                            'presencePercentage' => $presencePercentage,
+                            'dateRange' => 'آخر 30 يوم'
                         ]);
                     }),
                 ActionGroup::make([

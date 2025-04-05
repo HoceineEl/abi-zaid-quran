@@ -118,7 +118,7 @@ class StudentsRelationManager extends RelationManager
                     ->since()
                     ->toggleable()
                     ->toggledHiddenByDefault(),
-           
+
             ])
 
             ->reorderable('order_no', true)
@@ -485,13 +485,7 @@ class StudentsRelationManager extends RelationManager
                     ->size(ActionSize::Small)
                     ->color('success')
                     ->action(function () {
-
-                        $students = $this->ownerRecord->students()
-                            ->withCount(['progresses as attendance_count' => function ($query) {
-                                $query->where('date', now()->subMinutes(30)->format('Y-m-d'))->where('status', 'memorized');
-                            }])
-                            ->orderByDesc('attendance_count')
-                            ->get();
+                        $students = self::getSortedStudentsForAttendanceReport($this->ownerRecord);
 
                         // Calculate presence percentage
                         $totalStudents = $students->count();
@@ -509,10 +503,11 @@ class StudentsRelationManager extends RelationManager
                             'showAttendanceRemark' => true,
                             'html' => $html,
                             'groupName' => $this->ownerRecord->name,
-                            'presencePercentage' => $presencePercentage
+                            'presencePercentage' => $presencePercentage,
+                            'dateRange' => 'آخر 30 يوم'
                         ]);
                     }),
-              
+
 
             ])
             ->bulkActions([
@@ -766,5 +761,65 @@ MSG;
         $url = route('whatsapp', ['number' => $number, 'message' => $message, 'student_id' => $record->id]);
         // Open in new tab
         return $url;
+    }
+
+    /**
+     * Get students sorted by attendance status and remark
+     * 
+     * @param \App\Models\Group $group The group to get students from
+     * @param string|null $date The date to check attendance for (defaults to today)
+     * @return \Illuminate\Support\Collection Sorted collection of students
+     */
+    public static function getSortedStudentsForAttendanceReport(Group $group, ?string $date = null): \Illuminate\Support\Collection
+    {
+        $date = $date ?? now()->format('Y-m-d');
+
+        $students = $group->students()
+            ->withCount(['progresses as attendance_count' => function ($query) use ($date) {
+                $query->where('date', $date)->where('status', 'memorized');
+            }])
+            ->with(['today_progress' => function ($query) use ($date) {
+                $query->where('date', $date);
+            }])
+            ->with(['progresses' => function ($query) {
+                $query->latest('date')->limit(30);
+            }])
+            ->get();
+
+        // First sort by today's attendance status (present first)
+        $students = $students->sortByDesc('attendance_count');
+
+        // Then prepare and sort by attendance remark within each group
+        $presentStudents = $students->where('attendance_count', '>', 0)->values();
+        $absentStudents = $students->where('attendance_count', '=', 0)->values();
+
+        // Sort present students by attendance remark
+        $sortedPresent = $presentStudents->sortBy(function ($student) {
+            $remarkScores = [
+                'ممتاز' => 1,
+                'جيد' => 2,
+                'حسن' => 3,
+                'لا بأس به' => 4,
+                'متوسط' => 5,
+                'ضعيف' => 6
+            ];
+            return $remarkScores[$student->attendanceRemark['label']] ?? 7;
+        })->values();
+
+        // Sort absent students by attendance remark
+        $sortedAbsent = $absentStudents->sortBy(function ($student) {
+            $remarkScores = [
+                'ممتاز' => 1,
+                'جيد' => 2,
+                'حسن' => 3,
+                'لا بأس به' => 4,
+                'متوسط' => 5,
+                'ضعيف' => 6
+            ];
+            return $remarkScores[$student->attendanceRemark['label']] ?? 7;
+        })->values();
+
+        // Combine the sorted collections
+        return $sortedPresent->concat($sortedAbsent);
     }
 }
