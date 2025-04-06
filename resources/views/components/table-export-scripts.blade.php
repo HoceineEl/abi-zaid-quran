@@ -182,12 +182,9 @@
                     let statusMessage = '';
                     let statusIcon = '';
 
-                    if (percentage < 70) {
-                        statusMessage = 'حضور منخفض !';
+                    if (percentage < 80) {
+                        statusMessage = 'حضور منخفض ! يُرجى تفادي الغياب بغير عذر !';
                         statusIcon = '🔴';
-                    } else if (percentage < 80) {
-                        statusMessage = 'حضور متوسط، نطمح إلى حضور شامل ومتميز !';
-                        statusIcon = '⚠️';
                     } else if (percentage < 100) {
                         statusMessage = 'حضور لا بأس به، نطمح إلى حضور شامل ومتميز !';
                         statusIcon = '🔄';
