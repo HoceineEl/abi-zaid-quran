@@ -182,18 +182,12 @@
                     let statusMessage = '';
                     let statusIcon = '';
 
-                    if (percentage < 50) {
-                        statusMessage = 'حضور المجموعة منخفض جداً - يرجى متابعة الطلاب الغائبين';
-                        statusIcon = '🔴';
-                    } else if (percentage < 70) {
+                    if (percentage < 70) {
                         statusMessage = 'حضور منخفض !';
                         statusIcon = '🔴';
                     } else if (percentage < 80) {
                         statusMessage = 'حضور متوسط، نطمح إلى حضور شامل ومتميز !';
                         statusIcon = '⚠️';
-                    } else if (percentage < 90) {
-                        statusMessage = 'حضور المجموعة جيد - نطمح لتحقيق نسبة أعلى';
-                        statusIcon = '🔄';
                     } else if (percentage < 100) {
                         statusMessage = 'حضور لا بأس به، نطمح إلى حضور شامل ومتميز !';
                         statusIcon = '🔄';
