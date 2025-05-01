@@ -3,9 +3,11 @@
 namespace App\Filament\Resources\GroupResource\RelationManagers;
 
 use App\Classes\Core;
+use App\Enums\MessageSubmissionType;
 use App\Helpers\ProgressFormHelper;
 use App\Models\Group;
 use App\Models\GroupMessageTemplate;
+use App\Models\Progress;
 use App\Models\Student;
 use Carbon\Carbon;
 use Filament\Forms;
@@ -26,6 +28,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\ActionsPosition;
 use Filament\Tables\Table;
 use Filament\Support\Enums\ActionSize;
+use Propaganistas\LaravelPhone\PhoneNumber;
 
 class StudentsRelationManager extends RelationManager
 {
@@ -394,7 +397,7 @@ class StudentsRelationManager extends RelationManager
                                 ->reactive(),
                             Textarea::make('message')
                                 ->hint('يمكنك استخدام المتغيرات التالية: {{student_name}}, {{group_name}}, {{curr_date}}, {{prefix}}, {{pronoun}}, {{verb}}')
-                                ->default('لم ترسلوا الواجب المقرر اليوم، لعل المانع خير.')
+                                ->default('لم ترسل الواجب المقرر اليوم، لعل المانع خير.')
                                 ->label('الرسالة')
                                 ->required()
                                 ->hidden(fn(Get $get) => $get('template_id') !== 'custom'),
@@ -507,8 +510,470 @@ class StudentsRelationManager extends RelationManager
                             'dateRange' => 'آخر 30 يوم'
                         ]);
                     }),
+                Action::make('import_whatsapp_attendance')
+                    ->label('التحضير بسجل الواتساب')
+                    ->icon('heroicon-o-chat-bubble-left-right')
+                    ->size(ActionSize::Small)
+                    ->color('primary')
+                    ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
+                    ->form([
+                        Forms\Components\FileUpload::make('chat_file')
+                            ->label('ملف محادثة واتساب')
+                            ->disk('local')
+                            ->directory('uploads')
+                            ->required(),
+                        Forms\Components\Toggle::make('register_rest_absent')
+                            ->label('تسجيل البقية كغائبين اليوم')
+                            ->default(false),
+                    ])
+                    ->action(function (array $data) {
+                        $uploadedPath = $data['chat_file'];
+                        $storagePath = storage_path('app/' . $uploadedPath);
+
+                        if (!file_exists($storagePath)) {
+                            Notification::make()
+                                ->warning()
+                                ->title('لم يتم العثور على الملف المرفوع.')
+                                ->send();
+                            return;
+                        }
+
+                        $isZip = strtolower(pathinfo($storagePath, PATHINFO_EXTENSION)) === 'zip';
+                        $txtPath = $storagePath;
+                        $tempTxtPath = null;
+
+                        if ($isZip) {
+                            $zip = new \ZipArchive();
+                            if ($zip->open($storagePath) === true) {
+                                for ($i = 0; $i < $zip->numFiles; $i++) {
+                                    $entry = $zip->getNameIndex($i);
+                                    if (strtolower(pathinfo($entry, PATHINFO_EXTENSION)) === 'txt') {
+                                        $tempTxtPath = storage_path('app/tmp_' . uniqid() . '.txt');
+                                        copy('zip://' . $storagePath . '#' . $entry, $tempTxtPath);
+                                        $txtPath = $tempTxtPath;
+                                        break;
+                                    }
+                                }
+                                $zip->close();
+                            }
+                        }
+
+                        $content = file_get_contents($txtPath);
+                        if ($content === false) {
+                            if ($tempTxtPath && file_exists($tempTxtPath)) {
+                                unlink($tempTxtPath);
+                            }
+                            Notification::make()
+                                ->warning()
+                                ->title('تعذر قراءة محتويات الملف.')
+                                ->send();
+                            return;
+                        }
+
+                        // Parse WhatsApp chat to JSON format
+                        $parsedMessages = collect(explode("\n", $content))
+                            ->filter()
+                            ->map(function ($line) {
+                                // Support multiple date formats (Arabic, French, English)
+
+                                // English format: "4/23/25, 23:03 - مصطفى الطاهري: اعتذر عن التأخر"
+                                // French format: "29/04/2025, 05:59 - +212 677-523384: *السلام عليكم"
+                                // Arabic format: "22‏/4‏/2025، 18:47 - ‏‪+212 647-009535‬‏: <تم استبعاد الوسائط>"
+                                if (preg_match('/^(\d{1,2}\/\d{1,2}\/\d{2}(?:\d{2})?),\s*([\d:]+)\s*-\s*(.+?):\s*(.*)$/u', $line, $matches)) {
+                                    // English format match (no arabic/RTL chars)
+                                    return [
+                                        'date' => trim($matches[1]),
+                                        'time' => trim($matches[2]),
+                                        'author' => trim($matches[3]),
+                                        'text' => trim($matches[4]),
+                                        'format' => 'english',
+                                    ];
+                                } elseif (preg_match('/^([\d\‏\/.،,]+)\s*[,،]\s*([\d:]+)\s*[-]\s*(.+?):\s*(.*)$/u', $line, $matches)) {
+                                    // Arabic/French format match
+                                    return [
+                                        'date' => trim(preg_replace('/[^\d\/\.]/', '', $matches[1])), // Clean date format
+                                        'time' => trim($matches[2]),
+                                        'author' => trim($matches[3]),
+                                        'text' => trim($matches[4]),
+                                        'format' => 'arabic',
+                                    ];
+                                }
+                                return null;
+                            })
+                            ->filter();
+
+                        if ($parsedMessages->isEmpty()) {
+                            if ($tempTxtPath && file_exists($tempTxtPath)) {
+                                unlink($tempTxtPath);
+                            }
+                            Notification::make()
+                                ->warning()
+                                ->title('لم يتم العثور على رسائل قابلة للتحليل.')
+                                ->send();
+                            return;
+                        }
+
+                        // Get the latest date in the chat and determine processing date
+                        $latestChatDate = null;
+                        $todayDate = \Carbon\Carbon::now()->startOfDay();
+                        $processingDate = $todayDate; // Default to today
+                        $processingDateStr = null;
+
+                        try {
+                            // Find the latest valid date from messages
+                            $parsedDates = $parsedMessages->map(function ($msg) {
+                                $dateStr = $msg['date'];
+                                $format = $msg['format'] ?? 'arabic';
+
+                                // Parse date based on format
+                                if ($format === 'english') {
+                                    // Handle US date format (M/D/Y) directly
+                                    if (preg_match('/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/', $dateStr, $dateParts)) {
+                                        $month = (int)$dateParts[1];
+                                        $day = (int)$dateParts[2];
+                                        $year = (int)$dateParts[3];
+
+                                        if ($year < 100) $year += 2000;
+
+                                        try {
+                                            return [
+                                                'message' => $msg,
+                                                'datetime' => \Carbon\Carbon::createFromDate($year, $month, $day)->startOfDay()
+                                            ];
+                                        } catch (\Exception $e) {
+                                            return null;
+                                        }
+                                    }
+                                } else {
+                                    // Handle Arabic/French format (D/M/Y)
+                                    if (preg_match('/(\d{1,2})[\/\.](\d{1,2})[\/\.](\d{2,4})/', $dateStr, $dateParts)) {
+                                        $day = (int)$dateParts[1];
+                                        $month = (int)$dateParts[2];
+                                        $year = (int)$dateParts[3];
+
+                                        // Check if it's a valid date
+                                        if ($month > 12) {
+                                            // This might be M/D/Y format (US style)
+                                            $temp = $day;
+                                            $day = $month;
+                                            $month = $temp;
+                                        }
+
+                                        if ($year < 100) $year += 2000;
+
+                                        try {
+                                            return [
+                                                'message' => $msg,
+                                                'datetime' => \Carbon\Carbon::createFromDate($year, $month, $day)->startOfDay()
+                                            ];
+                                        } catch (\Exception $e) {
+                                            return null;
+                                        }
+                                    }
+                                }
+
+                                return null;
+                            })
+                                ->filter()
+                                ->sortByDesc(function ($item) {
+                                    return $item['datetime'];
+                                });
+
+                            if ($parsedDates->isNotEmpty()) {
+                                $latestChatDate = $parsedDates->first()['datetime'];
+                                // If the latest date in chat is not today, use it for processing
+                                if (!$latestChatDate->isSameDay($todayDate)) {
+                                    $processingDate = $latestChatDate;
+                                }
+                                // Store the original date string from the latest message for filtering
+                                $processingDateStr = $parsedDates->first()['message']['date'];
+                            } else {
+                                // If no valid date found, keep processingDate as today
+                                // Try to find today's date string for filtering
+                                $todayDateStr = $todayDate->format('d/m/y'); // Common format
+                                $todayMessage = $parsedMessages->first(fn($msg) => str_contains($msg['date'], $todayDateStr));
+                                if ($todayMessage) {
+                                    $processingDateStr = $todayMessage['date'];
+                                } else {
+                                    // Attempt another format if the first fails
+                                    $todayDateStrAlt = $todayDate->format('d.m.y');
+                                    $todayMessageAlt = $parsedMessages->first(fn($msg) => str_contains($msg['date'], $todayDateStrAlt));
+                                    if ($todayMessageAlt) {
+                                        $processingDateStr = $todayMessageAlt['date'];
+                                    }
+                                }
+                            }
+                        } catch (\Exception $e) {
+                            // Keep processingDate as today on error
+                        }
+
+                        // Filter messages for the processing date
+                        $lastDayMessages = $parsedMessages;
+                        if ($processingDateStr !== null) {
+                            $lastDayMessages = $parsedMessages->filter(function ($msg) use ($processingDateStr) {
+                                return $msg['date'] === $processingDateStr;
+                            })->values();
+                        } else {
+                            // If we couldn't determine a date string, maybe show a warning?
+                            // For now, we might process all messages, which isn't ideal.
+                            // Or maybe filter by the carbon date object if possible?
+                            // Let's filter by Carbon date object for robustness
+                            $lastDayMessages = $parsedMessages->filter(function ($msg) use ($processingDate) {
+                                $dateStr = $msg['date'];
+                                preg_match('/(\d{1,2})[\/\.](\d{1,2})[\/\.](\d{2,4})/', $dateStr, $dateParts);
+                                if (count($dateParts) >= 4) {
+                                    $day = (int)$dateParts[1];
+                                    $month = (int)$dateParts[2];
+                                    $year = (int)$dateParts[3];
+                                    if ($year < 100) $year += 2000;
+                                    try {
+                                        $msgDate = \Carbon\Carbon::createFromDate($year, $month, $day)->startOfDay();
+                                        return $msgDate->isSameDay($processingDate);
+                                    } catch (\Exception $e) {
+                                        return false;
+                                    }
+                                }
+                                return false;
+                            });
+                        }
+
+                        // Extract unique users who sent media
+                        $mediaSubmitters = $lastDayMessages
+                            ->filter(function ($msg) {
+                                // Match any media omitted text in multiple languages and formats
+                                $mediaTexts = [
+                                    '<Media omitted>',
+                                    'Media omitted',
+                                    '<Médias omis>',
+                                    'Médias omis',
+                                    '<تم استبعاد الوسائط>',
+                                    'تم استبعاد الوسائط'
+                                ];
+
+                                foreach ($mediaTexts as $mediaText) {
+                                    if (stripos($msg['text'], $mediaText) !== false) {
+                                        return true;
+                                    }
+                                }
+                                return false;
+                            })
+                            ->pluck('author')
+                            ->unique()
+                            ->values();
+
+                        // Extract users who sent text (not media)
+                        $textSubmitters = $lastDayMessages
+                            ->filter(function ($msg) {
+                                $mediaTexts = [
+                                    '<Media omitted>',
+                                    'Media omitted',
+                                    '<Médias omis>',
+                                    'Médias omis',
+                                    '<تم استبعاد الوسائط>',
+                                    'تم استبعاد الوسائط',
+                                    'This message was deleted',
+                                    'Ce message a été supprimé',
+                                    'تم حذف هذه الرسالة'
+                                ];
+
+                                foreach ($mediaTexts as $mediaText) {
+                                    if (stripos($msg['text'], $mediaText) !== false) {
+                                        return false;
+                                    }
+                                }
+                                return !empty(trim($msg['text']));
+                            })
+                            ->pluck('author')
+                            ->unique()
+                            ->values();
+
+                        // Get submitters based on group's message submission type
+                        $submitters = collect();
+                        $submissionType = $this->ownerRecord->message_submission_type ?? MessageSubmissionType::Media;
+
+                        if ($submissionType === MessageSubmissionType::Media || $submissionType === MessageSubmissionType::Both) {
+                            $submitters = $submitters->merge($mediaSubmitters);
+                        }
+
+                        if ($submissionType === MessageSubmissionType::Text || $submissionType === MessageSubmissionType::Both) {
+                            $submitters = $submitters->merge($textSubmitters);
+                        }
+
+                        $submitters = $submitters->unique()->values();
+                        // Check if we have any submitters
+                        if ($submitters->isEmpty()) {
+                            $messageType = match ($submissionType) {
+                                MessageSubmissionType::Media => 'وسائط صوتية',
+                                MessageSubmissionType::Text => 'رسائل نصية',
+                                MessageSubmissionType::Both => 'وسائط صوتية أو رسائل نصية',
+                                default => 'وسائط صوتية'
+                            };
+
+                            Notification::make()
+                                ->warning()
+                                ->title("لم يتم العثور على طلاب أرسلوا {$messageType}.")
+                                ->send();
+                            return;
+                        }
+
+                        // Get ignored names/phones from group settings
+                        $ignoredNamesPhones = $this->ownerRecord->ignored_names_phones ?? [];
+
+                        // Make sure it's an array
+                        if (!is_array($ignoredNamesPhones)) {
+                            if (is_string($ignoredNamesPhones) && !empty($ignoredNamesPhones)) {
+                                $ignoredNamesPhones = explode(',', $ignoredNamesPhones);
+                            } else {
+                                $ignoredNamesPhones = [];
+                            }
+                        }
+                        // Get all students in this group
+                        $students = $this->ownerRecord->students;
+                        $attendanceDate = $processingDate->format('Y-m-d'); // Use determined date for DB
+                        $presentCount = 0;
+                        $notFoundCount = 0;
+                        $notFoundNames = [];
+                        $presentStudentIds = [];
+                        // Process each submitter
+                        foreach ($submitters as $submitterName) {
+                            // Skip if the submitter is in the ignored list
+                            if (!empty($ignoredNamesPhones) && in_array($submitterName, $ignoredNamesPhones)) {
+                                continue;
+                            }
+
+                            $found = false;
+
+                            // Clean up the name (remove phone labels, special characters, etc.)
+                            $cleanName = preg_replace('/\s*\([^)]*\)/', '', $submitterName);
+                            $cleanName = trim($cleanName);
+                            // Extract phone number if it exists in the name
+                            $phoneNumber = null;
+                            try {
+                                $potentialNumber = preg_replace('/[^0-9+]/', '', $submitterName);
+                                if (!empty($potentialNumber)) {
+                                    // Try parsing with common country codes or default (assuming Morocco)
+                                    $parsedPhone = phone($potentialNumber, 'MA')->formatE164();
+                                    if ($parsedPhone) {
+                                        $phoneNumber = $parsedPhone;
+                                    }
+                                }
+                            } catch (\Exception $e) {
+                                // Ignore if parsing fails
+                            }
+
+                            // Try exact matching methods
+                            $matchedStudent = null;
+
+                            // 1. Try exact name match (case-insensitive)
+                            $matchedStudent = $students->first(function ($student) use ($cleanName, $submitterName) {
+                                // Normalize: trim and convert to lowercase
+                                $dbName = mb_strtolower(trim($student->name));
+                                $chatName = mb_strtolower($cleanName);
+                                $originalChatName = mb_strtolower($submitterName);
+
+                                // Compare the normalized names for exact match
+                                return $dbName === $chatName || $dbName === $originalChatName;
+                            });
+
+                            // 2. Try phone number match (E.164 format) - if name match failed
+                            if (!$matchedStudent && $phoneNumber) {
+                                $matchedStudent = $students->first(function ($student) use ($phoneNumber) {
+                                    try {
+                                        $studentPhone = phone($student->phone, 'MA')->formatE164();
+                                        return $studentPhone === $phoneNumber;
+                                    } catch (\Exception $e) {
+                                        return false;
+                                    }
+                                });
+                            }
 
 
+                            // If we found a match, mark the student as present
+                            if ($matchedStudent) {
+                                $found = true;
+                                $presentCount++;
+                                $presentStudentIds[] = $matchedStudent->id;
+
+                                // Check if student already has a progress record for the processing date
+                                if ($matchedStudent->progresses->where('date', $attendanceDate)->count() == 0) {
+                                    // Create new progress record
+                                    $matchedStudent->progresses()
+                                        ->create([
+                                            'created_by' => auth()->id(),
+                                            'date' => $attendanceDate,
+                                            'status' => 'memorized',
+                                            'page_id' => null,
+                                            'lines_from' => null,
+                                            'lines_to' => null,
+                                        ]);
+                                } else {
+                                    // Update existing progress record
+                                    $matchedStudent->progresses()->where('date', $attendanceDate)->update([
+                                        'status' => 'memorized',
+                                    ]);
+                                }
+                            }
+
+                            if (!$found) {
+                                $notFoundCount++;
+                                $notFoundNames[] = $submitterName;
+                            }
+                        }
+                        // Register the rest as absent if option is enabled
+                        if (!empty($data['register_rest_absent'])) {
+                            $absentStudents = $students->whereNotIn('id', $presentStudentIds);
+                            foreach ($absentStudents as $student) {
+                                // Skip ignored
+                                if (!empty($ignoredNamesPhones) && (in_array($student->name, $ignoredNamesPhones) || in_array(phone($student->phone, 'MA')->formatE164(), $ignoredNamesPhones))) {
+                                    continue;
+                                }
+                                // Only mark as absent if not already present for the processing date
+                                if ($student->progresses->where('date', $attendanceDate)->count() == 0) {
+                                    $student->progresses()->create([
+                                        'created_by' => auth()->id(),
+                                        'date' => $attendanceDate,
+                                        'status' => 'absent',
+                                        'page_id' => null,
+                                        'lines_from' => null,
+                                        'lines_to' => null,
+                                    ]);
+                                } else {
+                                    $student->progresses()->where('date', $attendanceDate)->update([
+                                        'status' => 'absent',
+                                    ]);
+                                }
+                            }
+                        }
+
+                        // Delete uploaded file
+                        if (file_exists($storagePath)) {
+                            unlink($storagePath);
+                        }
+                        if ($tempTxtPath && file_exists($tempTxtPath)) {
+                            unlink($tempTxtPath);
+                        }
+
+                        // Show notification with results
+                        if ($presentCount > 0) {
+                            Notification::make()
+                                ->success()
+                                ->title('تم تسجيل حضور ' . $presentCount . ' طالب بنجاح')
+                                ->seconds(5)
+                                ->send();
+                        }
+
+                        if ($notFoundCount > 0) {
+                            $message = 'لم يتم العثور على ' . $notFoundCount . ' طالب في المجموعة: ' .
+                                implode('، ', $notFoundNames);
+
+
+                            Notification::make()
+                                ->warning()
+                                ->title($message)
+                                ->seconds(10)
+                                ->send();
+                        }
+                    }),
             ])
             ->bulkActions([
                 BulkActionGroup::make([
@@ -557,6 +1022,28 @@ class StudentsRelationManager extends RelationManager
                                 Core::sendSpecifMessageToStudent($student, $processedMessage);
                             }
                         })->deselectRecordsAfterCompletion(),
+                    BulkAction::make('delete_todays_progress')
+                        ->label('حذف حضور اليوم')
+                        ->icon('heroicon-o-trash')
+                        ->color('danger')
+                        ->requiresConfirmation()
+                        ->modalSubmitActionLabel('تأكيد الحذف')
+                        ->action(function () {
+                            $students = $this->selectedTableRecords;
+                            $today = now()->format('Y-m-d');
+                            $deletedCount = 0;
+                            foreach ($students as $studentId) {
+                                $student = \App\Models\Student::find($studentId);
+                                if ($student) {
+                                    $deletedCount += $student->progresses()->where('date', $today)->delete();
+                                }
+                            }
+                            \Filament\Notifications\Notification::make()
+                                ->title('تم حذف حضور اليوم لـ ' . $deletedCount . ' طالب')
+                                ->success()
+                                ->send();
+                        })
+                        ->deselectRecordsAfterCompletion(),
                 ]),
                 BulkAction::make('set_as_absent')
                     ->label('غائبين')
@@ -635,6 +1122,7 @@ class StudentsRelationManager extends RelationManager
                             }
                         }
                     }),
+
             ])
             ->query(function () {
                 $today = now()->format('Y-m-d');

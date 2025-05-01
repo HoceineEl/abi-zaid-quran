@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\MessageSubmissionType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,6 +13,22 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 class Group extends Model
 {
     use HasFactory;
+
+
+    protected $casts = [
+        'is_onsite' => 'boolean',
+        'ignored_names_phones' => 'array',
+        'message_submission_type' => MessageSubmissionType::class,
+    ];
+
+    protected $fillable = [
+        'name',
+        'type',
+        'is_onsite',
+        'message_id',
+        'message_submission_type',
+        'ignored_names_phones',
+    ];
 
 
 

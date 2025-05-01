@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Classes\Core;
+use App\Enums\MessageSubmissionType;
 use App\Filament\Resources\GroupResource\Pages;
 use App\Filament\Resources\GroupResource\RelationManagers\ManagersRelationManager;
 use App\Filament\Resources\GroupResource\RelationManagers\ProgressesRelationManager;
@@ -79,7 +80,17 @@ class GroupResource extends Resource
                         Toggle::make('is_onsite')
                             ->label('مجموعة الحصة الحضورية')
                             ->default(false),
+                        Forms\Components\ToggleButtons::make('message_submission_type')
+                            ->label('نوع الرسائل المقبولة للتسجيل')
+                            ->options(MessageSubmissionType::class)
+                            ->inline()
+                            ->default(MessageSubmissionType::Media),
                     ]),
+                Forms\Components\TagsInput::make('ignored_names_phones')
+                    ->label('أسماء وأرقام مستثناة من التسجيل')
+                    ->helperText('أضف أسماء وأرقام هواتف يجب تجاهلها عند استيراد سجل الواتساب')
+                    ->placeholder('أضف اسم أو رقم هاتف واضغط Enter')
+                    ->separator(','),
                 Forms\Components\Select::make('template_id')
                     ->label('قالب الرسائل')
                     ->relationship('messageTemplates', 'name')
@@ -130,6 +141,9 @@ class GroupResource extends Resource
                         },
                     )
                     ->sortable(),
+                Tables\Columns\TextColumn::make('message_submission_type')
+                    ->label('نوع الرسائل المقبولة')
+                    ->badge(),
                 Tables\Columns\TextColumn::make('managers.name')
                     ->label('المشرفون')
                     ->badge(),
