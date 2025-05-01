@@ -580,22 +580,33 @@ class StudentsRelationManager extends RelationManager
                                 // French format: "29/04/2025, 05:59 - +212 677-523384: *السلام عليكم"
                                 // Arabic format: "22‏/4‏/2025، 18:47 - ‏‪+212 647-009535‬‏: <تم استبعاد الوسائط>"
                                 if (preg_match('/^(\d{1,2}\/\d{1,2}\/\d{2}(?:\d{2})?),\s*([\d:]+)\s*-\s*(.+?):\s*(.*)$/u', $line, $matches)) {
-                                    // English format match (no arabic/RTL chars)
+                                    // Clean and normalize phone number if present
+                                    $author = trim($matches[3]);
+                                    if (preg_match('/\+?\d{3}[-.\s]?\d{3}[-.\s]?\d{6}/', $author, $phoneMatch)) {
+                                        try {
+                                            // Use phone helper to parse and format the number
+                                            $phone = phone($phoneMatch[0], 'MA')->formatE164();
+                                            $author = $phone;
+                                        } catch (\Exception $e) {
+                                            // If phone helper fails, try basic formatting
+                                            $phone = preg_replace('/[^0-9+]/', '', $phoneMatch[0]);
+                                            if (strlen($phone) === 9 && in_array(substr($phone, 0, 1), ['6', '7'])) {
+                                                $phone = '+212' . $phone;
+                                            } elseif (strlen($phone) === 10 && in_array(substr($phone, 0, 2), ['06', '07'])) {
+                                                $phone = '+212' . substr($phone, 1);
+                                            } elseif (strlen($phone) === 12 && substr($phone, 0, 3) === '212') {
+                                                $phone = '+' . $phone;
+                                            }
+                                            $author = $phone;
+                                        }
+                                    }
+
                                     return [
                                         'date' => trim($matches[1]),
                                         'time' => trim($matches[2]),
-                                        'author' => trim($matches[3]),
+                                        'author' => $author,
                                         'text' => trim($matches[4]),
                                         'format' => 'english',
-                                    ];
-                                } elseif (preg_match('/^([\d\‏\/.،,]+)\s*[,،]\s*([\d:]+)\s*[-]\s*(.+?):\s*(.*)$/u', $line, $matches)) {
-                                    // Arabic/French format match
-                                    return [
-                                        'date' => trim(preg_replace('/[^\d\/\.]/', '', $matches[1])), // Clean date format
-                                        'time' => trim($matches[2]),
-                                        'author' => trim($matches[3]),
-                                        'text' => trim($matches[4]),
-                                        'format' => 'arabic',
                                     ];
                                 }
                                 return null;
@@ -747,7 +758,11 @@ class StudentsRelationManager extends RelationManager
                                     '<Médias omis>',
                                     'Médias omis',
                                     '<تم استبعاد الوسائط>',
-                                    'تم استبعاد الوسائط'
+                                    'تم استبعاد الوسائط',
+                                    '<Media ausente>',
+                                    'Media ausente',
+                                    '<Medien ausgelassen>',
+                                    'Medien ausgelassen'
                                 ];
 
                                 foreach ($mediaTexts as $mediaText) {
@@ -851,14 +866,18 @@ class StudentsRelationManager extends RelationManager
                             try {
                                 $potentialNumber = preg_replace('/[^0-9+]/', '', $submitterName);
                                 if (!empty($potentialNumber)) {
-                                    // Try parsing with common country codes or default (assuming Morocco)
-                                    $parsedPhone = phone($potentialNumber, 'MA')->formatE164();
-                                    if ($parsedPhone) {
-                                        $phoneNumber = $parsedPhone;
-                                    }
+                                    // Use phone helper to parse and format the number
+                                    $phoneNumber = phone($potentialNumber, 'MA')->formatE164();
                                 }
                             } catch (\Exception $e) {
-                                // Ignore if parsing fails
+                                // If phone helper fails, try basic formatting
+                                if (strlen($potentialNumber) === 9 && in_array(substr($potentialNumber, 0, 1), ['6', '7'])) {
+                                    $phoneNumber = '+212' . $potentialNumber;
+                                } elseif (strlen($potentialNumber) === 10 && in_array(substr($potentialNumber, 0, 2), ['06', '07'])) {
+                                    $phoneNumber = '+212' . substr($potentialNumber, 1);
+                                } elseif (strlen($potentialNumber) === 12 && substr($potentialNumber, 0, 3) === '212') {
+                                    $phoneNumber = '+' . $potentialNumber;
+                                }
                             }
 
                             // Try exact matching methods
