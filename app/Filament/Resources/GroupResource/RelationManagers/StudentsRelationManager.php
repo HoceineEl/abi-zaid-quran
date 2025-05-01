@@ -38,7 +38,7 @@ class StudentsRelationManager extends RelationManager
 
     protected static ?string $title = 'الطلاب';
 
-    protected static ?string $navigationLabel = 'الطلب';
+    protected static ?string $navigationLabel = 'الطب';
 
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
 
@@ -558,60 +558,42 @@ class StudentsRelationManager extends RelationManager
                             }
                         }
 
-                        $content = file_get_contents($txtPath);
-                        if ($content === false) {
-                            if ($tempTxtPath && file_exists($tempTxtPath)) {
-                                unlink($tempTxtPath);
-                            }
-                            Notification::make()
-                                ->warning()
-                                ->title('تعذر قراءة محتويات الملف.')
-                                ->send();
-                            return;
-                        }
+                        $fileContent = file_get_contents($txtPath);
+                        $lines = explode("\n", $fileContent);
 
-                        // Parse WhatsApp chat to JSON format
-                        $parsedMessages = collect(explode("\n", $content))
+                        // Parse WhatsApp chat lines
+                        $parsedMessages = collect($lines)
                             ->filter()
                             ->map(function ($line) {
-                                // Support multiple date formats (Arabic, French, English)
+                                // English format: "01/05/2025, 05:57 - Abdullah Belguerbi: Message"
+                                // French format: "29/04/2025, 05:59 - +212 677-523384: *السلام عليكم" // Uses ',' like English
+                                // Arabic format: "1‏/5‏/2025، 09:17 - ‏‪+212 616-465609‬‏: <تم استبعاد الوسائط>" // Uses '،'
 
-                                // English format: "4/23/25, 23:03 - مصطفى الطاهري: اعتذر عن التأخر"
-                                // French format: "29/04/2025, 05:59 - +212 677-523384: *السلام عليكم"
-                                // Arabic format: "22‏/4‏/2025، 18:47 - ‏‪+212 647-009535‬‏: <تم استبعاد الوسائط>"
-                                if (preg_match('/^(\d{1,2}\/\d{1,2}\/\d{2}(?:\d{2})?),\s*([\d:]+)\s*-\s*(.+?):\s*(.*)$/u', $line, $matches)) {
-                                    // Clean and normalize phone number if present
-                                    $author = trim($matches[3]);
-                                    if (preg_match('/\+?\d{3}[-.\s]?\d{3}[-.\s]?\d{6}/', $author, $phoneMatch)) {
-                                        try {
-                                            // Use phone helper to parse and format the number
-                                            $phone = phone($phoneMatch[0], 'MA')->formatE164();
-                                            $author = $phone;
-                                        } catch (\Exception $e) {
-                                            // If phone helper fails, try basic formatting
-                                            $phone = preg_replace('/[^0-9+]/', '', $phoneMatch[0]);
-                                            if (strlen($phone) === 9 && in_array(substr($phone, 0, 1), ['6', '7'])) {
-                                                $phone = '+212' . $phone;
-                                            } elseif (strlen($phone) === 10 && in_array(substr($phone, 0, 2), ['06', '07'])) {
-                                                $phone = '+212' . substr($phone, 1);
-                                            } elseif (strlen($phone) === 12 && substr($phone, 0, 3) === '212') {
-                                                $phone = '+' . $phone;
-                                            }
-                                            $author = $phone;
-                                        }
-                                    }
-
+                                // Try English/French pattern first (uses ',') - Allows D/M/YY or D/M/YYYY
+                                if (preg_match('/^(\d{1,2}\/\d{1,2}\/\d{2,4}),\s*(\d{1,2}:\d{2})\s*-\s*([^:]+):\s*(.*)$/u', $line, $matches)) {
                                     return [
-                                        'date' => trim($matches[1]),
-                                        'time' => trim($matches[2]),
-                                        'author' => $author,
-                                        'text' => trim($matches[4]),
-                                        'format' => 'english',
+                                        'date' => trim($matches[1]), // e.g., "01/05/2025"
+                                        'time' => trim($matches[2]), // e.g., "05:57"
+                                        'author' => trim($matches[3]), // e.g., "Abdullah Belguerbi" or "+212 677-523384"
+                                        'text' => trim($matches[4]), // e.g., "Message"
+                                        'format' => 'english/french', // Combined format flag
                                     ];
                                 }
-                                return null;
+                                // Try Arabic pattern (uses '،') - Allows D/M/Y with flexible separators /, ., or RTL mark
+                                elseif (preg_match('/^([\d\/\.\x{200F}]+)،\s*(\d{1,2}:\d{2})\s*-\s*([^:]+):\s*(.*)$/u', $line, $matches)) {
+                                    // Clean date: remove potential RTL marks for consistent parsing later
+                                    $cleanedDate = preg_replace('/[\x{200E}\x{200F}]/u', '', $matches[1]);
+                                    return [
+                                        'date' => trim($cleanedDate), // e.g., "1/5/2025"
+                                        'time' => trim($matches[2]), // e.g., "09:17"
+                                        'author' => trim($matches[3]), // e.g., "‏‪+212 616-465609‬‏"
+                                        'text' => trim($matches[4]), // e.g., "<تم استبعاد الوسائط>"
+                                        'format' => 'arabic',
+                                    ];
+                                }
+                                return null; // Line doesn't match known formats or is a continuation line
                             })
-                            ->filter();
+                            ->filter(); // Remove nulls from non-matching lines
 
                         if ($parsedMessages->isEmpty()) {
                             if ($tempTxtPath && file_exists($tempTxtPath)) {
@@ -758,11 +740,7 @@ class StudentsRelationManager extends RelationManager
                                     '<Médias omis>',
                                     'Médias omis',
                                     '<تم استبعاد الوسائط>',
-                                    'تم استبعاد الوسائط',
-                                    '<Media ausente>',
-                                    'Media ausente',
-                                    '<Medien ausgelassen>',
-                                    'Medien ausgelassen'
+                                    'تم استبعاد الوسائط'
                                 ];
 
                                 foreach ($mediaTexts as $mediaText) {
@@ -866,18 +844,14 @@ class StudentsRelationManager extends RelationManager
                             try {
                                 $potentialNumber = preg_replace('/[^0-9+]/', '', $submitterName);
                                 if (!empty($potentialNumber)) {
-                                    // Use phone helper to parse and format the number
-                                    $phoneNumber = phone($potentialNumber, 'MA')->formatE164();
+                                    // Try parsing with common country codes or default (assuming Morocco)
+                                    $parsedPhone = phone($potentialNumber, 'MA')->formatE164();
+                                    if ($parsedPhone) {
+                                        $phoneNumber = $parsedPhone;
+                                    }
                                 }
                             } catch (\Exception $e) {
-                                // If phone helper fails, try basic formatting
-                                if (strlen($potentialNumber) === 9 && in_array(substr($potentialNumber, 0, 1), ['6', '7'])) {
-                                    $phoneNumber = '+212' . $potentialNumber;
-                                } elseif (strlen($potentialNumber) === 10 && in_array(substr($potentialNumber, 0, 2), ['06', '07'])) {
-                                    $phoneNumber = '+212' . substr($potentialNumber, 1);
-                                } elseif (strlen($potentialNumber) === 12 && substr($potentialNumber, 0, 3) === '212') {
-                                    $phoneNumber = '+' . $potentialNumber;
-                                }
+                                // Ignore if parsing fails
                             }
 
                             // Try exact matching methods
