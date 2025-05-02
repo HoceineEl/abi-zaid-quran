@@ -154,16 +154,23 @@ class StudentsRelationManager extends RelationManager
                     ->modalSubmitActionLabel('تأكيد')
                     ->size(ActionSize::ExtraSmall)
                     ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
-                    ->action(function () {
+                    ->form([
+                        Toggle::make('with_reason')
+                            ->label('غياب بعذر')
+                            ->reactive()
+                            ->default(false),
+                    ])
+                    ->action(function (array $data) {
                         $selectedDate = $this->tableFilters['date']['value'] ?? now()->format('Y-m-d');
                         $this->ownerRecord->students->filter(function ($student) use ($selectedDate) {
                             return $student->progresses->where('date', $selectedDate)
                                 ->count() == 0 || $student->progresses->where('date', $selectedDate)->where('status', null)->count();
-                        })->each(function ($student) use ($selectedDate) {
+                        })->each(function ($student) use ($selectedDate, $data) {
                             if ($student->progresses->where('date', $selectedDate)->count() == 0) {
                                 $student->progresses()->create([
                                     'date' => $selectedDate,
                                     'status' => 'absent',
+                                    'with_reason' => $data['with_reason'] ?? false,
                                     'comment' => null,
                                     'page_id' => null,
                                     'lines_from' => null,
@@ -173,6 +180,7 @@ class StudentsRelationManager extends RelationManager
                                 $student->progresses()->where('date', $selectedDate)
                                     ->update([
                                         'status' => 'absent',
+                                        'with_reason' => $data['with_reason'] ?? false,
                                         'comment' => null,
                                     ]);
                             }
@@ -395,6 +403,10 @@ class StudentsRelationManager extends RelationManager
                                 })
                                 ->default('custom')
                                 ->reactive(),
+                            Toggle::make('with_reason')
+                                ->label('غياب بعذر')
+                                ->reactive()
+                                ->default(false),
                             Textarea::make('message')
                                 ->hint('يمكنك استخدام المتغيرات التالية: {{student_name}}, {{group_name}}, {{curr_date}}, {{prefix}}, {{pronoun}}, {{verb}}')
                                 ->default('لم ترسل الواجب المقرر اليوم، لعل المانع خير.')
@@ -421,10 +433,11 @@ class StudentsRelationManager extends RelationManager
 
                             $this->ownerRecord->students->filter(function ($student) use ($selectedDate) {
                                 return $student->progresses->where('date', $selectedDate)->count() == 0;
-                            })->each(function ($student) use ($selectedDate, $messageTemplate) {
+                            })->each(function ($student) use ($selectedDate, $messageTemplate, $data) {
                                 $student->progresses()->create([
                                     'date' => $selectedDate,
                                     'status' => 'absent',
+                                    'with_reason' => $data['with_reason'] ?? false,
                                     'page_id' => null,
                                     'ayah_id' => null,
                                     'note' => 'تم تسجيل الغياب تلقائيا',
@@ -1045,6 +1058,10 @@ class StudentsRelationManager extends RelationManager
                     ->requiresConfirmation()
                     ->modalSubmitActionLabel('تأكيد')
                     ->form([
+                        Toggle::make('with_reason')
+                            ->label('غياب بعذر')
+                            ->reactive()
+                            ->default(false),
                         Toggle::make('send_msg')
                             ->label('تأكيد إرسال رسالة تذكير')
                             ->reactive()
@@ -1067,6 +1084,7 @@ class StudentsRelationManager extends RelationManager
                                 $student->progresses()->create([
                                     'date' => $selectedDate,
                                     'status' => 'absent',
+                                    'with_reason' => $data['with_reason'] ?? false,
                                     'comment' => $data['send_msg'] ? 'message_sent' : null,
                                     'page_id' => null,
                                     'lines_from' => null,
@@ -1075,6 +1093,7 @@ class StudentsRelationManager extends RelationManager
                             } else {
                                 $student->progresses()->where('date', $selectedDate)->update([
                                     'status' => 'absent',
+                                    'with_reason' => $data['with_reason'] ?? false,
                                     'comment' => 'message_sent',
                                 ]);
                             }

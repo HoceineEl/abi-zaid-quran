@@ -10,9 +10,20 @@ class Progress extends Model
 {
     use HasFactory;
 
+    protected $table = 'progress';
 
-
- 
+    protected $fillable = [
+        'student_id',
+        'created_by',
+        'date',
+        'comment',
+        'status',
+        'with_reason',
+        'page_id',
+        'lines_from',
+        'lines_to',
+        'notes',
+    ];
 
     protected static function boot(): void
     {

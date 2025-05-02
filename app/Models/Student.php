@@ -61,9 +61,9 @@ class Student extends Model
                 $currentConsecutive = 0;
 
                 foreach ($recentProgresses as $progress) {
-                    if ($progress->status === 'absent') {
+                    if ($progress->status === 'absent' && !$progress->with_reason) {
                         $currentConsecutive++;
-                    } else if ($progress->status === 'memorized') {
+                    } else if ($progress->status === 'memorized' || ($progress->status === 'absent' && $progress->with_reason)) {
                         $currentConsecutive = 0;
                     }
                 }
@@ -85,8 +85,17 @@ class Student extends Model
                 $threeDays = $absentProgresses;
                 $twoDays = $absentProgresses->take(2);
 
-                $twoDaysEbsentCount = $twoDays->where('status', 'absent')->count();
-                $threeDaysEbsentCount = $threeDays->where('status', 'absent')->count();
+                $twoDaysEbsentCount = $twoDays->where('status', 'absent')
+                    ->where(function ($item) {
+                        return $item->with_reason === false || $item->with_reason === null;
+                    })
+                    ->count();
+
+                $threeDaysEbsentCount = $threeDays->where('status', 'absent')
+                    ->where(function ($item) {
+                        return $item->with_reason === false || $item->with_reason === null;
+                    })
+                    ->count();
 
                 if (
                     $threeDaysEbsentCount >= 3
@@ -105,7 +114,13 @@ class Student extends Model
 
     public function getAbsenceAttribute(): int
     {
-        return $this->progresses()->where('status', 'absent')->count();
+        return $this->progresses()
+            ->where('status', 'absent')
+            ->where(function ($query) {
+                $query->where('with_reason', false)
+                    ->orWhereNull('with_reason');
+            })
+            ->count();
     }
 
     public function today_progress()
@@ -143,8 +158,12 @@ class Student extends Model
                     ->limit(30)
                     ->get();
 
-                // Count absences in the last 30 days
-                $absenceCount = $recentProgresses->where('status', 'absent')->count();
+                // Count absences in the last 30 days, excluding those with reason
+                $absenceCount = $recentProgresses->where('status', 'absent')
+                    ->where(function ($item) {
+                        return $item->with_reason === false || $item->with_reason === null;
+                    })
+                    ->count();
 
                 // Return appropriate remark based on absence count
                 if ($absenceCount === 0) {

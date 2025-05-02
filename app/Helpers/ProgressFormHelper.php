@@ -28,16 +28,16 @@ class ProgressFormHelper
                 ->schema([
                     Placeholder::make('student_name')
                         ->label('الطالب')
-                        ->hidden(fn () => ! $student)
-                        ->content($student ? $student->name.' - '.$student->phone : ''),
+                        ->hidden(fn() => ! $student)
+                        ->content($student ? $student->name . ' - ' . $student->phone : ''),
 
                     Select::make('student_id')
                         ->label('الطالب')
-                        ->options(fn (Get $get) => $students->filter(function ($student) use ($get) {
+                        ->options(fn(Get $get) => $students->filter(function ($student) use ($get) {
                             return $student->progresses->where('date', $get('date'))->count() == 0;
-                        })->mapWithKeys(fn (Student $student) => [$student->id => $student->name.' - '.$student->phone])->toArray())
+                        })->mapWithKeys(fn(Student $student) => [$student->id => $student->name . ' - ' . $student->phone])->toArray())
                         ->preload()
-                        ->hidden(fn () => $student)
+                        ->hidden(fn() => $student)
                         ->required(),
                     DatePicker::make('date')
                         ->label('التاريخ')
@@ -67,6 +67,19 @@ class ProgressFormHelper
                             'absent' => 'غائب',
                         ])
                         ->required(),
+                    ToggleButtons::make('with_reason')
+                        ->label('غياب بعذر')
+                        ->inline()
+                        ->default(false)
+                        ->hidden(fn(Get $get) => $get('status') !== 'absent')
+                        ->colors([
+                            true => 'success',
+                            false => 'danger',
+                        ])
+                        ->options([
+                            true => 'نعم',
+                            false => 'لا',
+                        ]),
                     ToggleButtons::make('comment')
                         ->label('التعليق')
                         ->inline()

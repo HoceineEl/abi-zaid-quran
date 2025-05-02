@@ -148,6 +148,24 @@
             color: var(--warning-color);
         }
 
+        .student-name.absent {
+            color: var(--danger-color);
+        }
+
+        .student-name.pending {
+            color: var(--warning-color);
+        }
+
+        .absence-with-reason {
+            font-size: 0.8rem;
+            display: inline-block;
+            margin-left: 5px;
+            background-color: #fff3e0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #ff9800;
+        }
+
         .phone-number {
             color: var(--text-secondary);
             font-size: 1.1rem;

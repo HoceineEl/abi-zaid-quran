@@ -89,7 +89,13 @@ class ProgressesRelationManager extends RelationManager
                 IconColumn::make("status_day_{$formattedDate}")
                     ->getStateUsing(function ($record) use ($statusPerDay, $formattedDate) {
                         if ($record->id && isset($statusPerDay[$record->id][$formattedDate])) {
-                            $status = $statusPerDay[$record->id][$formattedDate]->first()[0]->status;
+                            $progress = $statusPerDay[$record->id][$formattedDate]->first()[0];
+                            $status = $progress->status;
+
+                            // If status is absent and with_reason is true, return a special status
+                            if ($status === 'absent' && $progress->with_reason) {
+                                return 'absent_with_reason';
+                            }
 
                             return $status;
                         }
@@ -100,6 +106,7 @@ class ProgressesRelationManager extends RelationManager
                         return match ($state) {
                             'memorized' => 'success',
                             'absent' => 'danger',
+                            'absent_with_reason' => 'warning',
                             default => 'muted'
                         };
                     })
@@ -109,6 +116,7 @@ class ProgressesRelationManager extends RelationManager
                         return match ($state) {
                             'memorized' => 'heroicon-o-check-circle',
                             'absent' => 'heroicon-o-x-circle',
+                            'absent_with_reason' => 'heroicon-o-exclamation-circle',
                             default => 'heroicon-o-minus-circle',
                             null => 'heroicon-o-minus-circle',
                         };
