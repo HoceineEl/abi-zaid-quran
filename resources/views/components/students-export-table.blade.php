@@ -158,12 +158,16 @@
 
         .absence-with-reason {
             font-size: 0.8rem;
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             margin-left: 5px;
-            background-color: #fff3e0;
-            padding: 2px 6px;
+            background-color: var(--bg-secondary);
+            padding: 2px 8px;
             border-radius: 4px;
-            color: #ff9800;
+            color: var(--warning-color);
+            min-width: 80px;
+            text-align: center;
         }
 
         .phone-number {
@@ -292,6 +296,9 @@
                                                     <path stroke-linecap="round" stroke-linejoin="round"
                                                         d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                 </svg>
+                                                @if ($todayProgress->with_reason)
+                                                    <span class="absence-with-reason">غياب مبرر</span>
+                                                @endif
                                             @break
 
                                             @default

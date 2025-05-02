@@ -28,6 +28,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\ActionsPosition;
 use Filament\Tables\Table;
 use Filament\Support\Enums\ActionSize;
+use Filament\Tables\Columns\IconColumn;
 use Propaganistas\LaravelPhone\PhoneNumber;
 
 class StudentsRelationManager extends RelationManager
@@ -100,6 +101,7 @@ class StudentsRelationManager extends RelationManager
                         };
                     })
                     ->label('الاسم'),
+
                 TextColumn::make('phone')
                     ->url(fn($record) => "tel:{$record->phone}")
                     ->badge()
@@ -108,14 +110,28 @@ class StudentsRelationManager extends RelationManager
                     ->label('رقم الهاتف')
                     ->extraCellAttributes(['dir' => 'ltr'])
                     ->alignRight(),
-                TextColumn::make('sex')->label('الجنس')
+                IconColumn::make('with_reason')
+                    ->label('غياب مبرر')
+                    ->boolean()
+                    ->getStateUsing(function (Student $record) {
+                        $todayProgress = $record->today_progress;
+                        if ($todayProgress && $todayProgress->status === 'absent') {
+                            return $todayProgress->with_reason ? true : false;
+                        }
+                        return null;
+                    }),
+                TextColumn::make('sex')
+                    ->toggledHiddenByDefault()
+                    ->label('الجنس')
                     ->formatStateUsing(function ($state) {
                         return match ($state) {
                             'male' => 'ذكر',
                             'female' => 'أنثى',
                         };
                     }),
-                TextColumn::make('city')->label('المدينة'),
+                TextColumn::make('city')
+                    ->toggledHiddenByDefault()
+                    ->label('المدينة'),
                 TextColumn::make('created_at')
                     ->label('انضم منذ')
                     ->since()
@@ -1134,7 +1150,42 @@ class StudentsRelationManager extends RelationManager
                             }
                         }
                     }),
+                BulkAction::make('mark_with_reason')
+                    ->label('تسجيل غياب مبرر')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->modalSubmitActionLabel('تأكيد')
+                    ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
+                    ->action(function (array $data) {
+                        $students = $this->selectedTableRecords;
+                        foreach ($students as $studentId) {
+                            $student = Student::find($studentId);
+                            $selectedDate = now()->format('Y-m-d');
 
+                            if ($student->progresses->where('date', $selectedDate)->count() == 0) {
+                                $student->progresses()->create([
+                                    'date' => $selectedDate,
+                                    'status' => 'absent',
+                                    'with_reason' => true,
+                                    'comment' => null,
+                                    'page_id' => null,
+                                    'lines_from' => null,
+                                    'lines_to' => null,
+                                ]);
+                            } else {
+                                $student->progresses()->where('date', $selectedDate)->update([
+                                    'with_reason' => true,
+                                ]);
+                            }
+                        }
+
+                        Notification::make()
+                            ->title('تم تسجيل الغياب المبرر بنجاح')
+                            ->success()
+                            ->send();
+                    })
+                    ->deselectRecordsAfterCompletion(),
             ])
             ->query(function () {
                 $today = now()->format('Y-m-d');

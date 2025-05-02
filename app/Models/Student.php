@@ -13,13 +13,8 @@ class Student extends Model
 {
     use HasFactory;
 
-    protected $fillable = [
-        'name',
-        'phone',
-        'group',
-        'sex',
-        'city',
-        'group_id',
+    protected $casts = [
+        'with_reason' => 'boolean',
     ];
 
     public function progresses(): HasMany
@@ -161,7 +156,7 @@ class Student extends Model
                 // Count absences in the last 30 days, excluding those with reason
                 $absenceCount = $recentProgresses->where('status', 'absent')
                     ->where(function ($item) {
-                        return $item->with_reason === false || $item->with_reason === null;
+                        return !$item->with_reason;
                     })
                     ->count();
 
