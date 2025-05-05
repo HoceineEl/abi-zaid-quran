@@ -1164,15 +1164,16 @@ class StudentsRelationManager extends RelationManager
                             $selectedDate = now()->format('Y-m-d');
 
                             if ($student->progresses->where('date', $selectedDate)->count() == 0) {
-                                $student->progresses()->create([
-                                    'date' => $selectedDate,
-                                    'status' => 'absent',
-                                    'with_reason' => true,
-                                    'comment' => null,
-                                    'page_id' => null,
-                                    'lines_from' => null,
-                                    'lines_to' => null,
-                                ]);
+                                $student->progresses()
+                                    ->create([
+                                        'date' => $selectedDate,
+                                        'status' => 'absent',
+                                        'with_reason' => true,
+                                        'comment' => null,
+                                        'page_id' => null,
+                                        'lines_from' => null,
+                                        'lines_to' => null,
+                                    ]);
                             } else {
                                 $student->progresses()->where('date', $selectedDate)->update([
                                     'with_reason' => true,

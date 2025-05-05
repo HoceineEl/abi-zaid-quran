@@ -28,9 +28,11 @@ class Progress extends Model
     protected static function boot(): void
     {
         parent::boot();
-        // static::creating(function ($progress) {
-        //     $progress->created_by = auth()->id();
-        // });
+        static::creating(function ($progress) {
+            if (auth()->check()) {
+                $progress->created_by = auth()->id();
+            }
+        });
     }
 
     public function student(): BelongsTo
