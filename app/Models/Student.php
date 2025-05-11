@@ -173,4 +173,13 @@ class Student extends Model
             }
         );
     }
+
+    public function absentWithReasonToday(): Attribute
+    {
+        return Attribute::make(
+            get: function () {
+                return $this->today_progress()->where('with_reason', 1)->count();
+            }
+        );
+    }
 }

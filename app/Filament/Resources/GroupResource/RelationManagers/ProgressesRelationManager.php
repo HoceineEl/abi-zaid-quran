@@ -106,7 +106,7 @@ class ProgressesRelationManager extends RelationManager
                         return match ($state) {
                             'memorized' => 'success',
                             'absent' => 'danger',
-                            'absent_with_reason' => 'warning',
+                            'absent_with_reason' => 'info',
                             default => 'muted'
                         };
                     })

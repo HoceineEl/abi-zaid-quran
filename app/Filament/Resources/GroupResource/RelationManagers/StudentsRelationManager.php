@@ -87,13 +87,17 @@ class StudentsRelationManager extends RelationManager
                         // Using eager loaded today_progress relationship
                         return match ($record->today_progress?->status) {
                             'memorized' => 'heroicon-o-check-circle',
-                            'absent' => 'heroicon-o-exclamation-circle',
+                            'absent' => $record->today_progress?->with_reason ? 'heroicon-o-information-circle' : 'heroicon-o-exclamation-circle',
                             default => $record->today_progress ? 'heroicon-o-information-circle' : null,
                         };
                     })
                     ->searchable()
                     ->color(function (Student $record) {
                         // Using eager loaded today_progress relationship
+                        if ($record->today_progress?->status === 'absent' && $record->today_progress?->with_reason) {
+                            return 'info';
+                        }
+                        
                         return match ($record->today_progress?->status) {
                             'memorized' => 'success',
                             'absent' => 'danger',
@@ -116,7 +120,7 @@ class StudentsRelationManager extends RelationManager
                     ->getStateUsing(function (Student $record) {
                         $todayProgress = $record->today_progress;
                         if ($todayProgress && $todayProgress->status === 'absent') {
-                            return $todayProgress->with_reason ? true : false;
+                            return $todayProgress->with_reason === 1 ? true : false;
                         }
                         return null;
                     }),
