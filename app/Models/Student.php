@@ -54,11 +54,10 @@ class Student extends Model
                     ->get();
 
                 $currentConsecutive = 0;
-
                 foreach ($recentProgresses as $progress) {
-                    if ($progress->status === 'absent' && !$progress->with_reason) {
+                    if ($progress->status === 'absent' && (int)$progress->with_reason === 0) {
                         $currentConsecutive++;
-                    } else if ($progress->status === 'memorized' || ($progress->status === 'absent' && $progress->with_reason)) {
+                    } else if ($progress->status === 'memorized' || ($progress->status === 'absent' && (int)$progress->with_reason === 1)) {
                         $currentConsecutive = 0;
                     }
                 }
@@ -82,13 +81,13 @@ class Student extends Model
 
                 $twoDaysEbsentCount = $twoDays->where('status', 'absent')
                     ->where(function ($item) {
-                        return $item->with_reason === false || $item->with_reason === null;
+                        return (int)$item->with_reason === 0 || $item->with_reason === null;
                     })
                     ->count();
 
                 $threeDaysEbsentCount = $threeDays->where('status', 'absent')
                     ->where(function ($item) {
-                        return $item->with_reason === false || $item->with_reason === null;
+                        return (int)$item->with_reason === 0 || $item->with_reason === null;
                     })
                     ->count();
 
@@ -112,7 +111,7 @@ class Student extends Model
         return $this->progresses()
             ->where('status', 'absent')
             ->where(function ($query) {
-                $query->where('with_reason', false)
+                $query->where('with_reason', 0)
                     ->orWhereNull('with_reason');
             })
             ->count();
@@ -147,32 +146,29 @@ class Student extends Model
     {
         return Attribute::make(
             get: function () {
-                // Get the recent progress records for the last 30 days
                 $recentProgresses = $this->progresses()
                     ->latest('date')
                     ->limit(30)
                     ->get();
 
-                // Count absences in the last 30 days, excluding those with reason
                 $absenceCount = $recentProgresses->where('status', 'absent')
                     ->where(function ($item) {
-                        return !$item->with_reason;
+                        return (int)$item->with_reason === 0;
                     })
                     ->count();
 
-                // Return appropriate remark based on absence count
                 if ($absenceCount === 0) {
-                    return ['label' => 'ممتاز', 'days' => $absenceCount, 'color' => '#28a745']; // Green
+                    return ['label' => 'ممتاز', 'days' => $absenceCount, 'color' => '#28a745'];
                 } elseif ($absenceCount >= 1 && $absenceCount <= 3) {
-                    return ['label' => 'جيد', 'days' => $absenceCount, 'color' => '#5cb85c']; // Light Green
+                    return ['label' => 'جيد', 'days' => $absenceCount, 'color' => '#5cb85c'];
                 } elseif ($absenceCount >= 4 && $absenceCount <= 5) {
-                    return ['label' => 'حسن', 'days' => $absenceCount, 'color' => '#8fd19e']; // Lighter Green
+                    return ['label' => 'حسن', 'days' => $absenceCount, 'color' => '#8fd19e'];
                 } elseif ($absenceCount >= 6 && $absenceCount <= 7) {
-                    return ['label' => 'لا بأس به', 'days' => $absenceCount, 'color' => '#ffc107']; // Yellow
+                    return ['label' => 'لا بأس به', 'days' => $absenceCount, 'color' => '#ffc107'];
                 } elseif ($absenceCount >= 8 && $absenceCount <= 10) {
-                    return ['label' => 'متوسط', 'days' => $absenceCount, 'color' => '#fd7e14']; // Orange
+                    return ['label' => 'متوسط', 'days' => $absenceCount, 'color' => '#fd7e14'];
                 } else {
-                    return ['label' => 'ضعيف', 'days' => $absenceCount, 'color' => '#dc3545']; // Red
+                    return ['label' => 'ضعيف', 'days' => $absenceCount, 'color' => '#dc3545'];
                 }
             }
         );

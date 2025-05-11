@@ -1000,7 +1000,6 @@ class StudentsRelationManager extends RelationManager
             ->bulkActions([
                 BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
-
                     BulkAction::make('send_msg')
                         ->label('إرسال رسالة ')
                         ->icon('heroicon-o-chat-bubble-oval-left')
@@ -1062,6 +1061,43 @@ class StudentsRelationManager extends RelationManager
                             }
                             \Filament\Notifications\Notification::make()
                                 ->title('تم حذف حضور اليوم لـ ' . $deletedCount . ' طالب')
+                                ->success()
+                                ->send();
+                        })
+                        ->deselectRecordsAfterCompletion(),
+                    BulkAction::make('mark_with_reason')
+                        ->label('تسجيل غياب مبرر')
+                        ->icon('heroicon-o-check-circle')
+                        ->color('warning')
+                        ->requiresConfirmation()
+                        ->modalSubmitActionLabel('تأكيد')
+                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
+                        ->action(function (array $data) {
+                            $students = $this->selectedTableRecords;
+                            foreach ($students as $studentId) {
+                                $student = Student::find($studentId);
+                                $selectedDate = now()->format('Y-m-d');
+
+                                if ($student->progresses->where('date', $selectedDate)->count() == 0) {
+                                    $student->progresses()
+                                        ->create([
+                                            'date' => $selectedDate,
+                                            'status' => 'absent',
+                                            'with_reason' => true,
+                                            'comment' => null,
+                                            'page_id' => null,
+                                            'lines_from' => null,
+                                            'lines_to' => null,
+                                        ]);
+                                } else {
+                                    $student->progresses()->where('date', $selectedDate)->update([
+                                        'with_reason' => true,
+                                    ]);
+                                }
+                            }
+
+                            Notification::make()
+                                ->title('تم تسجيل الغياب المبرر بنجاح')
                                 ->success()
                                 ->send();
                         })
@@ -1150,43 +1186,7 @@ class StudentsRelationManager extends RelationManager
                             }
                         }
                     }),
-                BulkAction::make('mark_with_reason')
-                    ->label('تسجيل غياب مبرر')
-                    ->icon('heroicon-o-check-circle')
-                    ->color('warning')
-                    ->requiresConfirmation()
-                    ->modalSubmitActionLabel('تأكيد')
-                    ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
-                    ->action(function (array $data) {
-                        $students = $this->selectedTableRecords;
-                        foreach ($students as $studentId) {
-                            $student = Student::find($studentId);
-                            $selectedDate = now()->format('Y-m-d');
 
-                            if ($student->progresses->where('date', $selectedDate)->count() == 0) {
-                                $student->progresses()
-                                    ->create([
-                                        'date' => $selectedDate,
-                                        'status' => 'absent',
-                                        'with_reason' => true,
-                                        'comment' => null,
-                                        'page_id' => null,
-                                        'lines_from' => null,
-                                        'lines_to' => null,
-                                    ]);
-                            } else {
-                                $student->progresses()->where('date', $selectedDate)->update([
-                                    'with_reason' => true,
-                                ]);
-                            }
-                        }
-
-                        Notification::make()
-                            ->title('تم تسجيل الغياب المبرر بنجاح')
-                            ->success()
-                            ->send();
-                    })
-                    ->deselectRecordsAfterCompletion(),
             ])
             ->query(function () {
                 $today = now()->format('Y-m-d');

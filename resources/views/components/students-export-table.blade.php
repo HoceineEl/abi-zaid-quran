@@ -261,9 +261,10 @@
                 <tbody>
                     @foreach ($studentsChunk as $index => $student)
                         @php
-                            $todayProgress = $student->progresses->where('date', now()->format('Y-m-d'))->first();
+                            $todayProgress = $student->today_progress;
                             $consecutiveAbsentDays = $student->consecutiveAbsentDays;
                             $absenceStatus = $student->absenceStatus;
+                            dump($student->name . ' ' . $student->absenceStatus . ' ' . $consecutiveAbsentDays);
                             $status = $todayProgress?->status ?? 'pending';
                             $attendanceRemark = $student->attendanceRemark;
                         @endphp
