@@ -97,7 +97,7 @@ class StudentsRelationManager extends RelationManager
                         if ($record->today_progress?->status === 'absent' && $record->today_progress?->with_reason) {
                             return 'info';
                         }
-                        
+
                         return match ($record->today_progress?->status) {
                             'memorized' => 'success',
                             'absent' => 'danger',
