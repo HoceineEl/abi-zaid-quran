@@ -123,7 +123,9 @@ class StudentsRelationManager extends RelationManager
                             return $todayProgress->with_reason === 1 ? true : false;
                         }
                         return null;
-                    }),
+                    })
+                    ->trueColor('info')
+                    ->falseColor('danger'),
                 TextColumn::make('sex')
                     ->toggledHiddenByDefault()
                     ->label('الجنس')

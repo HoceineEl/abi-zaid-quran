@@ -11,6 +11,7 @@
             --success-color: #059669;
             --warning-color: #d97706;
             --danger-color: #dc2626;
+            --info-color: #0ea5e9;
         }
 
         /* Dark mode styles */
@@ -24,6 +25,7 @@
             --success-color: #34d399;
             --warning-color: #fbbf24;
             --danger-color: #f87171;
+            --info-color: #0ea5e9;
         }
 
         .export-table {
@@ -56,6 +58,10 @@
             background-color: var(--bg-secondary);
         }
 
+        .export-table .absence-with-reason {
+            background-color: transparent;
+        }
+
         .export-table tr:hover {
             background-color: var(--bg-header);
         }
@@ -83,8 +89,7 @@
         }
 
         .status-absent-with-reason {
-            color: #3b82f6;
-            /* Blue color */
+            color: var(--info-color);
         }
 
         .status-pending {
@@ -170,7 +175,7 @@
             background-color: var(--bg-secondary);
             padding: 2px 8px;
             border-radius: 4px;
-            color: var(--warning-color);
+            color: var(--info-color);
             min-width: 80px;
             text-align: center;
         }
@@ -270,7 +275,8 @@
                             $consecutiveAbsentDays = $student->consecutiveAbsentDays;
                             $absenceStatus = $student->absenceStatus;
                             $status = $todayProgress?->status ?? 'pending';
-                            if ($status === 'absent' && $todayProgress?->with_reason) {
+                            $withReason = $todayProgress?->with_reason;
+                            if ($status === 'absent' && $withReason) {
                                 $status = 'absent-with-reason';
                             }
                             $attendanceRemark = $student->attendanceRemark;
@@ -304,15 +310,8 @@
                                                     <path stroke-linecap="round" stroke-linejoin="round"
                                                         d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                 </svg>
-                                                @if ($todayProgress->with_reason)
-                                                    <span class="status-absent-with-reason">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none"
-                                                            viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                        </svg>
-                                                        <span class="absence-with-reason">غياب مبرر</span>
-                                                    </span>
+                                                @if ($withReason)
+                                                    <span class="absence-with-reason">غياب مبرر</span>
                                                 @endif
                                             @break
 

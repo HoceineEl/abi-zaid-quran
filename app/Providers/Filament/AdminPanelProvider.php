@@ -25,6 +25,7 @@ use App\Filament\Widgets\StudentProgressTimeline;
 use Filament\View\PanelsRenderHook;
 use App\Filament\Pages\SubtitleCleaner;
 use App\Filament\Pages\CustomLogin;
+
 class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
@@ -40,7 +41,7 @@ class AdminPanelProvider extends PanelProvider
                 'danger' => Color::Rose,
                 'warning' => Color::Yellow,
                 'success' => Color::Teal,
-                'info' => Color::Amber,
+                'info' => Color::Sky,
             ])
             ->login(CustomLogin::class)
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
