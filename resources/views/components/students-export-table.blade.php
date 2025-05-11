@@ -264,7 +264,6 @@
                             $todayProgress = $student->today_progress;
                             $consecutiveAbsentDays = $student->consecutiveAbsentDays;
                             $absenceStatus = $student->absenceStatus;
-                            dump($student->name . ' ' . $student->absenceStatus . ' ' . $consecutiveAbsentDays);
                             $status = $todayProgress?->status ?? 'pending';
                             $attendanceRemark = $student->attendanceRemark;
                         @endphp
