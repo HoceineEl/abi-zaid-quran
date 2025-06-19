@@ -7,6 +7,7 @@ use Filament\Actions\Exports\ExportColumn;
 use Filament\Actions\Exports\Exporter;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Actions\Exports\Models\Export;
+use Illuminate\Database\Eloquent\Model;
 
 class ProgressExporter extends Exporter
 {
@@ -37,6 +38,7 @@ class ProgressExporter extends Exporter
             $formattedDate = $date->format('Y-m-d');
             $columns[] = ExportColumn::make("status_day_{$formattedDate}")
                 ->label($date->format('d/m'))
+                ->enabledByDefault(false)
                 ->state(function (Student $record) use ($formattedDate) {
                     $progress = $record->progresses->where('date', $formattedDate)->first();
                     return $progress ? ($progress->status === 'memorized' ? 'حاضر' : 'غائب') : 'غير مسجل';
@@ -66,5 +68,21 @@ class ProgressExporter extends Exporter
     public function getJobConnection(): ?string
     {
         return 'sync';
+    }
+
+
+    public function __invoke(Model $record): array
+    {
+        $this->record = $record;
+
+        $columns = $this->getCachedColumns();
+
+        $data = [];
+
+        foreach (array_keys($this->columnMap) as $column) {
+            $data[] = $columns[$column]->getFormattedState();
+        }
+
+        return $data;
     }
 }

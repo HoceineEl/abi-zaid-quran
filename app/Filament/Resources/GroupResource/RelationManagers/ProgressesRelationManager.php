@@ -154,6 +154,7 @@ class ProgressesRelationManager extends RelationManager
                     ->label('تصدير الكل')
                     ->visible(fn() => Auth::user()->isAdministrator())
                     ->exporter(ProgressExporter::class)
+                    ->successNotification(null)
                     ->icon('heroicon-o-arrow-down-tray'),
                 Action::make('export_progress_table')
                     ->label('تصدير التقرير')
