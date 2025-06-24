@@ -9,10 +9,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Group extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
 
     protected $casts = [
@@ -51,6 +52,8 @@ class Group extends Model
     {
         return $this->belongsTo(Message::class);
     }
+
+
 
     public function messageTemplates(): BelongsToMany
     {

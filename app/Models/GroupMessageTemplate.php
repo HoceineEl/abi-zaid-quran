@@ -23,7 +23,8 @@ class GroupMessageTemplate extends Model
     {
         return $this->belongsToMany(Group::class, 'group_message_template_pivot')
             ->withPivot('is_default')
-            ->withTimestamps();
+            ->withTimestamps()
+        ;
     }
 
     /**

@@ -276,142 +276,7 @@ class StudentsRelationManager extends RelationManager
                         ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
                         ->slideOver(),
 
-                    Action::make('manage_message_templates')
-                        ->label('إدارة قوالب الرسائل')
-                        ->icon('heroicon-o-chat-bubble-left-right')
-                        ->color('primary')
-                        ->size(ActionSize::Small)
-                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
-                        ->form([
-                            Tabs::make('Message Templates')
-                                ->tabs([
-                                    Tabs\Tab::make('إضافة قالب جديد')
-                                        ->icon('heroicon-o-plus-circle')
-                                        ->schema([
-                                            Forms\Components\TextInput::make('name')
-                                                ->label('اسم القالب')
-                                                ->required(),
-                                            Textarea::make('content')
-                                                ->label('محتوى الرسالة')
-                                                ->required()
-                                                ->helperText('يمكنك استخدام المتغيرات التالية: {{student_name}}, {{group_name}}, {{curr_date}}, {{prefix}}, {{pronoun}}, {{verb}}')
-                                                ->columnSpanFull(),
-                                            Toggle::make('is_default')
-                                                ->label('قالب افتراضي')
-                                                ->helperText('إذا تم تحديد هذا الخيار، سيتم استخدام هذا القالب كقالب افتراضي للمجموعة')
-                                                ->default(false),
-                                        ]),
-                                    Tabs\Tab::make('قوالب الرسائل الحالية')
-                                        ->icon('heroicon-o-clipboard-document-list')
-                                        ->schema([
-                                            Forms\Components\Repeater::make('templates')
-                                                ->label('')
-                                                ->schema([
-                                                    Forms\Components\TextInput::make('name')
-                                                        ->label('اسم القالب')
-                                                        ->required(),
-                                                    Textarea::make('content')
-                                                        ->label('محتوى الرسالة')
-                                                        ->required()
-                                                        ->helperText('يمكنك استخدام المتغيرات التالية: {{student_name}}, {{group_name}}, {{curr_date}}, {{prefix}}, {{pronoun}}, {{verb}}')
-                                                        ->columnSpanFull(),
-                                                    Toggle::make('is_default')
-                                                        ->label('قالب افتراضي')
-                                                        ->helperText('إذا تم تحديد هذا الخيار، سيتم استخدام هذا القالب كقالب افتراضي للمجموعة')
-                                                        ->default(false),
-                                                    Forms\Components\Hidden::make('id'),
-                                                ])
-                                                ->itemLabel(fn(array $state): ?string => $state['name'] ?? null)
-                                                ->collapsible()
-                                                ->defaultItems(0)
-                                                ->reorderable(false)
-                                                ->addable(false)
-                                                ->deletable(true)
-                                                ->deleteAction(
-                                                    fn(Forms\Components\Actions\Action $action) => $action->requiresConfirmation()
-                                                )
-                                        ]),
-                                ])
-                                ->activeTab(0)
-                        ])
-                        ->action(function (array $data) {
-                            // Handle new template creation
-                            if (!empty($data['name']) && !empty($data['content'])) {
-                                // Create the new template
-                                $template = GroupMessageTemplate::create([
-                                    'name' => $data['name'],
-                                    'content' => $data['content'],
-                                ]);
 
-                                // Attach the template to the group
-                                $this->ownerRecord->messageTemplates()->attach($template->id, [
-                                    'is_default' => !empty($data['is_default']) ? $data['is_default'] : false,
-                                    'created_at' => now(),
-                                    'updated_at' => now(),
-                                ]);
-
-                                // If this is set as default, unset any existing defaults
-                                if (!empty($data['is_default']) && $data['is_default']) {
-                                    $this->ownerRecord->messageTemplates()
-                                        ->wherePivot('group_message_template_id', '!=', $template->id)
-                                        ->updateExistingPivot($template->id, ['is_default' => false]);
-                                }
-
-                                Notification::make()
-                                    ->title('تم إضافة قالب الرسالة بنجاح')
-                                    ->success()
-                                    ->send();
-                            }
-
-                            // Handle existing templates updates
-                            if (!empty($data['templates'])) {
-                                foreach ($data['templates'] as $templateData) {
-                                    if (!empty($templateData['id'])) {
-                                        $template = GroupMessageTemplate::find($templateData['id']);
-
-                                        if ($template) {
-                                            // Update the template
-                                            $template->update([
-                                                'name' => $templateData['name'],
-                                                'content' => $templateData['content'],
-                                            ]);
-
-                                            // Update the pivot data
-                                            $this->ownerRecord->messageTemplates()->updateExistingPivot($template->id, [
-                                                'is_default' => !empty($templateData['is_default']) ? $templateData['is_default'] : false,
-                                                'updated_at' => now(),
-                                            ]);
-
-                                            // If this is set as default, unset any existing defaults
-                                            if (!empty($templateData['is_default']) && $templateData['is_default']) {
-                                                $this->ownerRecord->messageTemplates()
-                                                    ->wherePivot('group_message_template_id', '!=', $template->id)
-                                                    ->updateExistingPivot($template->id, ['is_default' => false]);
-                                            }
-                                        }
-                                    }
-                                }
-
-                                Notification::make()
-                                    ->title('تم تحديث قوالب الرسائل بنجاح')
-                                    ->success()
-                                    ->send();
-                            }
-                        })
-                        ->mutateFormDataUsing(function (array $data) {
-                            // Load existing templates
-                            $templates = $this->ownerRecord->messageTemplates()->get();
-                            $data['templates'] = $templates->map(function ($template) {
-                                return [
-                                    'id' => $template->id,
-                                    'name' => $template->name,
-                                    'content' => $template->content,
-                                    'is_default' => $template->pivot->is_default,
-                                ];
-                            })->toArray();
-
-                            return $data;
-                        }),
                     Action::make('send_msg_to_others')
                         ->label('إرسال رسالة تذكير للبقية')
                         ->icon('heroicon-o-chat-bubble-oval-left')
@@ -423,7 +288,10 @@ class StudentsRelationManager extends RelationManager
                                     return $this->ownerRecord->messageTemplates()->pluck('name', 'id')
                                         ->prepend('رسالة مخصصة', 'custom');
                                 })
-                                ->default('custom')
+                                ->default(function () {
+                                    $defaultTemplate = $this->ownerRecord->messageTemplates()->wherePivot('is_default', true)->first();
+                                    return $defaultTemplate ? $defaultTemplate->id : 'custom';
+                                })
                                 ->reactive(),
                             Toggle::make('with_reason')
                                 ->label('غياب بعذر')
@@ -481,7 +349,10 @@ class StudentsRelationManager extends RelationManager
                                     return $this->ownerRecord->messageTemplates()->pluck('name', 'id')
                                         ->prepend('رسالة مخصصة', 'custom');
                                 })
-                                ->default('custom')
+                                ->default(function () {
+                                    $defaultTemplate = $this->ownerRecord->messageTemplates()->wherePivot('is_default', true)->first();
+                                    return $defaultTemplate ? $defaultTemplate->id : 'custom';
+                                })
                                 ->reactive(),
                             Textarea::make('message')
                                 ->hint('يمكنك استخدام المتغيرات التالية: {{student_name}}, {{group_name}}, {{curr_date}}, {{prefix}}, {{pronoun}}, {{verb}}')
@@ -1017,7 +888,10 @@ class StudentsRelationManager extends RelationManager
                                     return $this->ownerRecord->messageTemplates()->pluck('name', 'id')
                                         ->prepend('رسالة مخصصة', 'custom');
                                 })
-                                ->default('custom')
+                                ->default(function () {
+                                    $defaultTemplate = $this->ownerRecord->messageTemplates()->wherePivot('is_default', true)->first();
+                                    return $defaultTemplate ? $defaultTemplate->id : 'custom';
+                                })
                                 ->reactive(),
                             Textarea::make('message')
                                 ->hint('يمكنك استخدام المتغيرات التالية: {{student_name}}, {{group_name}}, {{curr_date}}, {{prefix}}, {{pronoun}}, {{verb}}')
@@ -1245,12 +1119,9 @@ class StudentsRelationManager extends RelationManager
         }
 
 
-        // Check if the group has a selected message template
-        if ($ownerRecord->messageTemplates->count() > 0) {
-            $message = Core::processMessageTemplate($ownerRecord->messageTemplates->first()->content, $record, $ownerRecord);
-        }
-        // Check if there's a default template in the group's message templates
-        else if ($defaultTemplate = $ownerRecord->messageTemplates()->where('is_default', true)->first()) {
+        // Check if the group has a default message template
+        $defaultTemplate = $ownerRecord->messageTemplates()->wherePivot('is_default', true)->first();
+        if ($defaultTemplate) {
             $message = Core::processMessageTemplate($defaultTemplate->content, $record, $ownerRecord);
         }
         // Use built-in templates based on group type

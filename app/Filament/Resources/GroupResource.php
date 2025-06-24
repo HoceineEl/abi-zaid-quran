@@ -9,6 +9,7 @@ use App\Filament\Resources\GroupResource\RelationManagers\ManagersRelationManage
 use App\Filament\Resources\GroupResource\RelationManagers\ProgressesRelationManager;
 use App\Filament\Resources\GroupResource\RelationManagers\StudentsRelationManager;
 use App\Models\Group;
+use App\Models\GroupMessageTemplate;
 use App\Models\Message;
 use App\Models\Student;
 use Filament\Forms;
@@ -93,12 +94,20 @@ class GroupResource extends Resource
                     ->separator(','),
                 Forms\Components\Select::make('template_id')
                     ->label('قالب الرسائل')
-                    ->relationship('messageTemplates', 'name')
-                    ->preload()
+                    ->options(GroupMessageTemplate::pluck('name', 'id'))
                     ->searchable()
+                    ->placeholder('اختر قالب رسالة')
                     ->dehydrated(false)
-                    ->saveRelationshipsUsing(function (Group $record, $state) {
-                        $record->messageTemplates()->sync($state);
+                    ->afterStateUpdated(function ($state, Group $record) {
+                        if ($state && $record->exists) {
+                            // Sync the selected template and make it default
+                            $record->messageTemplates()->sync([
+                                $state => ['is_default' => true]
+                            ]);
+                        }
+                    })
+                    ->default(function (Group $record) {
+                        return $record->messageTemplates()->wherePivot('is_default', true)->first()?->id;
                     })
                     ->createOptionForm([
                         Forms\Components\TextInput::make('name')
@@ -144,6 +153,15 @@ class GroupResource extends Resource
                 Tables\Columns\TextColumn::make('message_submission_type')
                     ->label('نوع الرسائل المقبولة')
                     ->badge(),
+                Tables\Columns\TextColumn::make('messageTemplates.name')
+                    ->label('قالب الرسالة')
+                    ->default('لا يوجد')
+                    ->badge()
+                    ->color('info')
+                    ->getStateUsing(function (Group $record) {
+                        $defaultTemplate = $record->messageTemplates()->wherePivot('is_default', true)->first();
+                        return $defaultTemplate?->name ?? 'لا يوجد';
+                    }),
                 Tables\Columns\TextColumn::make('managers.name')
                     ->label('المشرفون')
                     ->badge(),
@@ -162,7 +180,7 @@ class GroupResource extends Resource
                 //     ->searchable(false),
             ])
             ->filters([
-                //
+                Tables\Filters\TrashedFilter::make(),
             ])
             ->recordUrl(fn(Group $record) => GroupResource::getUrl('edit', ['record' => $record, 'activeRelationManager' => 0]))
             ->actions([
@@ -233,6 +251,8 @@ class GroupResource extends Resource
                     //     }),
                     Tables\Actions\ViewAction::make(),
                     Tables\Actions\EditAction::make(),
+                    Tables\Actions\RestoreAction::make(),
+                    Tables\Actions\ForceDeleteAction::make(),
                 ])
             ])
             ->headerActions([
@@ -314,7 +334,48 @@ class GroupResource extends Resource
             })
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\BulkAction::make('set_template')
+                        ->label('تعيين قالب رسالة')
+                        ->icon('heroicon-o-chat-bubble-left-right')
+                        ->color('primary')
+                        ->form([
+                            Forms\Components\Select::make('template_id')
+                                ->label('اختر قالب الرسالة')
+                                ->options(
+                                    GroupMessageTemplate::pluck('name', 'id')->prepend('لا يوجد', '')
+                                )
+                                ->searchable()
+                                ->placeholder('اختر قالب رسالة'),
+                        ])
+                        ->action(function (array $data, $records) {
+                            $templateId = $data['template_id'] ?: null;
+
+                            foreach ($records as $group) {
+                                if ($templateId) {
+                                    // Sync the selected template and make it default
+                                    $group->messageTemplates()->sync([
+                                        $templateId => ['is_default' => true]
+                                    ]);
+                                } else {
+                                    // Remove all templates
+                                    $group->messageTemplates()->detach();
+                                }
+                            }
+
+                            $message = $templateId
+                                ? 'تم تعيين قالب الرسالة للمجموعات المحددة بنجاح'
+                                : 'تم إزالة قالب الرسالة من المجموعات المحددة بنجاح';
+
+                            Notification::make()
+                                ->title($message)
+                                ->success()
+                                ->send();
+                        })
+                        ->deselectRecordsAfterCompletion(),
                     Tables\Actions\DeleteBulkAction::make()
+                        ->disabled(! Core::canChange()),
+                    Tables\Actions\RestoreBulkAction::make(),
+                    Tables\Actions\ForceDeleteBulkAction::make()
                         ->disabled(! Core::canChange()),
                 ]),
             ]);
