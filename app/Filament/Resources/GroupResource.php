@@ -337,6 +337,7 @@ class GroupResource extends Resource
                     Tables\Actions\BulkAction::make('set_template')
                         ->label('تعيين قالب رسالة')
                         ->icon('heroicon-o-chat-bubble-left-right')
+                        ->visible(fn() => auth()->user()->isAdministrator())
                         ->color('primary')
                         ->form([
                             Forms\Components\Select::make('template_id')
