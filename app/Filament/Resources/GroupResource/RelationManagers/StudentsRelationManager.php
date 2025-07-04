@@ -982,6 +982,37 @@ class StudentsRelationManager extends RelationManager
                                 ->send();
                         })
                         ->deselectRecordsAfterCompletion(),
+                    BulkAction::make('export_vcf')
+                        ->label('تصدير كملف VCF')
+                        ->icon('heroicon-o-users')
+                        ->color('info')
+                        ->action(function () {
+                            $students = collect($this->selectedTableRecords)
+                                ->map(fn($studentId) => Student::find($studentId))
+                                ->filter();
+
+                            if ($students->isEmpty()) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title('لم يتم اختيار أي طالب')
+                                    ->send();
+                                return;
+                            }
+
+                            $vcfContent = $this->generateVcfContent($students);
+                            $fileName = 'contacts_' . $this->ownerRecord->name . '_' . now()->format('Y-m-d_H-i-s') . '.vcf';
+
+                            $this->dispatch('download-vcf', [
+                                'content' => $vcfContent,
+                                'filename' => $fileName
+                            ]);
+
+                            Notification::make()
+                                ->success()
+                                ->title('تم تصدير ' . $students->count() . ' جهة اتصال بنجاح')
+                                ->send();
+                        })
+                        ->deselectRecordsAfterCompletion(),
                 ]),
                 BulkAction::make('set_as_absent')
                     ->label('غائبين')
@@ -1190,6 +1221,54 @@ MSG;
         $url = route('whatsapp', ['number' => $number, 'message' => $message, 'student_id' => $record->id]);
         // Open in new tab
         return $url;
+    }
+
+    /**
+     * Generate VCF content for selected students
+     * 
+     * @param \Illuminate\Support\Collection $students Collection of students
+     * @return string VCF formatted content
+     */
+    private function generateVcfContent($students): string
+    {
+        $vcfContent = '';
+
+        foreach ($students as $student) {
+            $vcfContent .= "BEGIN:VCARD\r\n";
+            $vcfContent .= "VERSION:3.0\r\n";
+            $vcfContent .= "FN:" . $student->name . "\r\n";
+            $vcfContent .= "N:" . $student->name . ";;;;\r\n";
+
+            // Format phone number
+            $phone = $student->phone;
+            if (!empty($phone)) {
+                // Clean and format phone number
+                $phone = preg_replace('/[^0-9+]/', '', $phone);
+
+                // Handle Moroccan phone numbers
+                if (strlen($phone) === 9 && in_array(substr($phone, 0, 1), ['6', '7'])) {
+                    $phone = '+212' . $phone;
+                } elseif (strlen($phone) === 10 && in_array(substr($phone, 0, 2), ['06', '07'])) {
+                    $phone = '+212' . substr($phone, 1);
+                } elseif (strlen($phone) === 12 && substr($phone, 0, 3) === '212') {
+                    $phone = '+' . $phone;
+                }
+
+                $vcfContent .= "TEL;TYPE=CELL:" . $phone . "\r\n";
+            }
+
+            // Add city as organization/note
+            if (!empty($student->city)) {
+                $vcfContent .= "ORG:" . $student->city . "\r\n";
+                $vcfContent .= "NOTE:المدينة: " . $student->city . " - المجموعة: " . $this->ownerRecord->name . "\r\n";
+            } else {
+                $vcfContent .= "NOTE:المجموعة: " . $this->ownerRecord->name . "\r\n";
+            }
+
+            $vcfContent .= "END:VCARD\r\n";
+        }
+
+        return $vcfContent;
     }
 
     /**

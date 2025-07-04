@@ -80,6 +80,7 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ])
-            ->renderHook(PanelsRenderHook::BODY_START, fn() => view('components.table-export-scripts'));
+            ->renderHook(PanelsRenderHook::BODY_START, fn() => view('components.table-export-scripts'))
+            ->renderHook(PanelsRenderHook::BODY_START, fn() => view('components.vcf-download-scripts'));
     }
 }

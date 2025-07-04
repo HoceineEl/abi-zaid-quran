@@ -87,6 +87,7 @@ class AssociationPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ])
-            ->renderHook(PanelsRenderHook::BODY_START, fn() => view('components.attendance-export-scripts'));
+            ->renderHook(PanelsRenderHook::BODY_START, fn() => view('components.attendance-export-scripts'))
+            ->renderHook(PanelsRenderHook::BODY_START, fn() => view('components.vcf-download-scripts'));
     }
 }
