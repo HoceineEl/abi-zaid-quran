@@ -26,13 +26,19 @@ class DailyAttendanceSummaryExport implements FromCollection, WithHeadings, Shou
      */
     public function collection()
     {
-        return Group::getDailyAttendanceSummary($this->date);
+        // Remove group number from the mapped data
+        return Group::getDailyAttendanceSummary($this->date)->map(function ($row) {
+            return [
+                'name' => $row['name'],
+                'present' => $row['present'],
+                'absent' => $row['absent'],
+            ];
+        });
     }
 
     public function headings(): array
     {
         return [
-            'رقم المجموعة',
             'اسم المجموعة',
             'حاضر',
             'غائب',
@@ -50,13 +56,13 @@ class DailyAttendanceSummaryExport implements FromCollection, WithHeadings, Shou
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet->getDelegate();
 
-                // Set RTL direction
-                $sheet->getSheetView()->setRightToLeft(true);
+                // Set right-to-left direction for Arabic text
+                $sheet->setRightToLeft(true);
 
                 // Add translated date as a heading
                 $todayDate = Carbon::now()->locale('ar')->translatedFormat('l, j F Y');
                 $sheet->insertNewRowBefore(1, 1);
-                $sheet->mergeCells('A1:D1');
+                $sheet->mergeCells('A1:C1');
                 $sheet->setCellValue('A1', 'تقرير الحضور ليوم: ' . $todayDate);
 
                 // Style the heading
@@ -64,19 +70,18 @@ class DailyAttendanceSummaryExport implements FromCollection, WithHeadings, Shou
                 $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
                 // Style the original headings row (which is now row 2)
-                $sheet->getStyle('A2:D2')->getFont()->setBold(true);
+                $sheet->getStyle('A2:C2')->getFont()->setBold(true);
 
                 // Color the data rows
                 foreach ($sheet->getRowIterator(3) as $row) {
-                    $presentCell = 'C' . $row->getRowIndex();
-                    $absentCell = 'D' . $row->getRowIndex();
+                    $presentCell = 'B' . $row->getRowIndex();
+                    $absentCell = 'C' . $row->getRowIndex();
 
                     // Color for present
                     $sheet->getStyle($presentCell)->getFill()
                         ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
                         ->getStartColor()->setARGB('C6EFCE');
                     $sheet->getStyle($presentCell)->getFont()->getColor()->setARGB('006100');
-
 
                     // Color for absent
                     $sheet->getStyle($absentCell)->getFill()
