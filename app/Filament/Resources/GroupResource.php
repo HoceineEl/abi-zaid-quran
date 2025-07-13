@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Classes\Core;
 use App\Enums\MessageSubmissionType;
+use App\Exports\DailyAttendanceSummaryExport;
 use App\Filament\Resources\GroupResource\Pages;
 use App\Filament\Resources\GroupResource\RelationManagers\ManagersRelationManager;
 use App\Filament\Resources\GroupResource\RelationManagers\ProgressesRelationManager;
@@ -31,6 +32,8 @@ use Filament\Tables\Actions\Action as ActionsAction;
 use Filament\Tables\Actions\ActionGroup;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class GroupResource extends Resource
 {
@@ -256,6 +259,15 @@ class GroupResource extends Resource
                 ])
             ])
             ->headerActions([
+                ActionsAction::make('export_daily_attendance_summary')
+                    ->label('تصدير موجز الحضور اليومي')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('success')
+                    ->visible(fn() => auth()->user()->role === 'admin')
+                    ->action(function () {
+                        $today = today()->toDateString();
+                        return Excel::download(new DailyAttendanceSummaryExport($today), 'daily-attendance-summary-' . $today . '.xlsx');
+                    }),
                 ActionsAction::make('send_whatsapp')
                     ->label('أرسل رسالة للغائبين')
                     ->icon('heroicon-o-users')

@@ -12,6 +12,7 @@
         "laravel/framework": "^11.0",
         "laravel/tinker": "^2.9",
         "livewire/livewire": "^3.5",
+        "maatwebsite/excel": "^3.1",
         "mpdf/mpdf": "^8.2",
         "propaganistas/laravel-phone": "^6.0",
         "ryangjchandler/blade-tabler-icons": "^2.3",

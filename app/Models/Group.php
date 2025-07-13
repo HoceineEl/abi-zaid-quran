@@ -93,4 +93,31 @@ class Group extends Model
 
         return $this->name . ' - ' . $type;
     }
+
+    public static function getDailyAttendanceSummary(string $date)
+    {
+        return self::query()
+            ->whereHas('students.progresses', function ($query) use ($date) {
+                $query->where('date', $date);
+            })
+            ->withCount('students')
+            ->with(['students.progresses' => function ($query) use ($date) {
+                $query->where('date', $date);
+            }])
+            ->get()
+            ->map(function ($group) {
+                $presentCount = $group->students->filter(function ($student) {
+                    return $student->progresses->where('status', 'memorized')->isNotEmpty();
+                })->count();
+
+                $absentCount = $group->students_count - $presentCount;
+
+                return [
+                    'id' => $group->id,
+                    'name' => $group->name,
+                    'present' => $presentCount,
+                    'absent' => $absentCount,
+                ];
+            });
+    }
 }
