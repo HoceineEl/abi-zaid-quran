@@ -72,6 +72,9 @@ class DailyAttendanceSummaryExport implements FromCollection, WithHeadings, Shou
                 // Style the original headings row (which is now row 2)
                 $sheet->getStyle('A2:C2')->getFont()->setBold(true);
 
+                if ($sheet->getHighestRow() < 3) {
+                    return;
+                }
                 // Color the data rows
                 foreach ($sheet->getRowIterator(3) as $row) {
                     $presentCell = 'B' . $row->getRowIndex();
