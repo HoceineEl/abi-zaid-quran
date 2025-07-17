@@ -29,6 +29,11 @@ class MessageResource extends Resource
 
     protected static ?int $navigationSort = 5;
 
+    public static function canAccess(): bool
+    {
+        return auth()->user()->isAdministrator();
+    }
+
     public static function form(Form $form): Form
     {
         $actions = [];

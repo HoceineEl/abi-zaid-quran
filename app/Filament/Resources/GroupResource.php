@@ -263,7 +263,7 @@ class GroupResource extends Resource
                     ->label('تصدير موجز الحضور اليومي')
                     ->icon('heroicon-o-document-arrow-down')
                     ->color('success')
-                    ->visible(fn() => auth()->user()->role === 'admin')
+                    // ->visible(fn() => auth()->user()->role === 'admin')
                     ->action(function () {
                         $today = today()->toDateString();
                         return Excel::download(new DailyAttendanceSummaryExport($today), 'daily-attendance-summary-' . $today . '.xlsx');
