@@ -4,11 +4,13 @@ namespace App\Filament\Resources\GroupResource\RelationManagers;
 
 use App\Classes\Core;
 use App\Enums\MessageSubmissionType;
+use App\Enums\MessageResponseStatus;
 use App\Helpers\ProgressFormHelper;
 use App\Models\Group;
 use App\Models\GroupMessageTemplate;
 use App\Models\Progress;
 use App\Models\Student;
+use App\Models\StudentDisconnection;
 use Carbon\Carbon;
 use Filament\Forms;
 use Filament\Forms\Components\Tabs;
@@ -163,7 +165,6 @@ class StudentsRelationManager extends RelationManager
                         ->url(function (Student $record) {
                             return self::getWhatsAppUrl($record, $this->ownerRecord);
                         }, true),
-
                 ],
                 ActionsPosition::BeforeColumns
             )
@@ -1012,6 +1013,77 @@ class StudentsRelationManager extends RelationManager
                                 ->title('تم تصدير ' . $students->count() . ' جهة اتصال بنجاح')
                                 ->send();
                         })
+                        ->deselectRecordsAfterCompletion(),
+                    BulkAction::make('mark_as_disconnected')
+                        ->label('إضافة إلى قائمة الانقطاع')
+                        ->icon('heroicon-o-exclamation-triangle')
+                        ->color('danger')
+                        ->form([
+                            Forms\Components\Textarea::make('notes')
+                                ->label('ملاحظات')
+                                ->rows(3)
+                                ->placeholder('سبب الانقطاع أو ملاحظات إضافية...'),
+                        ])
+                        ->action(function (array $data) {
+                            $students = collect($this->selectedTableRecords)
+                                ->map(fn($studentId) => Student::find($studentId))
+                                ->filter();
+
+                            if ($students->isEmpty()) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title('لم يتم اختيار أي طالب')
+                                    ->send();
+                                return;
+                            }
+
+                            $createdCount = 0;
+                            $skippedCount = 0;
+
+                            foreach ($students as $student) {
+                                // Get the last day the student was present (memorized)
+                                $lastPresentDay = $student->progresses()
+                                    ->where('status', 'memorized')
+                                    ->latest('date')
+                                    ->first();
+
+                                if (!$lastPresentDay) {
+                                    $skippedCount++;
+                                    continue;
+                                }
+
+                                // Calculate disconnection date as the day after the last present day
+                                $disconnectionDate = \Carbon\Carbon::parse($lastPresentDay->date)->addDay()->format('Y-m-d');
+
+                                // Check if student already has a disconnection record for this date
+                                $existingDisconnection = $student->disconnections()
+                                    ->where('disconnection_date', $disconnectionDate)
+                                    ->first();
+
+                                if (!$existingDisconnection) {
+                                    $student->disconnections()->create([
+                                        'group_id' => $student->group_id,
+                                        'disconnection_date' => $disconnectionDate,
+                                        'notes' => $data['notes'] ?? null,
+                                    ]);
+                                    $createdCount++;
+                                }
+                            }
+
+                            $message = "تم إضافة {$createdCount} طالب إلى قائمة الانقطاع";
+                            if ($skippedCount > 0) {
+                                $message .= " (تم تخطي {$skippedCount} طالب لعدم وجود سجل حضور سابق)";
+                            }
+
+                            Notification::make()
+                                ->success()
+                                ->title($message)
+                                ->send();
+                        })
+                        ->requiresConfirmation()
+                        ->modalHeading('إضافة الطلاب إلى قائمة الانقطاع')
+                        ->modalDescription('سيتم حساب تاريخ الانقطاع تلقائياً بناءً على آخر يوم حضور للطالب.')
+                        ->modalSubmitActionLabel('إضافة للانقطاع')
                         ->deselectRecordsAfterCompletion(),
                 ]),
                 BulkAction::make('set_as_absent')

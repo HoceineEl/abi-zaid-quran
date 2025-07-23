@@ -1,3 +1,339 @@
 @import '/vendor/filament/filament/resources/css/theme.css';
 
 @config 'tailwind.config.js';
+
+
+body {
+    @apply !transition-all !duration-300 !ease-in-out ;
+}
+.fi-panel-guest .fi-topbar-open-sidebar-btn {
+    @apply !hidden;
+}
+.fi-sidebar {
+    @apply !bg-white dark:!bg-gray-900 !border-r dark:!border-gray-800 !shadow-xl;
+    @apply !transition-all !duration-300 !ease-in-out;
+
+    .fi-sidebar-header {
+        @apply !ps-2 !py-1;
+    }
+
+    .fi-sidebar-item {
+        a {
+            @apply !rounded-e-full !rounded-s-lg !transition-all !duration-300 !ease-in-out !px-2 !py-2 !text-xs;
+        }
+        
+        &.fi-sidebar-item-active {
+            a {
+                @apply !bg-primary-500/10 dark:!bg-primary-500/20 !backdrop-blur-sm;
+                @apply !border !border-primary-500/20 dark:!border-primary-400/30;
+                @apply !text-primary-600 dark:!text-primary-400;
+                scroll-margin-top: 100px;
+                scroll-behavior: smooth;
+                
+                svg {
+                    @apply !text-primary-600 dark:!text-primary-400;
+                }
+            }
+        }
+
+        &:not(.fi-sidebar-item-active) {
+            a {
+                @apply hover:!bg-gray-100 dark:hover:!bg-gray-800/50;
+                @apply !text-gray-700 dark:!text-gray-300;
+                
+                &:hover {
+                    @apply !-translate-x-1 ;
+                }
+                svg {
+                    @apply !text-gray-600 dark:!text-gray-300;
+                }
+            }
+
+        }
+    }
+    .fi-sidebar-nav-groups{
+      @apply !gap-y-3 ;
+    }
+
+    & .fi-sidebar-nav {
+        @apply !shadow-xl !pt-2 !gap-y-6 !border-e dark:!border-e-gray-900 ;
+        scroll-behavior: smooth;
+  
+        &>ul {
+            @apply gap-0 !important;
+  
+            &>li {
+                @apply !py-2.5 !border-b !border-gray-200 dark:!border-gray-800 first:!pt-0 last:!pb-0 last:!border-0 ;
+            }
+        }
+    }
+    .fi-sidebar-group {
+        @apply !mt-2 !px-2;
+        
+        .fi-sidebar-group-label {
+            @apply !text-sm !font-extrabold  !tracking-wider;
+            @apply !text-gray-500 dark:!text-gray-400 ;
+        }
+    }
+    & .fi-sidebar-item-button {
+      @apply gap-2 !important;
+
+      &:hover {
+          @apply !bg-gray-200/30 dark:!bg-gray-800/30 ;
+      }
+  }
+
+
+
+
+  &.fi-sidebar-item-active {
+
+      & .fi-sidebar-item-grouped-border {
+          & :first-child {
+              @apply !bg-gray-400 ;
+          }
+
+          & :nth-child(2) {
+              @apply !bg-gray-400 ;
+          }
+
+          & :last-child {
+              @apply !bg-primary-200 ;
+          }
+      }
+
+      & .fi-sidebar-item-icon,
+      & .fi-sidebar-item-label {
+          @apply !text-white ;
+      }
+
+      & .fi-sidebar-item-button {
+          @apply !bg-primary-600 dark:!bg-primary-600 ;
+      }
+  }
+
+  &:not(.fi-sidebar-item-active) {
+      & .fi-sidebar-item-icon {
+          @apply !text-gray-800 dark:!text-gray-300 ;
+      }
+
+      & .fi-sidebar-item-label {
+          @apply !text-gray-800 dark:!text-gray-300 ;
+      }
+  }
+
+  & .fi-sidebar-item-label {
+      @apply !font-bold !text-xs !tracking-wider;
+  }
+}
+
+
+
+/* Card/Section Design */
+/* .fi-section {
+    @apply !rounded-xl ;
+    @apply !border dark:!border-gray-800 !shadow-lg;
+    @apply !bg-white/90 dark:!bg-gray-900/90;
+    @apply !backdrop-blur-md !backdrop-saturate-150;
+
+    .fi-section-header {
+        @apply !px-6 !py-4 !border-b dark:!border-gray-800;
+        @apply !bg-gray-50/50 dark:!bg-gray-800/50;
+        @apply !backdrop-blur-sm;
+        @apply !backdrop-saturate-150;
+
+        .fi-section-header-heading {
+            @apply !text-lg !font-semibold;
+            @apply !text-gray-900 dark:!text-gray-100;
+            @apply !tracking-tight;
+        }
+    }
+
+
+} */
+
+.fi-tabs {
+    .fi-tabs-item {
+        @apply !transition-all !duration-300 !ease-in-out;
+        
+        &.fi-active {
+            @apply !border-gray-500/70 !text-primary-600;
+            @apply dark:!border-primary-400/70 dark:!text-primary-400;
+            @apply !bg-primary-500/10 dark:!bg-primary-500/20;
+        }
+        
+        &:not(.fi-active):hover {
+            @apply !border-gray-300/70 dark:!border-gray-700/70;
+            @apply !text-gray-700 dark:!text-gray-300;
+            @apply !bg-white/15 dark:!bg-gray-900/15;
+        }
+    }
+}
+
+
+
+
+
+.ec-list .ec-event {
+    direction: rtl !important;
+    @apply transition-all duration-200;
+}
+
+.fi-section-content .ec-tool {
+    direction: ltr !important;
+}
+
+.calendar-event-general {
+    @apply !h-14 !rounded-lg !border-l-4 !border-l-blue-500 !shadow-sm;
+    @apply !bg-blue-500 dark:!bg-blue-600;
+    @apply !p-3;
+    @apply !text-white dark:!text-white !font-bold;
+
+    .fc-event-title-container {
+        @apply !text-white dark:!text-white !font-bold;
+    }
+    .fc-event-time{
+        @apply !text-white dark:!text-white !font-extrabold;
+    }
+}
+
+.calendar-event-camp {
+    @apply !h-14 !rounded-lg !border-l-4 !border-l-orange-500 !shadow-sm;
+    @apply !bg-orange-500 dark:!bg-orange-600;
+    @apply !p-3;
+    @apply !text-white dark:!text-white !font-bold;
+
+    .fc-event-title-container {
+        @apply !text-white dark:!text-white !font-bold;
+    }
+    .fc-event-time{
+        @apply !text-white dark:!text-white !font-extrabold;
+    }
+}
+
+.calendar-event-match {
+    @apply !h-14 !rounded-lg !border-l-4 !border-l-emerald-500 !shadow-sm;
+    @apply !bg-emerald-500 dark:!bg-emerald-600;
+    @apply !p-3;
+    @apply !text-white dark:!text-white !font-bold;
+
+    .fc-event-title-container {
+        @apply !text-white dark:!text-white !font-bold;
+    }
+    .fc-event-time{
+        @apply !text-white dark:!text-white !font-extrabold;
+    }
+}
+
+.calendar-event-training {
+    @apply !h-14 !rounded-lg !border-l-4 !border-l-cyan-500 !shadow-sm;
+    @apply !bg-cyan-500 dark:!bg-cyan-600;
+    @apply !p-3;
+    @apply !text-white dark:!text-white !font-bold;
+
+    .fc-event-title-container {
+        @apply !text-white dark:!text-white !font-bold;
+    }
+    .fc-event-time{
+        @apply !text-white dark:!text-white !font-extrabold;
+    }
+}
+
+.calendar-event-tournament {
+    @apply !h-14 !rounded-lg !border-l-4 !border-l-purple-500 !shadow-sm;
+    @apply !bg-purple-500 dark:!bg-purple-600;
+    @apply !p-3;
+    @apply !text-white dark:!text-white !font-bold;
+
+    .fc-event-title-container {
+        @apply !text-white dark:!text-white !font-bold;
+    }
+    .fc-event-time{
+        @apply !text-white dark:!text-white !font-extrabold;
+    }
+}
+
+.calendar-event-task {
+    @apply !h-14 !rounded-lg !border-l-4 !border-l-primary-500 !shadow-sm;
+    @apply !bg-primary-500 dark:!bg-primary-600;
+    @apply !p-3;
+    @apply !text-white dark:!text-white !font-bold;
+
+    .fc-event-title-container {
+        @apply !text-white dark:!text-white !font-bold;
+    }
+    .fc-event-time{
+        @apply !text-white dark:!text-white !font-extrabold;
+    }
+}
+
+.calendar-event-task-todo {
+    @apply !h-14 !rounded-lg !border-l-4 !border-l-gray-500 !shadow-sm;
+    @apply !bg-gray-500 dark:!bg-gray-600;
+    @apply !p-3;
+    @apply !text-white dark:!text-white !font-bold;
+}
+
+.calendar-event-task-in-progress {
+    @apply !h-14 !rounded-lg !border-l-4 !border-l-blue-500 !shadow-sm;
+    @apply !bg-blue-500 dark:!bg-blue-600;
+    @apply !p-3;
+    @apply !text-white dark:!text-white !font-bold;
+}
+
+.calendar-event-task-review {
+    @apply !h-14 !rounded-lg !border-l-4 !border-l-yellow-500 !shadow-sm;
+    @apply !bg-yellow-500 dark:!bg-yellow-600;
+    @apply !p-3;
+    @apply !text-white dark:!text-white !font-bold;
+}
+
+.calendar-event-task-done {
+    @apply !h-14 !rounded-lg !border-l-4 !border-l-green-500 !shadow-sm;
+    @apply !bg-green-500 dark:!bg-green-600;
+    @apply !p-3;
+    @apply !text-white dark:!text-white !font-bold;
+}
+
+::-webkit-scrollbar {
+    height: 5px;
+    width: 5px
+}
+.iti__country-container {
+    @apply !left-0 !right-auto !px-2;
+    direction: ltr !important;
+}
+
+.iti .fi-input {
+    padding-left: 6rem !important;
+}
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #888;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555555e1;
+}
+
+.dark ::-webkit-scrollbar-track {
+    background: #222222e3;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+    background: #555;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+    background: #777;
+}
+
+
+
+
+
+
+

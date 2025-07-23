@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\StudentResource\Pages;
 use App\Models\Group;
 use App\Models\Student;
+use App\Enums\MessageResponseStatus;
 use App\Tables\Columns\StudentProgress;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -95,6 +96,30 @@ class StudentResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\Action::make('add_disconnection')
+                    ->label('إضافة انقطاع')
+                    ->icon('heroicon-o-exclamation-triangle')
+                    ->color('danger')
+                    ->form([
+                        Forms\Components\DatePicker::make('disconnection_date')
+                            ->label('تاريخ الانقطاع')
+                            ->required()
+                            ->default(now()),
+                        Forms\Components\Textarea::make('notes')
+                            ->label('ملاحظات')
+                            ->rows(3),
+                    ])
+                    ->action(function (Student $record, array $data) {
+                        $record->disconnections()->create([
+                            'group_id' => $record->group_id,
+                            'disconnection_date' => $data['disconnection_date'],
+                            'notes' => $data['notes'] ?? null,
+                        ]);
+                    })
+                    ->requiresConfirmation()
+                    ->modalHeading('إضافة انقطاع للطالب')
+                    ->modalDescription('سيتم إضافة سجل انقطاع جديد للطالب.')
+                    ->modalSubmitActionLabel('إضافة الانقطاع'),
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),

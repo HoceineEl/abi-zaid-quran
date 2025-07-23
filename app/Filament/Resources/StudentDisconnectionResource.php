@@ -1,0 +1,395 @@
+<?php
+
+namespace App\Filament\Resources;
+
+use App\Enums\DisconnectionStatus;
+use App\Enums\MessageResponseStatus;
+use App\Filament\Resources\StudentDisconnectionResource\Pages;
+use Illuminate\Support\Collection;
+use App\Models\StudentDisconnection;
+use Filament\Forms;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+
+class StudentDisconnectionResource extends Resource
+{
+    protected static ?string $model = StudentDisconnection::class;
+
+    protected static ?string $navigationIcon = 'heroicon-o-exclamation-triangle';
+
+    protected static ?string $navigationLabel = 'الطلاب المنقطعون';
+
+    protected static ?string $modelLabel = 'طالب منقطع';
+
+    protected static ?string $pluralModelLabel = 'الطلاب المنقطعون';
+
+    protected static ?int $navigationSort = 5;
+
+    public static function form(Form $form): Form
+    {
+        return $form
+            ->schema([
+                Forms\Components\Select::make('student_id')
+                    ->label('الطالب')
+                    ->relationship('student', 'name')
+                    ->searchable()
+                    ->required()
+                    ->live()
+                    ->afterStateUpdated(function ($state, Forms\Set $set) {
+                        if ($state) {
+                            $student = \App\Models\Student::find($state);
+                            if ($student && $student->group) {
+                                $set('group_id', $student->group_id);
+                                $set('disconnection_date', now()->format('Y-m-d'));
+                            }
+                        }
+                    }),
+
+                Forms\Components\Select::make('group_id')
+                    ->label('المجموعة')
+                    ->relationship('group', 'name')
+                    ->searchable()
+                    ->required()
+                    ->disabled(),
+
+                Forms\Components\DatePicker::make('disconnection_date')
+                    ->label('تاريخ الانقطاع')
+                    ->required()
+                    ->default(now()),
+
+                Forms\Components\DatePicker::make('contact_date')
+                    ->label('تاريخ التواصل')
+                    ->nullable(),
+
+                Forms\Components\ToggleButtons::make('message_response')
+                    ->label('تفاعل مع الرسالة')
+                    ->options(MessageResponseStatus::class)
+                    ->nullable(),
+
+                Forms\Components\DateTimePicker::make('rejoined_at')
+                    ->label('تاريخ الالتحاق')
+                    ->nullable(),
+
+                Forms\Components\Textarea::make('notes')
+                    ->label('ملاحظات')
+                    ->nullable()
+                    ->rows(3),
+            ]);
+    }
+
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                Tables\Columns\TextColumn::make('student.name')
+                    ->label('اسم الطالب')
+                    ->searchable()
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('group.name')
+                    ->label('المجموعة')
+                    ->searchable()
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('disconnection_date')
+                    ->label('تاريخ الانقطاع')
+                    ->date('Y-m-d')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('contact_date')
+                    ->label('تاريخ التواصل')
+                    ->date('Y-m-d')
+                    ->sortable()
+                    ->placeholder('لم يتم التواصل'),
+
+                Tables\Columns\TextColumn::make('message_response')
+                    ->label('تفاعل مع الرسالة')
+                    ->badge()
+                    ->placeholder('لم يتم التواصل'),
+
+                Tables\Columns\TextColumn::make('rejoined_at')
+                    ->label('تاريخ الالتحاق')
+                    ->date('Y-m-d')
+                    ->sortable()
+                    ->placeholder('لم يلتحق'),
+
+                Tables\Columns\TextColumn::make('status')
+                    ->label('الحالة')
+                    ->badge(),
+                Tables\Columns\TextColumn::make('created_at')
+                    ->label('تاريخ الإنشاء')
+                    ->dateTime('Y-m-d H:i')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+            ])
+            ->filters([
+                Tables\Filters\SelectFilter::make('group_id')
+                    ->label('المجموعة')
+                    ->relationship('group', 'name'),
+
+                Tables\Filters\SelectFilter::make('message_response')
+                    ->label('تفاعل مع الرسالة')
+                    ->options(MessageResponseStatus::class),
+
+                Tables\Filters\Filter::make('rejoined_at')
+                    ->label('التحق')
+                    ->form([
+                        Forms\Components\Toggle::make('has_rejoined')
+                            ->label('التحق فقط'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query->when(
+                            $data['has_rejoined'] ?? false,
+                            fn(Builder $query): Builder => $query->whereNotNull('rejoined_at'),
+                        );
+                    }),
+
+                Tables\Filters\Filter::make('disconnection_date')
+                    ->label('تاريخ الانقطاع')
+                    ->form([
+                        Forms\Components\DatePicker::make('disconnection_from')
+                            ->label('من تاريخ'),
+                        Forms\Components\DatePicker::make('disconnection_to')
+                            ->label('إلى تاريخ'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['disconnection_from'],
+                                fn(Builder $query, $date): Builder => $query->where('disconnection_date', '>=', $date),
+                            )
+                            ->when(
+                                $data['disconnection_to'],
+                                fn(Builder $query, $date): Builder => $query->where('disconnection_date', '<=', $date),
+                            );
+                    }),
+            ])
+            ->actions([
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\Action::make('mark_contacted')
+                    ->label('تم التواصل')
+                    ->icon('heroicon-o-phone')
+                    ->color('info')
+                    ->form([
+                        Forms\Components\DatePicker::make('contact_date')
+                            ->label('تاريخ التواصل')
+                            ->required()
+                            ->default(now()),
+                        Forms\Components\Select::make('message_response')
+                            ->label('تفاعل مع الرسالة')
+                            ->options(MessageResponseStatus::class)
+                            ->required(),
+                        Forms\Components\Textarea::make('notes')
+                            ->label('ملاحظات')
+                            ->rows(2),
+                    ])
+                    ->action(function (StudentDisconnection $record, array $data) {
+                        $record->update([
+                            'contact_date' => $data['contact_date'],
+                            'message_response' => $data['message_response'],
+                            'notes' => $data['notes'] ?? $record->notes,
+                        ]);
+                    })
+                    ->visible(fn(StudentDisconnection $record) => !$record->contact_date)
+                    ->requiresConfirmation()
+                    ->modalHeading('تحديث حالة التواصل'),
+
+                Tables\Actions\Action::make('mark_rejoined')
+                    ->label('التحق')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->form([
+                        Forms\Components\DateTimePicker::make('rejoined_at')
+                            ->label('تاريخ الالتحاق')
+                            ->required()
+                            ->default(now()),
+                        Forms\Components\Textarea::make('notes')
+                            ->label('ملاحظات')
+                            ->rows(2),
+                    ])
+                    ->action(function (StudentDisconnection $record, array $data) {
+                        $record->update([
+                            'rejoined_at' => $data['rejoined_at'],
+                            'notes' => $data['notes'] ?? $record->notes,
+                        ]);
+                    })
+                    ->visible(fn(StudentDisconnection $record) => !$record->rejoined_at)
+                    ->requiresConfirmation()
+                    ->modalHeading('تحديث حالة الالتحاق'),
+
+                Tables\Actions\DeleteAction::make(),
+            ])
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\BulkAction::make('mark_contacted_bulk')
+                        ->label('تم التواصل')
+                        ->icon('heroicon-o-phone')
+                        ->color('info')
+                        ->form([
+                            Forms\Components\DatePicker::make('contact_date')
+                                ->label('تاريخ التواصل')
+                                ->required()
+                                ->default(now()),
+                            Forms\Components\Select::make('message_response')
+                                ->label('تفاعل مع الرسالة')
+                                ->options(MessageResponseStatus::class)
+                                ->required(),
+                        ])
+                        ->action(function (Collection $records, array $data) {
+                            $records->each(function ($record) use ($data) {
+                                $record->update([
+                                    'contact_date' => $data['contact_date'],
+                                    'message_response' => $data['message_response'],
+                                ]);
+                            });
+                        })
+                        ->requiresConfirmation()
+                        ->modalHeading('تحديث حالة التواصل للطلاب المحددين'),
+                    Tables\Actions\BulkAction::make('mark_rejoined_bulk')
+                        ->label('التحق')
+                        ->icon('heroicon-o-check-circle')
+                        ->color('success')
+                        ->form([
+                            Forms\Components\DateTimePicker::make('rejoined_at')
+                                ->label('تاريخ الالتحاق')
+                                ->required()
+                                ->default(now()),
+                        ])
+                        ->action(function (Collection $records, array $data) {
+                            $records->each(function ($record) use ($data) {
+                                $record->update([
+                                    'rejoined_at' => $data['rejoined_at'],
+                                ]);
+                            });
+                        })
+                        ->requiresConfirmation()
+                        ->modalHeading('تحديث حالة الالتحاق للطلاب المحددين'),
+                    Tables\Actions\BulkAction::make('update_notes_bulk')
+                        ->label('تحديث الملاحظات')
+                        ->icon('heroicon-o-pencil-square')
+                        ->color('warning')
+                        ->form([
+                            Forms\Components\Textarea::make('notes')
+                                ->label('ملاحظات')
+                                ->rows(3)
+                                ->required(),
+                        ])
+                        ->action(function (Collection $records, array $data) {
+                            $records->each(function ($record) use ($data) {
+                                $record->update([
+                                    'notes' => $data['notes'],
+                                ]);
+                            });
+                        })
+                        ->requiresConfirmation()
+                        ->modalHeading('تحديث الملاحظات للطلاب المحددين'),
+                    Tables\Actions\BulkAction::make('reset_contact_status')
+                        ->label('إعادة تعيين حالة التواصل')
+                        ->icon('heroicon-o-arrow-path')
+                        ->color('gray')
+                        ->requiresConfirmation()
+                        ->modalHeading('إعادة تعيين حالة التواصل')
+                        ->modalDescription('سيتم حذف تاريخ التواصل ورد الرسالة للطلاب المحددين.')
+                        ->action(function (Collection $records) {
+                            $records->each(function ($record) {
+                                $record->update([
+                                    'contact_date' => null,
+                                    'message_response' => null,
+                                ]);
+                            });
+                        }),
+                    Tables\Actions\BulkAction::make('reset_rejoined_status')
+                        ->label('إعادة تعيين حالة الالتحاق')
+                        ->icon('heroicon-o-arrow-path')
+                        ->color('gray')
+                        ->requiresConfirmation()
+                        ->modalHeading('إعادة تعيين حالة الالتحاق')
+                        ->modalDescription('سيتم حذف تاريخ الالتحاق للطلاب المحددين.')
+                        ->action(function (Collection $records) {
+                            $records->each(function ($record) {
+                                $record->update([
+                                    'rejoined_at' => null,
+                                ]);
+                            });
+                        }),
+                    Tables\Actions\BulkAction::make('mark_contacted_for_uncontacted')
+                        ->label('تم التواصل (للغير متواصلين فقط)')
+                        ->icon('heroicon-o-phone')
+                        ->color('info')
+                        ->form([
+                            Forms\Components\DatePicker::make('contact_date')
+                                ->label('تاريخ التواصل')
+                                ->required()
+                                ->default(now()),
+                            Forms\Components\Select::make('message_response')
+                                ->label('تفاعل مع الرسالة')
+                                ->options(MessageResponseStatus::class)
+                                ->required(),
+                        ])
+                        ->action(function (Collection $records, array $data) {
+                            $records->filter(function ($record) {
+                                return !$record->contact_date;
+                            })->each(function ($record) use ($data) {
+                                $record->update([
+                                    'contact_date' => $data['contact_date'],
+                                    'message_response' => $data['message_response'],
+                                ]);
+                            });
+                        })
+                        ->requiresConfirmation()
+                        ->modalHeading('تحديث حالة التواصل للطلاب غير المتواصلين')
+                        ->modalDescription('سيتم تحديث حالة التواصل للطلاب الذين لم يتم التواصل معهم بعد.'),
+                    Tables\Actions\BulkAction::make('mark_rejoined_for_unrejoined')
+                        ->label('التحق (للغير ملتحقين فقط)')
+                        ->icon('heroicon-o-check-circle')
+                        ->color('success')
+                        ->form([
+                            Forms\Components\DateTimePicker::make('rejoined_at')
+                                ->label('تاريخ الالتحاق')
+                                ->required()
+                                ->default(now()),
+                        ])
+                        ->action(function (Collection $records, array $data) {
+                            $records->filter(function ($record) {
+                                return !$record->rejoined_at;
+                            })->each(function ($record) use ($data) {
+                                $record->update([
+                                    'rejoined_at' => $data['rejoined_at'],
+                                ]);
+                            });
+                        })
+                        ->requiresConfirmation()
+                        ->modalHeading('تحديث حالة الالتحاق للطلاب غير الملتحقين')
+                        ->modalDescription('سيتم تحديث حالة الالتحاق للطلاب الذين لم يلتحقوا بعد.'),
+                ]),
+            ])
+            ->defaultSort('created_at', 'desc');
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            //
+        ];
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\ListStudentDisconnections::route('/'),
+            'create' => Pages\CreateStudentDisconnection::route('/create'),
+            'edit' => Pages\EditStudentDisconnection::route('/{record}/edit'),
+        ];
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with(['student', 'group']);
+    }
+}

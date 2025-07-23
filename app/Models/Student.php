@@ -27,6 +27,11 @@ class Student extends Model
         return $this->belongsTo(Group::class);
     }
 
+    public function disconnections(): HasMany
+    {
+        return $this->hasMany(StudentDisconnection::class);
+    }
+
     public function getProgressAttribute(): float
     {
         $page = $this->progresses->last()->page->number ?? 0;
@@ -181,5 +186,35 @@ class Student extends Model
                 return $this->today_progress()->where('with_reason', 1)->count();
             }
         );
+    }
+
+    public function getDisconnectionDateAttribute(): ?string
+    {
+        // Get the last day the student was present (memorized)
+        $lastPresentDay = $this->progresses()
+            ->where('status', 'memorized')
+            ->latest('date')
+            ->first();
+
+        if (!$lastPresentDay) {
+            return null;
+        }
+
+        // Calculate disconnection date as the day after the last present day
+        return \Carbon\Carbon::parse($lastPresentDay->date)->addDay()->format('Y-m-d');
+    }
+
+    public function getDaysSinceLastPresentAttribute(): ?int
+    {
+        $lastPresentDay = $this->progresses()
+            ->where('status', 'memorized')
+            ->latest('date')
+            ->first();
+
+        if (!$lastPresentDay) {
+            return null;
+        }
+
+        return (int) now()->diffInDays($lastPresentDay->date);
     }
 }
