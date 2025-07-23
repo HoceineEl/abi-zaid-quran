@@ -25,8 +25,17 @@ class ListStudentDisconnections extends ListRecords
                 ->requiresConfirmation()
                 ->modalHeading('إضافة الطلاب المنقطعين')
                 ->modalDescription('سيتم إضافة الطلاب الذين لديهم يوم أو يومان غياب متتاليان إلى قائمة الانقطاع.')
-                ->action(function () {
-                    $this->addDisconnectedStudents();
+                ->form([
+                    \Filament\Forms\Components\Select::make('excluded_groups')
+                        ->label('استثناء المجموعات')
+                        ->multiple()
+                        ->relationship('group', 'name')
+                        ->searchable()
+                        ->placeholder('اختر المجموعات التي تريد استثناءها')
+                        ->helperText('اختر المجموعات غير النشطة التي لا تريد إضافة طلابها إلى قائمة الانقطاع'),
+                ])
+                ->action(function (array $data) {
+                    $this->addDisconnectedStudents($data['excluded_groups'] ?? []);
                 }),
             Actions\Action::make('export_table')
                 ->label('تصدير كشف الانقطاع')
@@ -54,7 +63,7 @@ class ListStudentDisconnections extends ListRecords
         ];
     }
 
-    private function addDisconnectedStudents(): void
+    private function addDisconnectedStudents(array $excludedGroups = []): void
     {
         $students = Student::with(['group', 'progresses'])
             ->whereHas('progresses', function ($query) {
@@ -63,6 +72,9 @@ class ListStudentDisconnections extends ListRecords
                         $q->where('with_reason', 0)
                             ->orWhereNull('with_reason');
                     });
+            })
+            ->when(!empty($excludedGroups), function ($query) use ($excludedGroups) {
+                $query->whereNotIn('group_id', $excludedGroups);
             })
             ->get()
             ->filter(function ($student) {
