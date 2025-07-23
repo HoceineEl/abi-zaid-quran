@@ -215,6 +215,6 @@ class Student extends Model
             return null;
         }
 
-        return (int) now()->diffInDays($lastPresentDay->date);
+        return (int) now()->diffInDays($lastPresentDay->date) * -1;
     }
 }

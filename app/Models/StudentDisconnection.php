@@ -12,13 +12,10 @@ class StudentDisconnection extends Model
 {
     use HasFactory;
 
-   
-
     protected $casts = [
         'disconnection_date' => 'date',
         'contact_date' => 'date',
         'message_response' => MessageResponseStatus::class,
-        'rejoined_at' => 'datetime',
     ];
 
     public function student(): BelongsTo
@@ -43,10 +40,6 @@ class StudentDisconnection extends Model
 
     public function getStatusAttribute(): DisconnectionStatus
     {
-        if ($this->rejoined_at) {
-            return DisconnectionStatus::Rejoined;
-        }
-
         if ($this->contact_date && $this->message_response === MessageResponseStatus::Yes) {
             return DisconnectionStatus::Responded;
         }

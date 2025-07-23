@@ -11,7 +11,6 @@ enum DisconnectionStatus: string implements HasLabel, HasColor, HasIcon
     case Disconnected = 'disconnected';
     case Contacted = 'contacted';
     case Responded = 'responded';
-    case Rejoined = 'rejoined';
 
     public function getLabel(): ?string
     {
@@ -19,7 +18,6 @@ enum DisconnectionStatus: string implements HasLabel, HasColor, HasIcon
             self::Disconnected => 'منقطع',
             self::Contacted => 'تم الاتصال',
             self::Responded => 'تم التواصل',
-            self::Rejoined => 'عاد',
         };
     }
 
@@ -29,7 +27,6 @@ enum DisconnectionStatus: string implements HasLabel, HasColor, HasIcon
             self::Disconnected => 'danger',
             self::Contacted => 'warning',
             self::Responded => 'info',
-            self::Rejoined => 'success',
         };
     }
 
@@ -39,7 +36,6 @@ enum DisconnectionStatus: string implements HasLabel, HasColor, HasIcon
             self::Disconnected => 'heroicon-o-exclamation-triangle',
             self::Contacted => 'heroicon-o-phone',
             self::Responded => 'heroicon-o-chat-bubble-left-right',
-            self::Rejoined => 'heroicon-o-check-circle',
         };
     }
 }

@@ -24,6 +24,15 @@ class StudentDisconnectionExporter extends Exporter
             ExportColumn::make('disconnection_date')
                 ->label('تاريخ الانقطاع')
                 ->formatStateUsing(fn($state) => $state ? $state->format('Y-m-d') : ''),
+            ExportColumn::make('disconnection_duration')
+                ->label('مدة الانقطاع')
+                ->formatStateUsing(function ($state, StudentDisconnection $record) {
+                    $daysSinceLastPresent = $record->student->getDaysSinceLastPresentAttribute();
+                    if ($daysSinceLastPresent === null) {
+                        return 'غير محدد';
+                    }
+                    return $daysSinceLastPresent . ' يوم';
+                }),
             ExportColumn::make('contact_date')
                 ->label('تاريخ التواصل')
                 ->formatStateUsing(fn($state) => $state ? $state->format('Y-m-d') : 'لم يتم التواصل'),
@@ -36,16 +45,12 @@ class StudentDisconnectionExporter extends Exporter
                     null => 'لم يتم التواصل',
                     default => 'لم يتم التواصل',
                 }),
-            ExportColumn::make('rejoined_at')
-                ->label('تاريخ الالتحاق')
-                ->formatStateUsing(fn($state) => $state ? $state->format('Y-m-d H:i') : 'لم يلتحق'),
             ExportColumn::make('status')
                 ->label('الحالة')
                 ->formatStateUsing(fn($state) => match ($state) {
                     DisconnectionStatus::Disconnected => 'منقطع',
                     DisconnectionStatus::Contacted => 'تم الاتصال',
                     DisconnectionStatus::Responded => 'تم التواصل',
-                    DisconnectionStatus::Rejoined => 'عاد',
                     null => 'غير محدد',
                     default => 'غير محدد',
                 }),
