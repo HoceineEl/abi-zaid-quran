@@ -4,6 +4,7 @@ namespace App\Filament\Resources\StudentDisconnectionResource\Pages;
 
 use App\Filament\Exports\StudentDisconnectionExporter;
 use App\Filament\Resources\StudentDisconnectionResource;
+use App\Models\Group;
 use App\Models\Student;
 use App\Models\StudentDisconnection;
 use Filament\Actions;
@@ -29,13 +30,13 @@ class ListStudentDisconnections extends ListRecords
                     \Filament\Forms\Components\Select::make('excluded_groups')
                         ->label('استثناء المجموعات')
                         ->multiple()
-                        ->relationship('group', 'name')
+                        ->options(Group::all()->pluck('name', 'id'))
                         ->searchable()
-                        ->placeholder('اختر المجموعات التي تريد استثناءها')
+                        ->preload()
                         ->helperText('اختر المجموعات غير النشطة التي لا تريد إضافة طلابها إلى قائمة الانقطاع'),
                 ])
-                ->action(function (array $data) {
-                    $this->addDisconnectedStudents($data['excluded_groups'] ?? []);
+                ->action(function ($data) {
+                    $this->addDisconnectedStudents($data['excluded_groups']);
                 }),
             Actions\Action::make('export_table')
                 ->label('تصدير كشف الانقطاع')
