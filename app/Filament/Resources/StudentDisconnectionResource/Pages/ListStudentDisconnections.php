@@ -30,7 +30,7 @@ class ListStudentDisconnections extends ListRecords
                     \Filament\Forms\Components\Select::make('excluded_groups')
                         ->label('استثناء المجموعات')
                         ->multiple()
-                        ->options(Group::all()->pluck('name', 'id'))
+                        ->options(Group::where('is_quran_group', true)->pluck('name', 'id'))
                         ->searchable()
                         ->preload()
                         ->helperText('اختر المجموعات غير النشطة التي لا تريد إضافة طلابها إلى قائمة الانقطاع'),
@@ -67,6 +67,9 @@ class ListStudentDisconnections extends ListRecords
     private function addDisconnectedStudents(array $excludedGroups = []): void
     {
         $students = Student::with(['group', 'progresses'])
+            ->whereHas('group', function ($query) {
+                $query->where('is_quran_group', true);
+            })
             ->whereHas('progresses', function ($query) {
                 $query->where('status', 'absent')
                     ->where(function ($q) {

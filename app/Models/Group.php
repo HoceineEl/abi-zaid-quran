@@ -18,6 +18,7 @@ class Group extends Model
 
     protected $casts = [
         'is_onsite' => 'boolean',
+        'is_quran_group' => 'boolean',
         'ignored_names_phones' => 'array',
         'message_submission_type' => MessageSubmissionType::class,
     ];
@@ -26,6 +27,7 @@ class Group extends Model
         'name',
         'type',
         'is_onsite',
+        'is_quran_group',
         'message_id',
         'message_submission_type',
         'ignored_names_phones',

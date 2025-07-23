@@ -84,6 +84,10 @@ class GroupResource extends Resource
                         Toggle::make('is_onsite')
                             ->label('مجموعة الحصة الحضورية')
                             ->default(false),
+                        Toggle::make('is_quran_group')
+                            ->label('مجموعة قرآن')
+                            ->default(true)
+                            ->helperText('حدد إذا كانت هذه المجموعة تدرس القرآن أم لا'),
                         Forms\Components\ToggleButtons::make('message_submission_type')
                             ->label('نوع الرسائل المقبولة للتسجيل')
                             ->options(MessageSubmissionType::class)
@@ -156,6 +160,13 @@ class GroupResource extends Resource
                 Tables\Columns\TextColumn::make('message_submission_type')
                     ->label('نوع الرسائل المقبولة')
                     ->badge(),
+                Tables\Columns\IconColumn::make('is_quran_group')
+                    ->label('مجموعة قرآن')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-x-circle')
+                    ->trueColor('success')
+                    ->falseColor('danger'),
                 Tables\Columns\TextColumn::make('messageTemplates.name')
                     ->label('قالب الرسالة')
                     ->default('لا يوجد')
