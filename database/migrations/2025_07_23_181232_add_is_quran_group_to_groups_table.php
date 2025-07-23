@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('groups', function (Blueprint $table) {
-            $table->boolean('is_quran_group')->default(true)->after('message_submission_type');
+            $table->boolean('is_quran_group')->default(false)->after('message_submission_type');
         });
     }
 

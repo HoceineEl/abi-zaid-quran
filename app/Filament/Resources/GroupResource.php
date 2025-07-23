@@ -357,6 +357,32 @@ class GroupResource extends Resource
             })
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\BulkAction::make('toggle_quran_group')
+                        ->label('تبديل حالة مجموعة القرآن')
+                        ->icon('heroicon-o-academic-cap')
+                        ->visible(fn() => auth()->user()->isAdministrator())
+                        ->color('warning')
+                        ->requiresConfirmation()
+                        ->modalHeading('تبديل حالة مجموعة القرآن')
+                        ->modalDescription('سيتم تبديل حالة "مجموعة قرآن" للمجموعات المحددة')
+                        ->modalSubmitActionLabel('تبديل الحالة')
+                        ->action(function ($records) {
+                            $updatedCount = 0;
+
+                            foreach ($records as $group) {
+                                $group->update([
+                                    'is_quran_group' => !$group->is_quran_group
+                                ]);
+                                $updatedCount++;
+                            }
+
+                            Notification::make()
+                                ->title('تم تبديل حالة مجموعة القرآن')
+                                ->body("تم تحديث {$updatedCount} مجموعة بنجاح")
+                                ->success()
+                                ->send();
+                        })
+                        ->deselectRecordsAfterCompletion(),
                     Tables\Actions\BulkAction::make('set_template')
                         ->label('تعيين قالب رسالة')
                         ->icon('heroicon-o-chat-bubble-left-right')
