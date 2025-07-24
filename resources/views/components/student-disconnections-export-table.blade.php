@@ -263,7 +263,7 @@
     </style>
 
     @php
-        $chunks = $disconnections->chunk(5);
+        $chunks = $disconnections->chunk(15);
         $totalPages = $chunks->count();
     @endphp
 
