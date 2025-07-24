@@ -25,7 +25,7 @@ class ListStudentDisconnections extends ListRecords
                 ->color('success')
                 ->requiresConfirmation()
                 ->modalHeading('إضافة الطلاب المنقطعين')
-                ->modalDescription('سيتم إضافة الطلاب الذين لديهم يوم أو يومان غياب متتاليان إلى قائمة الانقطاع.')
+                ->modalDescription('سيتم إضافة الطلاب الذين لديهم يومان أو أكثر غياب متتاليان إلى قائمة الانقطاع.')
                 ->form([
                     \Filament\Forms\Components\Select::make('excluded_groups')
                         ->label('استثناء المجموعات')
@@ -82,8 +82,22 @@ class ListStudentDisconnections extends ListRecords
             })
             ->get()
             ->filter(function ($student) {
-                $consecutiveAbsentDays = $student->consecutiveAbsentDays;
-                return $consecutiveAbsentDays >= 1 && $consecutiveAbsentDays <= 2;
+                $recentProgresses = $student->progresses()
+                    ->latest('date')
+                    ->limit(30)
+                    ->orderBy('date', 'asc')
+                    ->get();
+
+                $consecutiveAbsentDays = 0;
+                foreach ($recentProgresses as $progress) {
+                    if ($progress->status === 'absent' && (int)$progress->with_reason === 0) {
+                        $consecutiveAbsentDays++;
+                    } else if ($progress->status === 'memorized' || ($progress->status === 'absent' && (int)$progress->with_reason === 1)) {
+                        break;
+                    }
+                }
+
+                return $consecutiveAbsentDays >= 2;
             })
             ->filter(function ($student) {
                 return !StudentDisconnection::where('student_id', $student->id)->exists();
@@ -112,7 +126,7 @@ class ListStudentDisconnections extends ListRecords
         } else {
             Notification::make()
                 ->title('لا يوجد طلاب منقطعين')
-                ->body('لا يوجد طلاب لديهم يوم أو يومان غياب متتاليان أو تم إضافتهم مسبقاً.')
+                ->body('لا يوجد طلاب لديهم يومان أو أكثر غياب متتاليان أو تم إضافتهم مسبقاً.')
                 ->info()
                 ->send();
         }
