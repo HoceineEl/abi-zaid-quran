@@ -40,18 +40,19 @@
         .export-table th,
         .export-table td {
             border: 1px solid var(--border-color);
-            padding: 16px;
+            padding: 12px;
             text-align: center;
             vertical-align: middle;
+            font-size: 0.85rem;
         }
 
         .export-table th {
             background-color: var(--bg-header);
             font-weight: 700;
-            font-size: 1.1rem;
+            font-size: 0.9rem;
             white-space: nowrap;
             color: var(--text-primary);
-            padding: 20px 16px;
+            padding: 14px 12px;
         }
 
         .export-table tr:nth-child(even) {
@@ -65,13 +66,16 @@
         .status-icon {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
             justify-content: center;
+            gap: 4px;
+            padding: 4px 8px;
+            border-radius: 3px;
+            background-color: var(--bg-secondary);
         }
 
         .status-icon svg {
-            width: 24px;
-            height: 24px;
+            width: 14px;
+            height: 14px;
             stroke-width: 2;
             stroke: currentColor;
         }
@@ -89,57 +93,81 @@
         }
 
         .disconnection-duration {
-            font-size: 1.2rem;
-            font-weight: 700;
-            display: flex;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
+            gap: 3px;
+            padding: 4px 10px;
+            border-radius: 3px;
+            background-color: var(--bg-secondary);
+            min-width: 40px;
         }
 
         .disconnection-duration.short {
             color: var(--success-color);
+            background-color: rgba(5, 150, 105, 0.1);
         }
 
         .disconnection-duration.medium {
             color: var(--warning-color);
+            background-color: rgba(217, 119, 6, 0.1);
         }
 
         .disconnection-duration.long {
             color: var(--danger-color);
+            background-color: rgba(220, 38, 38, 0.1);
         }
 
         .student-name {
             font-weight: 600;
-            font-size: 1.2rem;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            margin-bottom: 2px;
         }
 
         .group-name {
             color: var(--text-secondary);
-            font-size: 0.9rem;
+            font-size: 0.75rem;
+            font-weight: 500;
         }
 
         .phone-number {
             color: var(--text-secondary);
-            font-size: 1.1rem;
+            font-size: 0.75rem;
             direction: ltr;
+            font-family: monospace;
+            background-color: var(--bg-secondary);
+            padding: 1px 4px;
+            border-radius: 2px;
+            margin-top: 2px;
+            display: inline-block;
         }
 
         .index-column {
-            width: 40px;
+            width: 25px;
             text-align: center;
             color: var(--text-secondary);
+            font-size: 0.7rem;
+            font-weight: 600;
+            background-color: var(--bg-secondary);
+            border-radius: 2px;
         }
 
         .contact-status {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
-            padding: 4px 8px;
+            gap: 3px;
+            padding: 6px 12px;
             border-radius: 4px;
-            font-size: 0.9rem;
+            font-size: 0.7rem;
             font-weight: 600;
+            min-width: 60px;
+            text-align: center;
+            line-height: 1.2;
+            white-space: nowrap;
         }
 
         .contact-status.contacted {
@@ -161,11 +189,16 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.9rem;
+            gap: 3px;
+            padding: 4px 10px;
+            border-radius: 3px;
+            font-size: 0.65rem;
             font-weight: 600;
+            min-width: 50px;
+            text-align: center;
+            line-height: 1.1;
+            white-space: nowrap;
+            margin-top: 2px;
         }
 
         .message-response.yes {
@@ -184,13 +217,16 @@
         }
 
         .notes {
-            font-size: 0.9rem;
+            font-size: 0.7rem;
             color: var(--text-secondary);
-            text-align: right;
-            max-width: 200px;
+            text-align: center;
+            max-width: 120px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            padding: 2px 4px;
+            background-color: var(--bg-secondary);
+            border-radius: 2px;
         }
 
         /* Column width adjustments */
@@ -227,7 +263,7 @@
     </style>
 
     @php
-        $chunks = $disconnections->chunk(50);
+        $chunks = $disconnections->chunk(5);
         $totalPages = $chunks->count();
     @endphp
 
@@ -258,7 +294,7 @@
                             $messageResponse = $disconnection->message_response;
                         @endphp
                         <tr>
-                            <td class="index-column">{{ $pageIndex * 50 + $index + 1 }}</td>
+                            <td class="index-column">{{ $pageIndex * 15 + $index + 1 }}</td>
                             <td>
                                 <span class="student-name">{{ $disconnection->student->name }}</span>
                                 <br>
