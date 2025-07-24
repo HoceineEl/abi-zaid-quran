@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\StudentDisconnectionResource\Pages;
 
 use App\Filament\Exports\StudentDisconnectionExporter;
+use App\Exports\StudentDisconnectionExport;
 use App\Filament\Resources\StudentDisconnectionResource;
 use App\Models\Group;
 use App\Models\Student;
@@ -57,10 +58,30 @@ class ListStudentDisconnections extends ListRecords
                         'dateRange' => 'جميع الطلاب المنقطعين'
                     ]);
                 }),
-            Actions\ExportAction::make()
+            // Actions\ExportAction::make()
+            //     ->label('تصدير Excel')
+            //     ->exporter(StudentDisconnectionExporter::class)
+            //     ->icon('heroicon-o-arrow-down-tray'),
+            Actions\Action::make('export_custom_excel')
                 ->label('تصدير Excel')
-                ->exporter(StudentDisconnectionExporter::class)
-                ->icon('heroicon-o-arrow-down-tray'),
+                ->icon('heroicon-o-document-arrow-down')
+                ->color('warning')
+                ->form([
+                    \Filament\Forms\Components\DatePicker::make('start_date')
+                        ->label('من تاريخ')
+                        ->default(now()->subDays(30)->format('Y-m-d')),
+                    \Filament\Forms\Components\DatePicker::make('end_date')
+                        ->label('إلى تاريخ')
+                        ->default(now()->format('Y-m-d')),
+                ])
+                ->action(function (array $data) {
+                    $startDate = $data['start_date'];
+                    $endDate = $data['end_date'];
+                    $dateRange = "من {$startDate} إلى {$endDate}";
+
+                    $export = new StudentDisconnectionExport($dateRange, $startDate, $endDate);
+                    return \Maatwebsite\Excel\Facades\Excel::download($export, 'students-disconnection-' . now()->format('Y-m-d') . '.xlsx');
+                }),
         ];
     }
 
