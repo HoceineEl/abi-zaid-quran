@@ -6,6 +6,7 @@ use App\Classes\Core;
 use App\Filament\Exports\ProgressExporter;
 use App\Helpers\ProgressFormHelper;
 use App\Models\Student;
+use App\Models\StudentDisconnection;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\MarkdownEditor;
@@ -267,6 +268,45 @@ class ProgressesRelationManager extends RelationManager
                         ->label('تصدير')
                         ->exporter(ProgressExporter::class)
                         ->icon('heroicon-o-arrow-down-tray'),
+                    Tables\Actions\BulkAction::make('add_to_disconnection')
+                        ->label('إضافة إلى قائمة الانقطاع')
+                        ->icon('heroicon-o-user-minus')
+                        ->color('danger')
+                        ->requiresConfirmation()
+                        ->modalHeading('إضافة الطلاب المحددين إلى قائمة الانقطاع')
+                        ->modalDescription('سيتم إضافة الطلاب المحددين إلى قائمة الطلاب المنقطعين.')
+                        ->action(function ($records) {
+                            $addedCount = 0;
+                            
+                            foreach ($records as $student) {
+                                if (!StudentDisconnection::where('student_id', $student->id)->exists()) {
+                                    $disconnectionDate = $student->getDisconnectionDateAttribute();
+                                    
+                                    if ($disconnectionDate) {
+                                        StudentDisconnection::create([
+                                            'student_id' => $student->id,
+                                            'group_id' => $student->group_id,
+                                            'disconnection_date' => $disconnectionDate,
+                                        ]);
+                                        $addedCount++;
+                                    }
+                                }
+                            }
+                            
+                            if ($addedCount > 0) {
+                                Notification::make()
+                                    ->title('تم إضافة الطلاب إلى قائمة الانقطاع')
+                                    ->body("تم إضافة {$addedCount} طالب إلى قائمة الانقطاع.")
+                                    ->success()
+                                    ->send();
+                            } else {
+                                Notification::make()
+                                    ->title('لم يتم إضافة أي طالب')
+                                    ->body('جميع الطلاب المحددين موجودين بالفعل في قائمة الانقطاع أو لا يوجد لديهم تاريخ انقطاع صالح.')
+                                    ->warning()
+                                    ->send();
+                            }
+                        }),
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])

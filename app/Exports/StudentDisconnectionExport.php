@@ -58,12 +58,13 @@ class StudentDisconnectionExport implements FromCollection, WithHeadings, Should
                 };
 
                 return [
+                    'student_order' => $disconnection->student->order_no ?? '',
                     'student_name' => $disconnection->student->name,
+                    'message_response' => $messageResponse,
                     'group_name' => $disconnection->group->name,
                     'disconnection_date' => $disconnection->disconnection_date,
                     'disconnection_duration' => $disconnectionDuration,
                     'contact_date' => $disconnection->contact_date ? Carbon::parse($disconnection->contact_date)->format('Y-m-d') : 'لم يتم التواصل',
-                    'message_response' => $messageResponse,
                     'status' => $status,
                     'notes' => $disconnection->notes ?? '',
                     'created_at' => Carbon::parse($disconnection->created_at)->format('Y-m-d H:i'),
@@ -74,12 +75,13 @@ class StudentDisconnectionExport implements FromCollection, WithHeadings, Should
     public function headings(): array
     {
         return [
+            'الترتيب',
             'اسم الطالب',
+            'تفاعل مع الرسالة',
             'المجموعة',
             'تاريخ الانقطاع',
             'مدة الانقطاع',
             'تاريخ التواصل',
-            'تفاعل مع الرسالة',
             'الحالة',
             'ملاحظات',
             'تاريخ الإنشاء',
@@ -102,10 +104,10 @@ class StudentDisconnectionExport implements FromCollection, WithHeadings, Should
 
                 // Add title and date range as headings
                 $sheet->insertNewRowBefore(1, 2);
-                $sheet->mergeCells('A1:I1');
+                $sheet->mergeCells('A1:J1');
                 $sheet->setCellValue('A1', 'تقرير الطلاب المنقطعين');
 
-                $sheet->mergeCells('A2:I2');
+                $sheet->mergeCells('A2:J2');
                 $sheet->setCellValue('A2', 'النطاق الزمني: ' . $this->dateRange);
 
                 // Style the main title
@@ -123,8 +125,8 @@ class StudentDisconnectionExport implements FromCollection, WithHeadings, Should
                     ->getStartColor()->setARGB('D9E1F2');
 
                 // Style the headings row (which is now row 3)
-                $sheet->getStyle('A3:I3')->getFont()->setBold(true);
-                $sheet->getStyle('A3:I3')->getFill()
+                $sheet->getStyle('A3:J3')->getFont()->setBold(true);
+                $sheet->getStyle('A3:J3')->getFill()
                     ->setFillType(Fill::FILL_SOLID)
                     ->getStartColor()->setARGB('E7E6E6');
 
@@ -138,12 +140,12 @@ class StudentDisconnectionExport implements FromCollection, WithHeadings, Should
 
                     // Alternate row colors for better readability
                     $fillColor = $rowIndex % 2 == 0 ? 'F9F9F9' : 'FFFFFF';
-                    $sheet->getStyle("A{$rowIndex}:I{$rowIndex}")->getFill()
+                    $sheet->getStyle("A{$rowIndex}:J{$rowIndex}")->getFill()
                         ->setFillType(Fill::FILL_SOLID)
                         ->getStartColor()->setARGB($fillColor);
 
                     // Color code the status column
-                    $statusCell = "G{$rowIndex}";
+                    $statusCell = "H{$rowIndex}";
                     $statusValue = $sheet->getCell($statusCell)->getValue();
 
                     $statusColor = match ($statusValue) {
@@ -166,7 +168,7 @@ class StudentDisconnectionExport implements FromCollection, WithHeadings, Should
                     $sheet->getStyle($statusCell)->getFont()->getColor()->setARGB($textColor);
 
                     // Color code the message response column
-                    $responseCell = "F{$rowIndex}";
+                    $responseCell = "C{$rowIndex}";
                     $responseValue = $sheet->getCell($responseCell)->getValue();
 
                     $responseColor = match ($responseValue) {
@@ -189,11 +191,11 @@ class StudentDisconnectionExport implements FromCollection, WithHeadings, Should
 
                 // Add borders to all cells
                 $highestRow = $sheet->getHighestRow();
-                $sheet->getStyle("A1:I{$highestRow}")->getBorders()->getAllBorders()
+                $sheet->getStyle("A1:J{$highestRow}")->getBorders()->getAllBorders()
                     ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
 
                 // Auto-adjust column widths
-                foreach (range('A', 'I') as $column) {
+                foreach (range('A', 'J') as $column) {
                     $sheet->getColumnDimension($column)->setAutoSize(true);
                 }
             },
