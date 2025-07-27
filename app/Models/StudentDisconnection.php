@@ -12,10 +12,12 @@ class StudentDisconnection extends Model
 {
     use HasFactory;
 
+
     protected $casts = [
         'disconnection_date' => 'date',
         'contact_date' => 'date',
         'message_response' => MessageResponseStatus::class,
+        'has_returned' => 'boolean',
     ];
 
     public function student(): BelongsTo

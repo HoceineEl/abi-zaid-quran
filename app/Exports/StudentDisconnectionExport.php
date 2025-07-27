@@ -20,12 +20,14 @@ class StudentDisconnectionExport implements FromCollection, WithHeadings, Should
     protected $dateRange;
     protected $startDate;
     protected $endDate;
+    protected $includeReturned;
 
-    public function __construct(string $dateRange = 'جميع الطلاب المنقطعين', ?string $startDate = null, ?string $endDate = null)
+    public function __construct(string $dateRange = 'جميع الطلاب المنقطعين', ?string $startDate = null, ?string $endDate = null, bool $includeReturned = true)
     {
         $this->dateRange = $dateRange;
         $this->startDate = $startDate;
         $this->endDate = $endDate;
+        $this->includeReturned = $includeReturned;
     }
 
     public function collection()
@@ -36,8 +38,14 @@ class StudentDisconnectionExport implements FromCollection, WithHeadings, Should
             $query->whereBetween('created_at', [$this->startDate . ' 00:00:00', $this->endDate . ' 23:59:59']);
         }
 
+        // Filter by returned status if specified
+        if (!$this->includeReturned) {
+            $query->where('has_returned', false);
+        }
+
         return $query->orderBy('created_at', 'desc')->get()
-            ->map(function ($disconnection) {
+            ->values()
+            ->map(function ($disconnection, $index) {
                 $daysSinceLastPresent = $disconnection->student->getDaysSinceLastPresentAttribute();
                 $disconnectionDuration = $daysSinceLastPresent === null ? 'غير محدد' : $daysSinceLastPresent . ' يوم';
 
@@ -49,25 +57,29 @@ class StudentDisconnectionExport implements FromCollection, WithHeadings, Should
                     default => 'لم يتم التواصل',
                 };
 
-                $status = match ($disconnection->status) {
-                    DisconnectionStatus::Disconnected => 'منقطع',
-                    DisconnectionStatus::Contacted => 'تم الاتصال',
-                    DisconnectionStatus::Responded => 'تم التواصل',
-                    null => 'غير محدد',
-                    default => 'غير محدد',
-                };
+                // Check if student has returned
+                if ($disconnection->has_returned) {
+                    $status = 'عاد';
+                } else {
+                    $status = match ($disconnection->status) {
+                        DisconnectionStatus::Disconnected => 'منقطع',
+                        DisconnectionStatus::Contacted => 'تم الاتصال',
+                        DisconnectionStatus::Responded => 'تم التواصل',
+                        null => 'غير محدد',
+                        default => 'غير محدد',
+                    };
+                }
 
                 return [
-                    'student_order' => $disconnection->student->order_no ?? '',
+                    'student_order' => $index + 1,
                     'student_name' => $disconnection->student->name,
+                    'notes' => $disconnection->notes ?? '',
                     'message_response' => $messageResponse,
                     'group_name' => $disconnection->group->name,
-                    'disconnection_date' => $disconnection->disconnection_date,
+                    'disconnection_date' => Carbon::parse($disconnection->disconnection_date)->format('Y-m-d'),
                     'disconnection_duration' => $disconnectionDuration,
                     'contact_date' => $disconnection->contact_date ? Carbon::parse($disconnection->contact_date)->format('Y-m-d') : 'لم يتم التواصل',
                     'status' => $status,
-                    'notes' => $disconnection->notes ?? '',
-                    'created_at' => Carbon::parse($disconnection->created_at)->format('Y-m-d H:i'),
                 ];
             });
     }
@@ -77,14 +89,13 @@ class StudentDisconnectionExport implements FromCollection, WithHeadings, Should
         return [
             'الترتيب',
             'اسم الطالب',
+            'ملاحظات',
             'تفاعل مع الرسالة',
             'المجموعة',
             'تاريخ الانقطاع',
             'مدة الانقطاع',
             'تاريخ التواصل',
             'الحالة',
-            'ملاحظات',
-            'تاريخ الإنشاء',
         ];
     }
 
@@ -108,7 +119,11 @@ class StudentDisconnectionExport implements FromCollection, WithHeadings, Should
                 $sheet->setCellValue('A1', 'تقرير الطلاب المنقطعين');
 
                 $sheet->mergeCells('A2:J2');
-                $sheet->setCellValue('A2', 'النطاق الزمني: ' . $this->dateRange);
+                $dateRangeText = 'النطاق الزمني: ' . $this->dateRange;
+                if (!$this->includeReturned) {
+                    $dateRangeText .= ' (لا يشمل الطلاب العائدين)';
+                }
+                $sheet->setCellValue('A2', $dateRangeText);
 
                 // Style the main title
                 $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(16);
@@ -145,13 +160,14 @@ class StudentDisconnectionExport implements FromCollection, WithHeadings, Should
                         ->getStartColor()->setARGB($fillColor);
 
                     // Color code the status column
-                    $statusCell = "H{$rowIndex}";
+                    $statusCell = "I{$rowIndex}";
                     $statusValue = $sheet->getCell($statusCell)->getValue();
 
                     $statusColor = match ($statusValue) {
                         'منقطع' => 'FFC7CE', // Red
                         'تم الاتصال' => 'FFE699', // Yellow
                         'تم التواصل' => 'C6EFCE', // Green
+                        'عاد' => '90EE90', // Light Green
                         default => 'F2F2F2', // Gray
                     };
 
@@ -159,6 +175,7 @@ class StudentDisconnectionExport implements FromCollection, WithHeadings, Should
                         'منقطع' => '9C0006',
                         'تم الاتصال' => '9C5700',
                         'تم التواصل' => '006100',
+                        'عاد' => '006400', // Dark Green
                         default => '7F7F7F',
                     };
 
@@ -196,7 +213,11 @@ class StudentDisconnectionExport implements FromCollection, WithHeadings, Should
 
                 // Auto-adjust column widths
                 foreach (range('A', 'J') as $column) {
-                    $sheet->getColumnDimension($column)->setAutoSize(true);
+                    if ($column === 'C') { // Notes column
+                        $sheet->getColumnDimension($column)->setWidth(30);
+                    } else {
+                        $sheet->getColumnDimension($column)->setAutoSize(true);
+                    }
                 }
             },
         ];
