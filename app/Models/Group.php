@@ -128,10 +128,20 @@ class Group extends Model
     {
         $targetDate = $date ?? now()->format('Y-m-d');
 
-        return $query->whereHas('progresses', function ($progressQuery) use ($targetDate) {
-            $progressQuery->where('date', $targetDate)
-                ->where('status', 'memorized');
-        });
+        return $query->where('is_quran_group', true)
+            ->whereHas('progresses', function ($progressQuery) use ($targetDate) {
+                $progressQuery->where('date', $targetDate);
+            });
+    }
+
+    public function scopeActive(Builder $query): Builder
+    {
+        $fourDaysAgo = now()->subDays(4)->format('Y-m-d');
+
+        return $query->where('is_quran_group', true)
+            ->whereHas('progresses', function ($progressQuery) use ($fourDaysAgo) {
+                $progressQuery->where('date', '>=', $fourDaysAgo);
+            });
     }
 
     public function scopeWorkingInDateRange(Builder $query, string $startDate, string $endDate): Builder

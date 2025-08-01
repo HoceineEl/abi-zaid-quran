@@ -48,6 +48,20 @@ class ListStudentDisconnections extends ListRecords
         return 'not_returned';
     }
 
+    protected function getTableQuery(): Builder
+    {
+        return parent::getTableQuery()
+            ->with(['student.progresses' => function ($query) {
+                $query->where('status', 'memorized')->latest('date')->limit(1);
+            }])
+            ->orderByRaw('
+                (SELECT MAX(p.date)
+                 FROM progress p
+                 WHERE p.student_id = student_disconnections.student_id
+                 AND p.status = "memorized") DESC
+            ');
+    }
+
     protected function getHeaderActions(): array
     {
         return [
@@ -58,15 +72,15 @@ class ListStudentDisconnections extends ListRecords
                 ->color('success')
                 ->requiresConfirmation()
                 ->modalHeading('إضافة الطلاب المنقطعين')
-                ->modalDescription('سيتم إضافة الطلاب الذين لديهم يومان أو أكثر غياب متتاليان إلى قائمة الانقطاع.')
+                ->modalDescription('سيتم إضافة الطلاب من المجموعات النشطة (لديها تقدم في آخر 4 أيام) الذين لديهم يومان أو أكثر غياب متتاليان إلى قائمة الانقطاع.')
                 ->form([
                     \Filament\Forms\Components\Select::make('excluded_groups')
                         ->label('استثناء المجموعات')
                         ->multiple()
-                        ->options(Group::where('is_quran_group', true)->pluck('name', 'id'))
+                        ->options(Group::active()->pluck('name', 'id'))
                         ->searchable()
                         ->preload()
-                        ->helperText('اختر المجموعات غير النشطة التي لا تريد إضافة طلابها إلى قائمة الانقطاع'),
+                        ->helperText('اختر المجموعات النشطة التي لا تريد إضافة طلابها إلى قائمة الانقطاع (المجموعات النشطة = لديها تقدم في آخر 4 أيام)'),
                 ])
                 ->action(function ($data) {
                     $this->addDisconnectedStudents($data['excluded_groups'] ?? []);
@@ -139,13 +153,13 @@ class ListStudentDisconnections extends ListRecords
         if ($addedCount > 0) {
             Notification::make()
                 ->title('تم إضافة الطلاب المنقطعين')
-                ->body("تم إضافة {$addedCount} طالب إلى قائمة الانقطاع بناءً على أيام عمل المجموعة.")
+                ->body("تم إضافة {$addedCount} طالب إلى قائمة الانقطاع من المجموعات النشطة (لديها تقدم في آخر 4 أيام).")
                 ->success()
                 ->send();
         } else {
             Notification::make()
                 ->title('لا يوجد طلاب منقطعين')
-                ->body('لا يوجد طلاب لديهم يومان أو أكثر غياب متتاليان في أيام عمل المجموعة أو تم إضافتهم مسبقاً.')
+                ->body('لا يوجد طلاب لديهم يومان أو أكثر غياب متتاليان في المجموعات النشطة (لديها تقدم في آخر 4 أيام) أو تم إضافتهم مسبقاً.')
                 ->info()
                 ->send();
         }

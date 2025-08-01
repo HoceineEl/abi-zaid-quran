@@ -89,6 +89,7 @@ class StudentDisconnectionResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->defaultSort('disconnection_date', 'desc')
             ->columns([
                 Tables\Columns\TextColumn::make('student.name')
                     ->label('اسم الطالب')
@@ -100,10 +101,12 @@ class StudentDisconnectionResource extends Resource
                     ->searchable()
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('disconnection_date')
-                    ->label('تاريخ الانقطاع')
+
+                Tables\Columns\TextColumn::make('student.last_present_date')
+                    ->label('آخر حضور')
                     ->date('Y-m-d')
-                    ->sortable(),
+                    ->sortable()
+                    ->placeholder('لا يوجد'),
 
                 Tables\Columns\TextColumn::make('disconnection_duration')
                     ->label('مدة الانقطاع')

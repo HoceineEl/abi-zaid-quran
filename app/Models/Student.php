@@ -220,10 +220,10 @@ class Student extends Model
         return (int) now()->diffInDays($lastPresentDay->date) * -1;
     }
 
-    public function scopeDisconnectedFromWorkingGroups(Builder $query, int $consecutiveDays = 2): Builder
+    public function scopeDisconnectedFromActiveGroups(Builder $query, int $consecutiveDays = 2): Builder
     {
         return $query->whereHas('group', function ($groupQuery) {
-            $groupQuery->where('is_quran_group', true);
+            $groupQuery->active();
         })->filter(function ($student) use ($consecutiveDays) {
             return $student->hasConsecutiveAbsentDaysInWorkingGroup($consecutiveDays);
         });
@@ -267,7 +267,6 @@ class Student extends Model
             ->whereHas('student', function ($query) {
                 $query->where('group_id', $this->group_id);
             })
-            ->where('status', 'memorized')
             ->distinct('date')
             ->orderBy('date', 'desc')
             ->pluck('date');
@@ -296,5 +295,18 @@ class Student extends Model
         }
 
         return $disconnectionDate;
+    }
+
+    public function getLastPresentDate(): ?string
+    {
+        return $this->progresses()
+            ->where('status', 'memorized')
+            ->latest('date')
+            ->first()?->date;
+    }
+
+    public function getLastPresentDateAttribute(): ?string
+    {
+        return $this->getLastPresentDate();
     }
 }

@@ -14,7 +14,7 @@ class DisconnectionService
   {
     return Student::with(['group', 'progresses'])
       ->whereHas('group', function ($query) use ($excludedGroups) {
-        $query->where('is_quran_group', true);
+        $query->active();
         if (!empty($excludedGroups)) {
           $query->whereNotIn('id', $excludedGroups);
         }
@@ -23,6 +23,9 @@ class DisconnectionService
       ->filter(function ($student) {
         return $student->hasConsecutiveAbsentDaysInWorkingGroup(2) &&
           !$this->studentAlreadyDisconnected($student);
+      })
+      ->sortByDesc(function ($student) {
+        return $student->getLastPresentDate();
       });
   }
 
@@ -65,18 +68,19 @@ class DisconnectionService
     return $returnedCount;
   }
 
+  public function getActiveGroups(): Collection
+  {
+    return Group::active()->get();
+  }
+
   public function getWorkingGroupsOnDate(string $date): Collection
   {
-    return Group::working($date)
-      ->where('is_quran_group', true)
-      ->get();
+    return Group::working($date)->get();
   }
 
   public function getWorkingGroupsInDateRange(string $startDate, string $endDate): Collection
   {
-    return Group::workingInDateRange($startDate, $endDate)
-      ->where('is_quran_group', true)
-      ->get();
+    return Group::workingInDateRange($startDate, $endDate)->get();
   }
 
   private function studentAlreadyDisconnected(Student $student): bool
