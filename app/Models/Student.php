@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Eloquent\Builder;
+use Carbon\Carbon;
 
 class Student extends Model
 {
@@ -216,5 +218,83 @@ class Student extends Model
         }
 
         return (int) now()->diffInDays($lastPresentDay->date) * -1;
+    }
+
+    public function scopeDisconnectedFromWorkingGroups(Builder $query, int $consecutiveDays = 2): Builder
+    {
+        return $query->whereHas('group', function ($groupQuery) {
+            $groupQuery->where('is_quran_group', true);
+        })->filter(function ($student) use ($consecutiveDays) {
+            return $student->hasConsecutiveAbsentDaysInWorkingGroup($consecutiveDays);
+        });
+    }
+
+    public function hasConsecutiveAbsentDaysInWorkingGroup(int $requiredDays = 2): bool
+    {
+        $groupWorkingDates = $this->getGroupWorkingDates(30);
+
+        if ($groupWorkingDates->count() < $requiredDays) {
+            return false;
+        }
+
+        $consecutiveAbsentDays = 0;
+
+        foreach ($groupWorkingDates as $date) {
+            $progress = $this->progresses()
+                ->where('date', $date)
+                ->first();
+
+            if (!$progress || ($progress->status === 'absent' && (int)$progress->with_reason === 0)) {
+                $consecutiveAbsentDays++;
+                if ($consecutiveAbsentDays >= $requiredDays) {
+                    return true;
+                }
+            } else {
+                $consecutiveAbsentDays = 0;
+            }
+        }
+
+        return false;
+    }
+
+    public function getGroupWorkingDates(int $limitDays = 30)
+    {
+        $startDate = Carbon::now()->subDays($limitDays)->format('Y-m-d');
+        $endDate = Carbon::now()->format('Y-m-d');
+
+        return Progress::where('date', '>=', $startDate)
+            ->where('date', '<=', $endDate)
+            ->whereHas('student', function ($query) {
+                $query->where('group_id', $this->group_id);
+            })
+            ->where('status', 'memorized')
+            ->distinct('date')
+            ->orderBy('date', 'desc')
+            ->pluck('date');
+    }
+
+    public function getDisconnectionDateBasedOnGroupActivity(): ?string
+    {
+        $groupWorkingDates = $this->getGroupWorkingDates(30);
+
+        $consecutiveAbsentDays = 0;
+        $disconnectionDate = null;
+
+        foreach ($groupWorkingDates as $date) {
+            $progress = $this->progresses()
+                ->where('date', $date)
+                ->first();
+
+            if (!$progress || ($progress->status === 'absent' && (int)$progress->with_reason === 0)) {
+                $consecutiveAbsentDays++;
+                if ($consecutiveAbsentDays === 2) {
+                    $disconnectionDate = $date;
+                }
+            } else {
+                break;
+            }
+        }
+
+        return $disconnectionDate;
     }
 }

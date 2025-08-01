@@ -8,6 +8,7 @@ use App\Filament\Resources\StudentDisconnectionResource;
 use App\Models\Group;
 use App\Models\Student;
 use App\Models\StudentDisconnection;
+use App\Services\DisconnectionService;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Notifications\Notification;
@@ -18,17 +19,26 @@ class ListStudentDisconnections extends ListRecords
 {
     protected static string $resource = StudentDisconnectionResource::class;
 
+    protected DisconnectionService $disconnectionService;
+
+    public function boot(): void
+    {
+        $this->disconnectionService = app(DisconnectionService::class);
+    }
+
     public function getTabs(): array
     {
+        $stats = $this->disconnectionService->getDisconnectionStats();
+
         return [
             'all' => Tab::make('الكل')
-                ->badge(StudentDisconnection::count()),
+                ->badge($stats['total']),
             'not_returned' => Tab::make('لم يعودوا')
                 ->modifyQueryUsing(fn(Builder $query) => $query->where('has_returned', false))
-                ->badge(StudentDisconnection::where('has_returned', false)->count()),
+                ->badge($stats['not_returned']),
             'returned' => Tab::make('عادوا')
                 ->modifyQueryUsing(fn(Builder $query) => $query->where('has_returned', true))
-                ->badge(StudentDisconnection::where('has_returned', true)->count()),
+                ->badge($stats['returned']),
         ];
     }
 
@@ -59,7 +69,7 @@ class ListStudentDisconnections extends ListRecords
                         ->helperText('اختر المجموعات غير النشطة التي لا تريد إضافة طلابها إلى قائمة الانقطاع'),
                 ])
                 ->action(function ($data) {
-                    $this->addDisconnectedStudents($data['excluded_groups']);
+                    $this->addDisconnectedStudents($data['excluded_groups'] ?? []);
                 }),
             Actions\Action::make('check_returned_students')
                 ->label('فحص الطلاب العائدين')
@@ -124,67 +134,18 @@ class ListStudentDisconnections extends ListRecords
 
     private function addDisconnectedStudents(array $excludedGroups = []): void
     {
-        $students = Student::with(['group', 'progresses'])
-            ->whereHas('group', function ($query) {
-                $query->where('is_quran_group', true);
-            })
-            ->whereHas('progresses', function ($query) {
-                $query->where('status', 'absent')
-                    ->where(function ($q) {
-                        $q->where('with_reason', 0)
-                            ->orWhereNull('with_reason');
-                    });
-            })
-            ->when(!empty($excludedGroups), function ($query) use ($excludedGroups) {
-                $query->whereNotIn('group_id', $excludedGroups);
-            })
-            ->get()
-            ->filter(function ($student) {
-                $recentProgresses = $student->progresses()
-                    ->latest('date')
-                    ->limit(30)
-                    ->orderBy('date', 'asc')
-                    ->get();
-
-                $consecutiveAbsentDays = 0;
-                foreach ($recentProgresses as $progress) {
-                    if ($progress->status === 'absent' && (int)$progress->with_reason === 0) {
-                        $consecutiveAbsentDays++;
-                    } else if ($progress->status === 'memorized' || ($progress->status === 'absent' && (int)$progress->with_reason === 1)) {
-                        break;
-                    }
-                }
-
-                return $consecutiveAbsentDays >= 2;
-            })
-            ->filter(function ($student) {
-                return !StudentDisconnection::where('student_id', $student->id)->exists();
-            });
-
-        $addedCount = 0;
-        foreach ($students as $student) {
-            $disconnectionDate = $student->getDisconnectionDateAttribute();
-
-            if ($disconnectionDate) {
-                StudentDisconnection::create([
-                    'student_id' => $student->id,
-                    'group_id' => $student->group_id,
-                    'disconnection_date' => $disconnectionDate,
-                ]);
-                $addedCount++;
-            }
-        }
+        $addedCount = $this->disconnectionService->addDisconnectedStudents($excludedGroups);
 
         if ($addedCount > 0) {
             Notification::make()
                 ->title('تم إضافة الطلاب المنقطعين')
-                ->body("تم إضافة {$addedCount} طالب إلى قائمة الانقطاع.")
+                ->body("تم إضافة {$addedCount} طالب إلى قائمة الانقطاع بناءً على أيام عمل المجموعة.")
                 ->success()
                 ->send();
         } else {
             Notification::make()
                 ->title('لا يوجد طلاب منقطعين')
-                ->body('لا يوجد طلاب لديهم يومان أو أكثر غياب متتاليان أو تم إضافتهم مسبقاً.')
+                ->body('لا يوجد طلاب لديهم يومان أو أكثر غياب متتاليان في أيام عمل المجموعة أو تم إضافتهم مسبقاً.')
                 ->info()
                 ->send();
         }
@@ -192,23 +153,7 @@ class ListStudentDisconnections extends ListRecords
 
     private function checkReturnedStudents(): void
     {
-        $disconnections = StudentDisconnection::with('student')
-            ->where('has_returned', false)
-            ->get();
-
-        $returnedCount = 0;
-
-        foreach ($disconnections as $disconnection) {
-            $hasRecentAttendance = $disconnection->student->progresses()
-                ->where('status', 'memorized')
-                ->where('date', '>', $disconnection->disconnection_date)
-                ->exists();
-
-            if ($hasRecentAttendance) {
-                $disconnection->update(['has_returned' => true]);
-                $returnedCount++;
-            }
-        }
+        $returnedCount = $this->disconnectionService->checkReturnedStudents();
 
         if ($returnedCount > 0) {
             Notification::make()

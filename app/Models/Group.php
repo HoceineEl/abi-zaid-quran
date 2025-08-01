@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Builder;
 
 class Group extends Model
 {
@@ -121,5 +122,23 @@ class Group extends Model
                     'absent' => $absentCount,
                 ];
             });
+    }
+
+    public function scopeWorking(Builder $query, ?string $date = null): Builder
+    {
+        $targetDate = $date ?? now()->format('Y-m-d');
+
+        return $query->whereHas('progresses', function ($progressQuery) use ($targetDate) {
+            $progressQuery->where('date', $targetDate)
+                ->where('status', 'memorized');
+        });
+    }
+
+    public function scopeWorkingInDateRange(Builder $query, string $startDate, string $endDate): Builder
+    {
+        return $query->whereHas('progresses', function ($progressQuery) use ($startDate, $endDate) {
+            $progressQuery->whereBetween('date', [$startDate, $endDate])
+                ->where('status', 'memorized');
+        });
     }
 }

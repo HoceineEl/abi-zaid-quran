@@ -113,7 +113,10 @@ class GroupResource extends Resource
                             ]);
                         }
                     })
-                    ->default(function (Group $record) {
+                    ->default(function (?Group $record) {
+                        if (!$record || !$record->exists) {
+                            return null;
+                        }
                         return $record->messageTemplates()->wherePivot('is_default', true)->first()?->id;
                     })
                     ->createOptionForm([
@@ -172,7 +175,10 @@ class GroupResource extends Resource
                     ->default('لا يوجد')
                     ->badge()
                     ->color('info')
-                    ->getStateUsing(function (Group $record) {
+                    ->getStateUsing(function (?Group $record) {
+                        if (!$record) {
+                            return 'لا يوجد';
+                        }
                         $defaultTemplate = $record->messageTemplates()->wherePivot('is_default', true)->first();
                         return $defaultTemplate?->name ?? 'لا يوجد';
                     }),
@@ -196,7 +202,7 @@ class GroupResource extends Resource
             ->filters([
                 Tables\Filters\TrashedFilter::make(),
             ])
-            ->recordUrl(fn(Group $record) => GroupResource::getUrl('edit', ['record' => $record, 'activeRelationManager' => 0]))
+            ->recordUrl(fn(?Group $record) => $record ? GroupResource::getUrl('edit', ['record' => $record, 'activeRelationManager' => 0]) : null)
             ->actions([
 
                 Tables\Actions\Action::make('export_attendance')
