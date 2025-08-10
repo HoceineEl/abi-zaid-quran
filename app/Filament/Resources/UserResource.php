@@ -71,23 +71,39 @@ class UserResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('name')->label('الاسم'),
-                TextColumn::make('email')->label('البريد الإلكتروني'),
+                TextColumn::make('name')->label('الاسم')
+                    ->color('primary')
+                    ->weight('bold'),
+                TextColumn::make('email')->label('البريد الإلكتروني')
+                    ->color('gray')
+                    ->icon('heroicon-o-envelope'),
                 TextColumn::make('role')->label('الدور')
+                    ->badge()
+                    ->color(fn(string $state): string => match ($state) {
+                        'admin' => 'danger',
+                        'follower' => 'warning',
+                        'teacher' => 'success',
+                        default => 'gray',
+                    })
                     ->formatStateUsing(function ($state) {
                         return match ($state) {
                             'admin' => 'مشرف',
                             'follower' => 'متابع',
                             'teacher' => 'أستاذ بالجمعية',
+                            default => $state,
                         };
                     }),
-                TextColumn::make('phone')->label('الهاتف'),
+                TextColumn::make('phone')->label('الهاتف')
+                    ->color('info')
+                    ->icon('heroicon-o-phone'),
                 TextColumn::make('managedGroups.name')
                     ->label('المجموعات')
                     ->listWithLineBreaks()
                     ->limitList(3)
                     ->expandableLimitedList()
-                    ->badge(),
+                    ->badge()
+                    ->color('success')
+                    ->icon('heroicon-o-academic-cap'),
             ])
             ->filters([
                 //
@@ -156,52 +172,46 @@ class UserResource extends Resource
             ->actions([
                 Action::make('attach_group')
                     ->label('إرفاق مجموعة')
-                    ->icon('heroicon-o-link')
+                    ->icon('heroicon-o-plus-circle')
+                    ->color('success')
                     ->form(fn(User $record) => [
                         Select::make('group_ids')
-                            ->label('المجموعة')
+                            ->label('المجموعات')
+                            ->multiple()
                             ->options(
                                 Group::query()
                                     ->whereDoesntHave('managers', fn($q) => $q->where('users.id', $record->id))
                                     ->pluck('name', 'id')
                                     ->toArray()
                             )
-                            ->multiple()
-                            ->preload()
                             ->searchable()
                             ->required(),
                     ])
                     ->action(function (User $record, array $data) {
-                        $groupIds = $data['group_ids'] ?? [];
-                        if (! empty($groupIds)) {
-                            $record->managedGroups()->syncWithoutDetaching($groupIds);
-                        }
+                        $record->managedGroups()->syncWithoutDetaching($data['group_ids']);
                         Notification::make()
-                            ->title('تم إرفاق المجموعة')
+                            ->title('تم إرفاق المجموعات')
                             ->color('success')
                             ->icon('heroicon-o-check-circle')
                             ->send();
                     }),
                 Action::make('detach_group')
                     ->label('إزالة مجموعة')
-                    ->icon('heroicon-o-x-circle')
+                    ->icon('heroicon-o-minus-circle')
+                    ->color('danger')
                     ->visible(fn(User $record) => $record->managedGroups()->exists())
                     ->form(fn(User $record) => [
                         Select::make('group_ids')
-                            ->label('المجموعة')
-                            ->options($record->managedGroups()->pluck('name', 'id')->toArray())
+                            ->label('المجموعات')
                             ->multiple()
-                            ->preload()
+                            ->options($record->managedGroups()->pluck('name', 'id')->toArray())
                             ->searchable()
                             ->required(),
                     ])
                     ->action(function (User $record, array $data) {
-                        $groupIds = $data['group_ids'] ?? [];
-                        if (! empty($groupIds)) {
-                            $record->managedGroups()->detach($groupIds);
-                        }
+                        $record->managedGroups()->detach($data['group_ids']);
                         Notification::make()
-                            ->title('تمت إزالة المجموعة')
+                            ->title('تمت إزالة المجموعات')
                             ->color('success')
                             ->icon('heroicon-o-check-circle')
                             ->send();
