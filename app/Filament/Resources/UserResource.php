@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Classes\Core;
 use App\Filament\Resources\UserResource\Pages;
+use App\Models\Group;
 use App\Models\Message;
 use App\Models\User;
 use Filament\Forms;
@@ -81,6 +82,12 @@ class UserResource extends Resource
                         };
                     }),
                 TextColumn::make('phone')->label('الهاتف'),
+                TextColumn::make('managedGroups.name')
+                    ->label('المجموعات')
+                    ->listWithLineBreaks()
+                    ->limitList(3)
+                    ->expandableLimitedList()
+                    ->badge(),
             ])
             ->filters([
                 //
@@ -108,7 +115,7 @@ class UserResource extends Resource
                         Select::make('message')
                             ->label('الرسالة')
                             ->native()
-                            ->hidden(fn (Get $get) => $get('message_type') === 'custom')
+                            ->hidden(fn(Get $get) => $get('message_type') === 'custom')
                             ->options(Message::pluck('name', 'id')->toArray())
                             ->hintActions([
                                 ActionsAction::make('create')
@@ -138,7 +145,7 @@ class UserResource extends Resource
                             ->required(),
                         Textarea::make('message')
                             ->label('الرسالة')
-                            ->hidden(fn (Get $get) => $get('message_type') !== 'custom')
+                            ->hidden(fn(Get $get) => $get('message_type') !== 'custom')
                             ->rows(10)
                             ->required(),
                     ])
@@ -147,6 +154,58 @@ class UserResource extends Resource
                     }),
             ])
             ->actions([
+                Action::make('attach_group')
+                    ->label('إرفاق مجموعة')
+                    ->icon('heroicon-o-link')
+                    ->form(fn(User $record) => [
+                        Select::make('group_ids')
+                            ->label('المجموعة')
+                            ->options(
+                                Group::query()
+                                    ->whereDoesntHave('managers', fn($q) => $q->where('users.id', $record->id))
+                                    ->pluck('name', 'id')
+                                    ->toArray()
+                            )
+                            ->multiple()
+                            ->preload()
+                            ->searchable()
+                            ->required(),
+                    ])
+                    ->action(function (User $record, array $data) {
+                        $groupIds = $data['group_ids'] ?? [];
+                        if (! empty($groupIds)) {
+                            $record->managedGroups()->syncWithoutDetaching($groupIds);
+                        }
+                        Notification::make()
+                            ->title('تم إرفاق المجموعة')
+                            ->color('success')
+                            ->icon('heroicon-o-check-circle')
+                            ->send();
+                    }),
+                Action::make('detach_group')
+                    ->label('إزالة مجموعة')
+                    ->icon('heroicon-o-x-circle')
+                    ->visible(fn(User $record) => $record->managedGroups()->exists())
+                    ->form(fn(User $record) => [
+                        Select::make('group_ids')
+                            ->label('المجموعة')
+                            ->options($record->managedGroups()->pluck('name', 'id')->toArray())
+                            ->multiple()
+                            ->preload()
+                            ->searchable()
+                            ->required(),
+                    ])
+                    ->action(function (User $record, array $data) {
+                        $groupIds = $data['group_ids'] ?? [];
+                        if (! empty($groupIds)) {
+                            $record->managedGroups()->detach($groupIds);
+                        }
+                        Notification::make()
+                            ->title('تمت إزالة المجموعة')
+                            ->color('success')
+                            ->icon('heroicon-o-check-circle')
+                            ->send();
+                    }),
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
@@ -163,7 +222,7 @@ class UserResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        
+
         return parent::getEloquentQuery()->where('role', '!=', 'teacher');
     }
 
