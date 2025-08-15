@@ -20,8 +20,10 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class UserResource extends Resource
 {
@@ -73,10 +75,12 @@ class UserResource extends Resource
             ->columns([
                 TextColumn::make('name')->label('الاسم')
                     ->color('primary')
-                    ->weight('bold'),
+                    ->weight('bold')
+                    ->searchable(),
                 TextColumn::make('email')->label('البريد الإلكتروني')
                     ->color('gray')
-                    ->icon('heroicon-o-envelope'),
+                    ->icon('heroicon-o-envelope')
+                    ->searchable(),
                 TextColumn::make('role')->label('الدور')
                     ->badge()
                     ->color(fn(string $state): string => match ($state) {
@@ -92,10 +96,12 @@ class UserResource extends Resource
                             'teacher' => 'أستاذ بالجمعية',
                             default => $state,
                         };
-                    }),
+                    })
+                    ->searchable(),
                 TextColumn::make('phone')->label('الهاتف')
                     ->color('info')
-                    ->icon('heroicon-o-phone'),
+                    ->icon('heroicon-o-phone')
+                    ->searchable(),
                 TextColumn::make('managedGroups.name')
                     ->label('المجموعات')
                     ->listWithLineBreaks()
@@ -106,7 +112,17 @@ class UserResource extends Resource
                     ->icon('heroicon-o-academic-cap'),
             ])
             ->filters([
-                //
+                SelectFilter::make('role')
+                    ->label('الدور')
+                    ->options([
+                        'admin' => 'مشرف',
+                        'follower' => 'متابع',
+                    ]),
+                SelectFilter::make('managedGroups')
+                    ->label('المجموعة')
+                    ->relationship('managedGroups', 'name')
+                    ->multiple()
+                    ->searchable(),
             ])
             ->headerActions([
                 Action::make('send_to_specific')
@@ -252,6 +268,6 @@ class UserResource extends Resource
 
     public static function canAccess(): bool
     {
-        return auth()->user()->role === 'admin';
+        return Auth::user()?->role === 'admin';
     }
 }
