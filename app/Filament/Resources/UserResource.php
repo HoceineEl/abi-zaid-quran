@@ -19,11 +19,14 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Actions\Action;
+use Filament\Tables\Actions\ActionGroup;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Filament\Infolists\Components\Section;
+use Filament\Infolists\Components\TextEntry;
 
 class UserResource extends Resource
 {
@@ -186,53 +189,75 @@ class UserResource extends Resource
                     }),
             ])
             ->actions([
-                Action::make('attach_group')
-                    ->label('إرفاق مجموعة')
-                    ->icon('heroicon-o-plus-circle')
-                    ->color('success')
-                    ->form(fn(User $record) => [
-                        Select::make('group_ids')
-                            ->label('المجموعات')
-                            ->multiple()
-                            ->options(
-                                Group::query()
-                                    ->whereDoesntHave('managers', fn($q) => $q->where('users.id', $record->id))
-                                    ->pluck('name', 'id')
-                                    ->toArray()
-                            )
-                            ->searchable()
-                            ->required(),
-                    ])
-                    ->action(function (User $record, array $data) {
-                        $record->managedGroups()->syncWithoutDetaching($data['group_ids']);
-                        Notification::make()
-                            ->title('تم إرفاق المجموعات')
-                            ->color('success')
-                            ->icon('heroicon-o-check-circle')
-                            ->send();
-                    }),
-                Action::make('detach_group')
-                    ->label('إزالة مجموعة')
-                    ->icon('heroicon-o-minus-circle')
-                    ->color('danger')
-                    ->visible(fn(User $record) => $record->managedGroups()->exists())
-                    ->form(fn(User $record) => [
-                        Select::make('group_ids')
-                            ->label('المجموعات')
-                            ->multiple()
-                            ->options($record->managedGroups()->pluck('name', 'id')->toArray())
-                            ->searchable()
-                            ->required(),
-                    ])
-                    ->action(function (User $record, array $data) {
-                        $record->managedGroups()->detach($data['group_ids']);
-                        Notification::make()
-                            ->title('تمت إزالة المجموعات')
-                            ->color('success')
-                            ->icon('heroicon-o-check-circle')
-                            ->send();
-                    }),
                 Tables\Actions\EditAction::make(),
+                ActionGroup::make([
+                    Action::make('view_groups')
+                        ->label('عرض المجموعات')
+                        ->icon('heroicon-o-academic-cap')
+                        ->color('info')
+                        ->modalHeading('المجموعات المرفقة')
+                        ->modalWidth('xl')
+                        ->infolist([
+                            Section::make('المجموعات المرفقة')
+                                ->schema([
+                                    TextEntry::make('managedGroups.name')
+                                        ->label('المجموعات')
+                                        ->listWithLineBreaks()
+                                        ->badge()
+                                        ->color('success')
+                                        ->icon('heroicon-o-academic-cap'),
+                                ])
+                                ->columns(1),
+                        ]),
+                    Action::make('attach_group')
+                        ->label('إرفاق مجموعة')
+                        ->icon('heroicon-o-plus-circle')
+                        ->color('success')
+                        ->form(fn(User $record) => [
+                            Select::make('group_ids')
+                                ->label('المجموعات')
+                                ->multiple()
+                                ->options(
+                                    Group::query()
+                                        ->whereDoesntHave('managers', fn($q) => $q->where('users.id', $record->id))
+                                        ->pluck('name', 'id')
+                                        ->toArray()
+                                )
+                                ->searchable()
+                                ->required(),
+                        ])
+                        ->action(function (User $record, array $data) {
+                            $record->managedGroups()->syncWithoutDetaching($data['group_ids']);
+                            Notification::make()
+                                ->title('تم إرفاق المجموعات')
+                                ->color('success')
+                                ->icon('heroicon-o-check-circle')
+                                ->send();
+                        }),
+                    Action::make('detach_group')
+                        ->label('إزالة مجموعة')
+                        ->icon('heroicon-o-minus-circle')
+                        ->color('danger')
+                        ->visible(fn(User $record) => $record->managedGroups()->exists())
+                        ->form(fn(User $record) => [
+                            Select::make('group_ids')
+                                ->label('المجموعات')
+                                ->multiple()
+                                ->options($record->managedGroups()->pluck('name', 'id')->toArray())
+                                ->searchable()
+                                ->required(),
+                        ])
+                        ->action(function (User $record, array $data) {
+                            $record->managedGroups()->detach($data['group_ids']);
+                            Notification::make()
+                                ->title('تمت إزالة المجموعات')
+                                ->color('success')
+                                ->icon('heroicon-o-check-circle')
+                                ->send();
+                        }),
+                ])
+                    ->label('المجموعات')
+                    ->icon('heroicon-o-academic-cap'),
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
