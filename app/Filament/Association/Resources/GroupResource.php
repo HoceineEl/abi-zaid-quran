@@ -10,6 +10,7 @@ use App\Filament\Association\Resources\GroupResource\RelationManagers\Memorizers
 use App\Filament\Association\Resources\GroupResource\RelationManagers\PaymentsRelationManager;
 use App\Filament\Association\Resources\GroupResource\RelationManagers\AttendanceTeacherRelationManager;
 use App\Models\MemoGroup;
+use App\Exports\GroupStudentsPaymentExport;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\ToggleButtons;
@@ -19,8 +20,10 @@ use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Tables\Actions\Action;
 use Illuminate\Database\Eloquent\Builder;
 use App\Models\User;
+use Maatwebsite\Excel\Facades\Excel;
 
 class GroupResource extends Resource
 {
@@ -110,6 +113,39 @@ class GroupResource extends Resource
                 Tables\Actions\EditAction::make()
                     ->hidden(fn() => auth()->user()->isTeacher()),
                 Tables\Actions\ViewAction::make(),
+                Action::make('export_students_payment')
+                    ->label('تصدير Excel')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('success')
+                    ->hidden(fn() => auth()->user()->isTeacher())
+                    ->form([
+                        Select::make('selected_month')
+                            ->label('الشهر المختار')
+                            ->options([
+                                '01' => 'يناير',
+                                '02' => 'فبراير',
+                                '03' => 'مارس',
+                                '04' => 'أبريل',
+                                '05' => 'مايو',
+                                '06' => 'يونيو',
+                                '07' => 'يوليو',
+                                '08' => 'أغسطس',
+                                '09' => 'سبتمبر',
+                                '10' => 'أكتوبر',
+                                '11' => 'نوفمبر',
+                                '12' => 'ديسمبر',
+                            ])
+                            ->default('09') // September
+                            ->required(),
+                    ])
+                    ->action(function (MemoGroup $record, array $data) {
+                        $fileName = 'قائمة_طلاب_' . str_replace(' ', '_', $record->name) . '_' . now()->format('Y-m-d') . '.xlsx';
+                        
+                        return Excel::download(
+                            new GroupStudentsPaymentExport($record, $data['selected_month']),
+                            $fileName
+                        );
+                    }),
             ])
             ->recordUrl(fn($record) => GroupResource::getUrl('view', ['record' => $record->id]))
             ->bulkActions([

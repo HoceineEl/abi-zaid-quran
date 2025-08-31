@@ -10,6 +10,11 @@ class Payment extends Model
 {
     use HasFactory;
 
+
+    protected $casts = [
+        'payment_date' => 'date',
+    ];
+
     public function memorizer(): BelongsTo
     {
         return $this->belongsTo(Memorizer::class);
