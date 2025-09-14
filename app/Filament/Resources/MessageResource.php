@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\MessageResource\Pages;
+use App\Models\Group;
 use App\Models\GroupMessageTemplate;
 use App\Models\Message;
 use Filament\Forms;
@@ -11,6 +12,7 @@ use Filament\Forms\Components\Section;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -76,6 +78,14 @@ class MessageResource extends Resource
                 Tables\Columns\TextColumn::make('content')
                     ->label('محتوى الرسالة')
                     ->limit(50),
+                Tables\Columns\TextColumn::make('groups.name')
+                    ->label('المجموعات المرتبطة')
+                    ->badge()
+                    ->color('primary')
+                    ->listWithLineBreaks()
+                    ->limitList(3)
+                    ->expandableLimitedList()
+                    ->default('لا يوجد'),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('تاريخ الإنشاء')
                     ->dateTime()
@@ -88,6 +98,52 @@ class MessageResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->actions([
+                Tables\Actions\Action::make('attach_to_group')
+                    ->label('ربط بالمجموعات')
+                    ->icon('heroicon-o-link')
+                    ->color('primary')
+                    ->form([
+                        Forms\Components\Select::make('groups')
+                            ->label('المجموعات')
+                            ->options(Group::pluck('name', 'id'))
+                            ->multiple()
+                            ->searchable()
+                            ->required()
+                            ->helperText('اختر المجموعات التي تريد ربط هذا القالب بها'),
+                        Forms\Components\Toggle::make('set_as_default')
+                            ->label('تعيين كقالب افتراضي')
+                            ->default(true)
+                            ->helperText('سيتم تعيين هذا القالب كافتراضي للمجموعات المحددة')
+                    ])
+                    ->action(function (GroupMessageTemplate $record, array $data) {
+                        foreach ($data['groups'] as $groupId) {
+                            $group = Group::find($groupId);
+                            if ($group) {
+                                if ($data['set_as_default']) {
+                                    // Set this template as default by syncing and replacing any existing defaults
+                                    $group->messageTemplates()->sync([
+                                        $record->id => ['is_default' => true]
+                                    ]);
+                                } else {
+                                    // Just attach without making it default
+                                    $group->messageTemplates()->syncWithoutDetaching([
+                                        $record->id => ['is_default' => false]
+                                    ]);
+                                }
+                            }
+                        }
+
+                        $groupCount = count($data['groups']);
+                        $message = $data['set_as_default']
+                            ? "تم ربط القالب وتعيينه كافتراضي لـ {$groupCount} مجموعة"
+                            : "تم ربط القالب لـ {$groupCount} مجموعة";
+
+                        Notification::make()
+                            ->title('تم ربط القالب بنجاح')
+                            ->body($message)
+                            ->success()
+                            ->send();
+                    }),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
             ])

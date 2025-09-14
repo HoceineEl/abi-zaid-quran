@@ -59,11 +59,11 @@ class DailyAttendanceSummaryExport implements FromCollection, WithHeadings, Shou
                 // Set right-to-left direction for Arabic text
                 $sheet->setRightToLeft(true);
 
-                // Add translated date as a heading
-                $todayDate = Carbon::now()->locale('ar')->translatedFormat('l, j F Y');
+                // Add translated date as a heading using the selected date
+                $selectedDate = Carbon::parse($this->date)->locale('ar')->translatedFormat('l, j F Y');
                 $sheet->insertNewRowBefore(1, 1);
                 $sheet->mergeCells('A1:C1');
-                $sheet->setCellValue('A1', 'تقرير الحضور ليوم: ' . $todayDate);
+                $sheet->setCellValue('A1', 'تقرير الحضور ليوم: ' . $selectedDate);
 
                 // Style the heading
                 $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);

@@ -108,9 +108,9 @@ class GroupResource extends Resource
                     ->afterStateUpdated(function ($state, Group $record) {
                         if ($state && $record->exists) {
                             // Sync the selected template and make it default
-                            $record->messageTemplates()->sync([
+                                    $record->messageTemplates()->sync([
                                 $state => ['is_default' => true]
-                            ]);
+                                    ]);
                         }
                     })
                     ->default(function (?Group $record) {
@@ -281,9 +281,19 @@ class GroupResource extends Resource
                     ->icon('heroicon-o-document-arrow-down')
                     ->color('success')
                     // ->visible(fn() => auth()->user()->role === 'admin')
-                    ->action(function () {
-                        $today = today()->toDateString();
-                        return Excel::download(new DailyAttendanceSummaryExport($today), 'daily-attendance-summary-' . $today . '.xlsx');
+                    ->form([
+                        Forms\Components\DatePicker::make('export_date')
+                            ->label('التاريخ')
+                            ->default(today())
+                            ->required()
+                            ->helperText('اختر التاريخ المراد تصدير موجز الحضور له')
+                            ->displayFormat('Y-m-d')
+                            ->format('Y-m-d')
+                            ->native(false)
+                    ])
+                    ->action(function (array $data) {
+                        $selectedDate = $data['export_date'];
+                        return Excel::download(new DailyAttendanceSummaryExport($selectedDate), 'daily-attendance-summary-' . $selectedDate . '.xlsx');
                     }),
                 ActionsAction::make('send_whatsapp')
                     ->label('أرسل رسالة للغائبين')
