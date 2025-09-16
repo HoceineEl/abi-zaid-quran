@@ -20,20 +20,20 @@ use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
-class SendBulkReminderToAllGroupsAction extends Action
+class SendMessageToAllGroupMembersAction extends Action
 {
     public static function getDefaultName(): ?string
     {
-        return 'send_bulk_reminder_to_all_groups';
+        return 'send_message_to_all_group_members';
     }
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->label('تذكير')
-            ->icon('heroicon-o-speaker-wave')
-            ->color('warning')
+        $this->label('رسالة عامة')
+            ->icon('heroicon-o-megaphone')
+            ->color('primary')
             ->form([
                 Forms\Components\Select::make('template_source')
                     ->label('مصدر القالب')
@@ -73,7 +73,7 @@ class SendBulkReminderToAllGroupsAction extends Action
 
                 Textarea::make('message')
                     ->hint('يمكنك استخدام المتغيرات التالية: {student_name}, {group_name}, {curr_date}, {last_presence}')
-                    ->default('السلام عليكم ورحمة الله وبركاته\n{student_name}، نذكركم بالواجب المقرر اليوم في مجموعة {group_name}، لعل المانع خير.\nبارك الله فيكم وزادكم حرصا.')
+                    ->default('السلام عليكم ورحمة الله وبركاته\n{student_name}، رسالة عامة من مجموعة {group_name}.\nبارك الله فيكم وزادكم حرصا.')
                     ->label('الرسالة')
                     ->required()
                     ->rows(4)
@@ -86,11 +86,11 @@ class SendBulkReminderToAllGroupsAction extends Action
                         $groupCount = $userGroups->count();
                         $totalStudents = $userGroups->sum(fn($group) => $group->students->count());
 
-                        return "سيتم إرسال التذكيرات لـ {$groupCount} مجموعة تحتوي على {$totalStudents} طالب إجمالي.";
+                        return "سيتم إرسال الرسائل لجميع الطلاب في {$groupCount} مجموعة ({$totalStudents} طالب إجمالي).";
                     }),
             ])
             ->action(function (array $data) {
-                $this->sendBulkReminderToAllGroups($data);
+                $this->sendMessageToAllGroupMembers($data);
             });
     }
 
@@ -105,11 +105,10 @@ class SendBulkReminderToAllGroupsAction extends Action
     }
 
     /**
-     * Send bulk reminder messages to all unmarked students across all user's groups
+     * Send messages to all students across all user's groups
      */
-    protected function sendBulkReminderToAllGroups(array $data): void
+    protected function sendMessageToAllGroupMembers(array $data): void
     {
-        $today = now()->format('Y-m-d');
         $userGroups = $this->getUserGroups();
 
         if ($userGroups->isEmpty()) {
@@ -121,47 +120,45 @@ class SendBulkReminderToAllGroupsAction extends Action
             return;
         }
 
-        $totalUnmarkedStudents = 0;
+        $totalStudents = 0;
         $groupsProcessed = 0;
 
-        // Collect all unmarked students from all groups
-        $allUnmarkedStudents = collect();
+        // Collect all students from all groups
+        $allStudentsWithGroups = collect();
 
         foreach ($userGroups as $group) {
-            $unmarkedStudents = $group->students->filter(function ($student) use ($today) {
-                return $student->progresses->where('date', $today)->count() == 0;
-            });
+            $students = $group->students;
 
-            if ($unmarkedStudents->isNotEmpty()) {
-                foreach ($unmarkedStudents as $student) {
-                    $allUnmarkedStudents->push([
+            if ($students->isNotEmpty()) {
+                foreach ($students as $student) {
+                    $allStudentsWithGroups->push([
                         'student' => $student,
                         'group' => $group,
                     ]);
                 }
-                $totalUnmarkedStudents += $unmarkedStudents->count();
+                $totalStudents += $students->count();
                 $groupsProcessed++;
             }
         }
 
-        if ($totalUnmarkedStudents === 0) {
+        if ($totalStudents === 0) {
             Notification::make()
-                ->title('جميع الطلاب مسجلين')
-                ->body('جميع الطلاب في جميع المجموعات لديهم سجلات حضور أو غياب لليوم')
+                ->title('لا يوجد طلاب')
+                ->body('لا يوجد طلاب في المجموعات التي تديرها')
                 ->info()
                 ->send();
             return;
         }
 
         if ($data['use_whatsapp_web'] ?? false) {
-            $this->sendBulkReminderViaWhatsAppWeb($allUnmarkedStudents, $data);
+            $this->sendMessageViaWhatsAppWeb($allStudentsWithGroups, $data);
         } else {
-            $this->sendBulkReminderViaLegacyWhatsApp($allUnmarkedStudents, $data);
+            $this->sendMessageViaLegacyWhatsApp($allStudentsWithGroups, $data);
         }
 
         Notification::make()
-            ->title('تمت معالجة التذكيرات')
-            ->body("تمت معالجة {$totalUnmarkedStudents} طالب من {$groupsProcessed} مجموعة")
+            ->title('تمت معالجة الرسائل العامة')
+            ->body("تمت معالجة {$totalStudents} طالب من {$groupsProcessed} مجموعة")
             ->success()
             ->send();
     }
@@ -184,27 +181,27 @@ class SendBulkReminderToAllGroupsAction extends Action
                     return $firstTemplate->content;
                 }
                 // Fallback to default message
-                return 'السلام عليكم ورحمة الله وبركاته\n{student_name}، نذكركم بالواجب المقرر اليوم في مجموعة {group_name}، لعل المانع خير.\nبارك الله فيكم وزادكم حرصا.';
+                return 'السلام عليكم ورحمة الله وبركاته\n{student_name}، رسالة عامة من مجموعة {group_name}.\nبارك الله فيكم وزادكم حرصا.';
 
             case 'global_template':
                 $template = GroupMessageTemplate::find($data['global_template_id']);
                 if ($template) {
                     return $template->content;
                 }
-                return 'السلام عليكم ورحمة الله وبركاته\n{student_name}، نذكركم بالواجب المقرر اليوم في مجموعة {group_name}، لعل المانع خير.\nبارك الله فيكم وزادكم حرصا.';
+                return 'السلام عليكم ورحمة الله وبركاته\n{student_name}، رسالة عامة من مجموعة {group_name}.\nبارك الله فيكم وزادكم حرصا.';
 
             case 'custom':
                 return $data['message'];
 
             default:
-                return 'السلام عليكم ورحمة الله وبركاته\n{student_name}، نذكركم بالواجب المقرر اليوم في مجموعة {group_name}، لعل المانع خير.\nبارك الله فيكم وزادكم حرصا.';
+                return 'السلام عليكم ورحمة الله وبركاته\n{student_name}، رسالة عامة من مجموعة {group_name}.\nبارك الله فيكم وزادكم حرصا.';
         }
     }
 
     /**
-     * Send bulk reminder messages via WhatsApp Web (new service with defer)
+     * Send messages via WhatsApp Web (new service with defer)
      */
-    protected function sendBulkReminderViaWhatsAppWeb(Collection $studentsWithGroups, array $data): void
+    protected function sendMessageViaWhatsAppWeb(Collection $studentsWithGroups, array $data): void
     {
         // Get the current user's active session
         $session = WhatsAppSession::getUserSession(auth()->id());
@@ -234,7 +231,7 @@ class SendBulkReminderToAllGroupsAction extends Action
             $phoneNumber = $this->cleanPhoneNumber($student->phone);
 
             if (!$phoneNumber) {
-                Log::warning('Invalid phone number for student in bulk reminder', [
+                Log::warning('Invalid phone number for student in group message', [
                     'student_id' => $student->id,
                     'student_name' => $student->name,
                     'group_name' => $group->name,
@@ -271,7 +268,7 @@ class SendBulkReminderToAllGroupsAction extends Action
                             'sent_at' => now(),
                         ]);
 
-                        Log::info('Bulk WhatsApp reminder sent to unmarked student', [
+                        Log::info('Group message sent to student', [
                             'student_id' => $student->id,
                             'student_name' => $student->name,
                             'group_name' => $group->name,
@@ -286,7 +283,7 @@ class SendBulkReminderToAllGroupsAction extends Action
                             'error_message' => $e->getMessage(),
                         ]);
 
-                        Log::error('Failed to send bulk WhatsApp reminder to unmarked student', [
+                        Log::error('Failed to send group message to student', [
                             'student_id' => $student->id,
                             'student_name' => $student->name,
                             'group_name' => $group->name,
@@ -299,7 +296,7 @@ class SendBulkReminderToAllGroupsAction extends Action
                 $messagesQueued++;
 
             } catch (\Exception $e) {
-                Log::error('Failed to queue bulk WhatsApp reminder for unmarked student', [
+                Log::error('Failed to queue group message for student', [
                     'student_id' => $student->id,
                     'student_name' => $student->name,
                     'group_name' => $group->name,
@@ -309,16 +306,16 @@ class SendBulkReminderToAllGroupsAction extends Action
         }
 
         Notification::make()
-            ->title('تم جدولة التذكيرات الجماعية للإرسال!')
-            ->body("تم جدولة {$messagesQueued} تذكير لإرسالها للطلاب غير المسجلين في جميع المجموعات")
+            ->title('تم جدولة الرسائل العامة للإرسال!')
+            ->body("تم جدولة {$messagesQueued} رسالة لإرسالها لجميع طلاب المجموعات")
             ->success()
             ->send();
     }
 
     /**
-     * Send bulk reminder messages via legacy WhatsApp service (for compatibility)
+     * Send messages via legacy WhatsApp service (for compatibility)
      */
-    protected function sendBulkReminderViaLegacyWhatsApp(Collection $studentsWithGroups, array $data): void
+    protected function sendMessageViaLegacyWhatsApp(Collection $studentsWithGroups, array $data): void
     {
         foreach ($studentsWithGroups as $item) {
             $student = $item['student'];
@@ -332,8 +329,8 @@ class SendBulkReminderToAllGroupsAction extends Action
         }
 
         Notification::make()
-            ->title('تم إرسال التذكيرات الجماعية!')
-            ->body("تم إرسال التذكيرات لـ {$studentsWithGroups->count()} طالب غير مسجل في جميع المجموعات")
+            ->title('تم إرسال الرسائل العامة!')
+            ->body("تم إرسال الرسائل لـ {$studentsWithGroups->count()} طالب في جميع المجموعات")
             ->success()
             ->send();
     }

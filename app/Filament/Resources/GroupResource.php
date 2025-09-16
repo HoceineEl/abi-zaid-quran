@@ -6,6 +6,7 @@ use App\Classes\Core;
 use App\Enums\MessageSubmissionType;
 use App\Exports\DailyAttendanceSummaryExport;
 use App\Filament\Actions\SendBulkReminderToAllGroupsAction;
+use App\Filament\Actions\SendMessageToAllGroupMembersAction;
 use App\Filament\Resources\GroupResource\Pages;
 use App\Filament\Resources\GroupResource\RelationManagers\ManagersRelationManager;
 use App\Filament\Resources\GroupResource\RelationManagers\ProgressesRelationManager;
@@ -278,6 +279,7 @@ class GroupResource extends Resource
             ])
             ->headerActions([
                 SendBulkReminderToAllGroupsAction::make(),
+                SendMessageToAllGroupMembersAction::make(),
 
                 ActionsAction::make('export_daily_attendance_summary')
                     ->label('تصدير موجز الحضور اليومي')
