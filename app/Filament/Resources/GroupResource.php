@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Classes\Core;
 use App\Enums\MessageSubmissionType;
 use App\Exports\DailyAttendanceSummaryExport;
+use App\Filament\Actions\SendBulkReminderToAllGroupsAction;
 use App\Filament\Resources\GroupResource\Pages;
 use App\Filament\Resources\GroupResource\RelationManagers\ManagersRelationManager;
 use App\Filament\Resources\GroupResource\RelationManagers\ProgressesRelationManager;
@@ -276,6 +277,8 @@ class GroupResource extends Resource
                 ])
             ])
             ->headerActions([
+                SendBulkReminderToAllGroupsAction::make(),
+
                 ActionsAction::make('export_daily_attendance_summary')
                     ->label('تصدير موجز الحضور اليومي')
                     ->icon('heroicon-o-document-arrow-down')
@@ -294,73 +297,6 @@ class GroupResource extends Resource
                     ->action(function (array $data) {
                         $selectedDate = $data['export_date'];
                         return Excel::download(new DailyAttendanceSummaryExport($selectedDate), 'daily-attendance-summary-' . $selectedDate . '.xlsx');
-                    }),
-                ActionsAction::make('send_whatsapp')
-                    ->label('أرسل رسالة للغائبين')
-                    ->icon('heroicon-o-users')
-                    ->visible(fn() => auth()->user()->role === 'admin')
-                    ->action(function () {
-                        Core::sendMessageToAbsence();
-                    }),
-                ActionsAction::make('send_to_specific')
-                    ->color('info')
-                    ->icon('heroicon-o-cube')
-                    ->visible(fn() => auth()->user()->role === 'admin')
-                    ->label('أرسل لطلبة محددين')
-                    ->form([
-                        Select::make('students')
-                            ->label('الطلبة')
-                            ->options(Student::pluck('name', 'id')->toArray())
-                            ->multiple()
-                            ->required(),
-                        ToggleButtons::make('message_type')
-                            ->label('نوع الرسالة')
-                            ->options([
-                                'message' => 'قالب رسالة',
-                                'custom' => 'رسالة مخصصة',
-                            ])
-                            ->reactive()
-                            ->default('message')
-                            ->inline(),
-                        Select::make('message')
-                            ->label('الرسالة')
-                            ->native()
-                            ->hidden(fn(Get $get) => $get('message_type') === 'custom')
-                            ->options(Message::pluck('name', 'id')->toArray())
-                            ->hintActions([
-                                FormAction::make('create')
-                                    ->label('إنشاء قالب')
-                                    ->slideOver()
-                                    ->modalWidth('4xl')
-                                    ->icon('heroicon-o-plus-circle')
-                                    ->form([
-                                        TextInput::make('name')
-                                            ->label('اسم القالب')
-                                            ->required(),
-                                        Textarea::make('content')
-                                            ->label('الرسالة')
-                                            ->rows(10)
-                                            ->required(),
-                                    ])
-                                    ->action(function (array $data) {
-                                        Message::create($data);
-
-                                        Notification::make()
-                                            ->title('تم إنشاء قالب الرسالة')
-                                            ->color('success')
-                                            ->icon('heroicon-o-check-circle')
-                                            ->send();
-                                    }),
-                            ])
-                            ->required(),
-                        Textarea::make('message')
-                            ->label('الرسالة')
-                            ->hidden(fn(Get $get) => $get('message_type') !== 'custom')
-                            ->rows(10)
-                            ->required(),
-                    ])
-                    ->action(function (array $data) {
-                        Core::sendMessageToSpecific($data);
                     }),
             ])
             ->modifyQueryUsing(function ($query) {

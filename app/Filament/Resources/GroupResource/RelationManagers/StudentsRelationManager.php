@@ -5,6 +5,9 @@ namespace App\Filament\Resources\GroupResource\RelationManagers;
 use App\Classes\Core;
 use App\Enums\MessageSubmissionType;
 use App\Enums\MessageResponseStatus;
+use App\Filament\Actions\SendAbsentStudentsMessageAction;
+use App\Filament\Actions\SendReminderToUnmarkedStudentsAction;
+use App\Filament\Actions\SendUnmarkedStudentsMessageAction;
 use App\Helpers\ProgressFormHelper;
 use App\Models\Group;
 use App\Models\GroupMessageTemplate;
@@ -214,6 +217,8 @@ class StudentsRelationManager extends RelationManager
                             ->success()
                             ->send();
                     }),
+                     SendReminderToUnmarkedStudentsAction::make()
+                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user())),
                 ActionsActionGroup::make([
                     Action::make('copy_students_from_other_groups')
                         ->label('نسخ الطلاب من مجموعات أخرى')
@@ -278,116 +283,12 @@ class StudentsRelationManager extends RelationManager
                         ->slideOver(),
 
 
-                    Action::make('send_msg_to_others')
-                        ->label('إرسال رسالة تذكير للبقية')
-                        ->icon('heroicon-o-chat-bubble-oval-left')
-                        ->color('warning')
-                        ->form([
-                            Forms\Components\Select::make('template_id')
-                                ->label('اختر قالب الرسالة')
-                                ->options(function () {
-                                    return $this->ownerRecord->messageTemplates()->pluck('name', 'id')
-                                        ->prepend('رسالة مخصصة', 'custom');
-                                })
-                                ->default(function () {
-                                    $defaultTemplate = $this->ownerRecord->messageTemplates()->wherePivot('is_default', true)->first();
-                                    return $defaultTemplate ? $defaultTemplate->id : 'custom';
-                                })
-                                ->reactive(),
-                            Toggle::make('with_reason')
-                                ->label('غياب بعذر')
-                                ->reactive()
-                                ->default(false),
-                            Textarea::make('message')
-                                ->hint('يمكنك استخدام المتغيرات التالية: {{student_name}}, {{group_name}}, {{curr_date}}, {{prefix}}, {{pronoun}}, {{verb}}')
-                                ->default('لم ترسل الواجب المقرر اليوم، لعل المانع خير.')
-                                ->label('الرسالة')
-                                ->required()
-                                ->hidden(fn(Get $get) => $get('template_id') !== 'custom'),
-                        ])
-                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
-                        ->action(function (array $data) {
-                            $selectedDate = $this->tableFilters['date']['value'] ?? now()->format('Y-m-d');
+                    SendUnmarkedStudentsMessageAction::make()
+                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user())),
+                    SendAbsentStudentsMessageAction::make()
+                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user())),
 
-                            // Get the message content
-                            $messageTemplate = '';
-                            if ($data['template_id'] === 'custom') {
-                                $messageTemplate = $data['message'];
-                            } else {
-                                $template = GroupMessageTemplate::find($data['template_id']);
-                                if ($template) {
-                                    $messageTemplate = $template->content;
-                                } else {
-                                    $messageTemplate = $data['message'] ?? 'لم ترسل الواجب المقرر اليوم، لعل المانع خير.';
-                                }
-                            }
 
-                            $this->ownerRecord->students->filter(function ($student) use ($selectedDate) {
-                                return $student->progresses->where('date', $selectedDate)->count() == 0;
-                            })->each(function ($student) use ($selectedDate, $messageTemplate, $data) {
-                                $student->progresses()->create([
-                                    'date' => $selectedDate,
-                                    'status' => 'absent',
-                                    'with_reason' => $data['with_reason'] ?? false,
-                                    'page_id' => null,
-                                    'ayah_id' => null,
-                                    'note' => 'تم تسجيل الغياب تلقائيا',
-                                ]);
-                                if ($selectedDate == now()->format('Y-m-d')) {
-                                    $processedMessage = Core::processMessageTemplate($messageTemplate, $student, $this->ownerRecord);
-                                    Core::sendSpecifMessageToStudent($student, $processedMessage);
-                                }
-                            });
-                        }),
-                    Action::make('send_msg_to_absent')
-                        ->label('إرسال رسالة تذكير للغائبين')
-                        ->icon('heroicon-o-chat-bubble-oval-left')
-                        ->color('danger')
-                        ->form([
-                            Forms\Components\Select::make('template_id')
-                                ->label('اختر قالب الرسالة')
-                                ->options(function () {
-                                    return $this->ownerRecord->messageTemplates()->pluck('name', 'id')
-                                        ->prepend('رسالة مخصصة', 'custom');
-                                })
-                                ->default(function () {
-                                    $defaultTemplate = $this->ownerRecord->messageTemplates()->wherePivot('is_default', true)->first();
-                                    return $defaultTemplate ? $defaultTemplate->id : 'custom';
-                                })
-                                ->reactive(),
-                            Textarea::make('message')
-                                ->hint('يمكنك استخدام المتغيرات التالية: {{student_name}}, {{group_name}}, {{curr_date}}, {{prefix}}, {{pronoun}}, {{verb}}')
-                                ->default('لم ترسلوا الواجب المقرر اليوم، لعل المانع خير.')
-                                ->label('الرسالة')
-                                ->required()
-                                ->hidden(fn(Get $get) => $get('template_id') !== 'custom'),
-                        ])
-                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
-                        ->action(function (array $data) {
-                            $selectedDate = $this->tableFilters['date']['value'] ?? now()->format('Y-m-d');
-
-                            // Get the message content
-                            $messageTemplate = '';
-                            if ($data['template_id'] === 'custom') {
-                                $messageTemplate = $data['message'];
-                            } else {
-                                $template = GroupMessageTemplate::find($data['template_id']);
-                                if ($template) {
-                                    $messageTemplate = $template->content;
-                                } else {
-                                    $messageTemplate = $data['message'] ?? 'لم ترسل الواجب المقرر اليوم، لعل المانع خير.';
-                                }
-                            }
-
-                            $this->ownerRecord->students->filter(function ($student) use ($selectedDate) {
-                                return $student->progresses->where('date', $selectedDate)->where('status', 'absent')->count() > 0;
-                            })->each(function ($student) use ($selectedDate, $messageTemplate) {
-                                if ($selectedDate == now()->format('Y-m-d')) {
-                                    $processedMessage = Core::processMessageTemplate($messageTemplate, $student, $this->ownerRecord);
-                                    Core::sendSpecifMessageToStudent($student, $processedMessage);
-                                }
-                            });
-                        }),
                 ]),
                 Action::make('export_table')
                     ->label('تصدير كشف الحضور')
@@ -1297,7 +1198,7 @@ MSG;
 
     /**
      * Generate VCF content for selected students
-     * 
+     *
      * @param \Illuminate\Support\Collection $students Collection of students
      * @return string VCF formatted content
      */
@@ -1345,7 +1246,7 @@ MSG;
 
     /**
      * Get students sorted by attendance status and remark
-     * 
+     *
      * @param \App\Models\Group $group The group to get students from
      * @param string|null $date The date to check attendance for (defaults to today)
      * @return \Illuminate\Support\Collection Sorted collection of students
@@ -1402,4 +1303,5 @@ MSG;
         // Combine the sorted collections
         return $sortedPresent->concat($sortedAbsent);
     }
+
 }
