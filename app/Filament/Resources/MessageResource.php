@@ -16,6 +16,9 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Tables\Actions\ActionGroup;
+use Filament\Infolists\Components\Section as InfolistSection;
+use Filament\Infolists\Components\TextEntry;
 
 class MessageResource extends Resource
 {
@@ -65,6 +68,29 @@ class MessageResource extends Resource
                             ->columnSpanFull(),
                     ])
                     ->columns(2),
+                Section::make('attached_groups')
+                    ->label('المجموعات المرتبطة')
+                    ->description('المجموعات التي تم ربط هذا القالب بها')
+                    ->schema([
+                        Forms\Components\Placeholder::make('groups_display')
+                            ->label('المجموعات المرتبطة')
+                            ->content(function ($record) {
+                                if (!$record || !$record->groups()->exists()) {
+                                    return 'لا توجد مجموعات مرتبطة';
+                                }
+
+                                $groups = $record->groups()->get();
+                                $groupNames = $groups->map(function ($group) {
+                                    $isDefault = $group->pivot->is_default ? ' (افتراضي)' : '';
+                                    return $group->name . $isDefault;
+                                })->implode('، ');
+
+                                return $groupNames;
+                            })
+                            ->columnSpanFull(),
+                    ])
+                    ->visible(fn ($record) => $record && $record->exists)
+                    ->columns(1),
             ]);
     }
 
@@ -98,53 +124,109 @@ class MessageResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->actions([
-                Tables\Actions\Action::make('attach_to_group')
-                    ->label('ربط بالمجموعات')
-                    ->icon('heroicon-o-link')
-                    ->color('primary')
-                    ->form([
-                        Forms\Components\Select::make('groups')
-                            ->label('المجموعات')
-                            ->options(Group::pluck('name', 'id'))
-                            ->multiple()
-                            ->searchable()
-                            ->required()
-                            ->helperText('اختر المجموعات التي تريد ربط هذا القالب بها'),
-                        Forms\Components\Toggle::make('set_as_default')
-                            ->label('تعيين كقالب افتراضي')
-                            ->default(true)
-                            ->helperText('سيتم تعيين هذا القالب كافتراضي للمجموعات المحددة')
-                    ])
-                    ->action(function (GroupMessageTemplate $record, array $data) {
-                        foreach ($data['groups'] as $groupId) {
-                            $group = Group::find($groupId);
-                            if ($group) {
-                                if ($data['set_as_default']) {
-                                    // Set this template as default by syncing and replacing any existing defaults
-                                    $group->messageTemplates()->sync([
-                                        $record->id => ['is_default' => true]
-                                    ]);
-                                } else {
-                                    // Just attach without making it default
-                                    $group->messageTemplates()->syncWithoutDetaching([
-                                        $record->id => ['is_default' => false]
-                                    ]);
+                Tables\Actions\EditAction::make(),
+                ActionGroup::make([
+                    Tables\Actions\Action::make('view_groups')
+                        ->label('عرض المجموعات المرتبطة')
+                        ->icon('heroicon-o-eye')
+                        ->color('info')
+                        ->modalHeading('المجموعات المرتبطة')
+                        ->modalWidth('xl')
+                        ->infolist([
+                            InfolistSection::make('المجموعات المرتبطة')
+                                ->schema([
+                                    TextEntry::make('groups.name')
+                                        ->label('المجموعات')
+                                        ->listWithLineBreaks()
+                                        ->badge()
+                                        ->color('primary')
+                                        ->icon('heroicon-o-user-group'),
+                                ])
+                                ->columns(1),
+                        ]),
+                    Tables\Actions\Action::make('attach_to_group')
+                        ->label('ربط بمجموعات')
+                        ->icon('heroicon-o-link')
+                        ->color('success')
+                        ->form(fn(GroupMessageTemplate $record) => [
+                            Forms\Components\Select::make('groups')
+                                ->label('المجموعات')
+                                ->options(
+                                    Group::query()
+                                        ->whereDoesntHave('messageTemplates', fn($q) => $q->where('group_message_templates.id', $record->id))
+                                        ->pluck('name', 'id')
+                                        ->toArray()
+                                )
+                                ->multiple()
+                                ->searchable()
+                                ->required()
+                                ->helperText('اختر المجموعات التي تريد ربط هذا القالب بها'),
+                            Forms\Components\Toggle::make('set_as_default')
+                                ->label('تعيين كقالب افتراضي')
+                                ->default(false)
+                                ->helperText('سيتم تعيين هذا القالب كافتراضي للمجموعات المحددة')
+                        ])
+                        ->action(function (GroupMessageTemplate $record, array $data) {
+                            foreach ($data['groups'] as $groupId) {
+                                $group = Group::find($groupId);
+                                if ($group) {
+                                    if ($data['set_as_default']) {
+                                        // First unset any existing default templates for this group
+                                        $group->messageTemplates()->updateExistingPivot(
+                                            $group->messageTemplates()->wherePivot('is_default', true)->pluck('group_message_templates.id'),
+                                            ['is_default' => false]
+                                        );
+                                        // Set this template as default
+                                        $group->messageTemplates()->syncWithoutDetaching([
+                                            $record->id => ['is_default' => true]
+                                        ]);
+                                    } else {
+                                        // Just attach without making it default
+                                        $group->messageTemplates()->syncWithoutDetaching([
+                                            $record->id => ['is_default' => false]
+                                        ]);
+                                    }
                                 }
                             }
-                        }
 
-                        $groupCount = count($data['groups']);
-                        $message = $data['set_as_default']
-                            ? "تم ربط القالب وتعيينه كافتراضي لـ {$groupCount} مجموعة"
-                            : "تم ربط القالب لـ {$groupCount} مجموعة";
+                            $groupCount = count($data['groups']);
+                            $message = $data['set_as_default']
+                                ? "تم ربط القالب وتعيينه كافتراضي لـ {$groupCount} مجموعة"
+                                : "تم ربط القالب لـ {$groupCount} مجموعة";
 
-                        Notification::make()
-                            ->title('تم ربط القالب بنجاح')
-                            ->body($message)
-                            ->success()
-                            ->send();
-                    }),
-                Tables\Actions\EditAction::make(),
+                            Notification::make()
+                                ->title('تم ربط القالب بنجاح')
+                                ->body($message)
+                                ->success()
+                                ->send();
+                        }),
+                    Tables\Actions\Action::make('detach_from_group')
+                        ->label('إزالة من مجموعات')
+                        ->icon('heroicon-o-minus-circle')
+                        ->color('danger')
+                        ->visible(fn(GroupMessageTemplate $record) => $record->groups()->exists())
+                        ->form(fn(GroupMessageTemplate $record) => [
+                            Forms\Components\Select::make('groups')
+                                ->label('المجموعات')
+                                ->options($record->groups()->pluck('name', 'id')->toArray())
+                                ->multiple()
+                                ->searchable()
+                                ->required()
+                                ->helperText('اختر المجموعات التي تريد إزالة هذا القالب منها'),
+                        ])
+                        ->action(function (GroupMessageTemplate $record, array $data) {
+                            $record->groups()->detach($data['groups']);
+
+                            $groupCount = count($data['groups']);
+                            Notification::make()
+                                ->title('تم إزالة القالب من المجموعات')
+                                ->body("تم إزالة القالب من {$groupCount} مجموعة")
+                                ->success()
+                                ->send();
+                        }),
+                ])
+                    ->label('إدارة المجموعات')
+                    ->icon('heroicon-o-user-group'),
                 Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
