@@ -55,7 +55,7 @@ class WhatsAppSession extends Model
         if ($sessionData !== null) {
             $updateData['session_data'] = $sessionData;
 
-            if (isset($sessionData['token']) && !empty($sessionData['token'])) {
+            if (isset($sessionData['token']) && ! empty($sessionData['token'])) {
                 Cache::put("whatsapp_token_{$this->id}", $sessionData['token'], now()->addHours(24));
             }
         }
@@ -91,7 +91,6 @@ class WhatsAppSession extends Model
         return $this->qr_code;
     }
 
-
     public function getSessionToken(): ?string
     {
         return $this->session_data['token'] ?? null;
@@ -120,5 +119,84 @@ class WhatsAppSession extends Model
             ->forUser($userId)
             ->active()
             ->first();
+    }
+
+    /**
+     * Delete session with proper cleanup
+     */
+    public function delete()
+    {
+        try {
+            DB::transaction(function () {
+                // Clear cached data
+                $this->clearCachedTokens();
+
+                // Try to logout from service
+                $this->tryLogoutFromService();
+
+                // Delete the session (cascade will handle message histories)
+                parent::delete();
+            });
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Failed to delete WhatsApp session', [
+                'session_id' => $this->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
+    /**
+     * Force delete session with cleanup (same as delete now due to cascade)
+     */
+    public function forceDeleteWithRelated(): bool
+    {
+        return $this->delete();
+    }
+
+    /**
+     * Try to logout from WhatsApp service
+     */
+    protected function tryLogoutFromService(): void
+    {
+        try {
+            if ($this->isConnected()) {
+                $whatsappService = app(\App\Services\WhatsAppService::class);
+                $whatsappService->logout($this);
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Failed to logout from WhatsApp service during deletion', [
+                'session_id' => $this->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Clear all cached tokens and data for this session
+     */
+    protected function clearCachedTokens(): void
+    {
+        Cache::forget("whatsapp_token_{$this->id}");
+        Cache::forget("last_poll_{$this->id}");
+        Cache::forget("poll_count_{$this->id}");
+        Cache::forget("error_count_{$this->id}");
+    }
+
+    /**
+     * Boot method to handle model events
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        // When a session is being deleted, clean up related data
+        static::deleting(function ($session) {
+            $session->clearCachedTokens();
+            $session->tryLogoutFromService();
+        });
     }
 }

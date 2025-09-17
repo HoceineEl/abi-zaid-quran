@@ -11,11 +11,10 @@ use App\Services\WhatsAppService;
 use Filament\Notifications\Notification;
 use Filament\Tables;
 use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Actions\Action as TableAction;
 use Filament\Tables\Columns\ViewColumn;
 use Filament\Tables\Enums\ActionsPosition;
 use Filament\Tables\Table;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
 class WhatsAppSessionResource extends BaseResource
@@ -57,7 +56,7 @@ class WhatsAppSessionResource extends BaseResource
                     self::getReloadQrAction(),
                     self::getShowQrCodeAction(),
                     self::getLogoutAction(),
-                    DeleteAction::make(),
+                    self::getDeleteSessionAction(),
                     SendMessageAction::make(),
                 ])
                     ->button()->color('primary')->size('xl'),
@@ -77,7 +76,7 @@ class WhatsAppSessionResource extends BaseResource
                     $result = $whatsappService->refreshQrCode($record);
 
                     // Check if we got a QR code
-                    if (!empty($record->fresh()->qr_code)) {
+                    if (! empty($record->fresh()->qr_code)) {
                         Notification::make()
                             ->title('تم تحديث رمز QR بنجاح')
                             ->success()
@@ -85,7 +84,7 @@ class WhatsAppSessionResource extends BaseResource
                     } else {
                         Notification::make()
                             ->title('تم التحديث')
-                            ->body('لا يوجد رمز QR متاح حالياً. الحالة: ' . $record->fresh()->status->getLabel())
+                            ->body('لا يوجد رمز QR متاح حالياً. الحالة: '.$record->fresh()->status->getLabel())
                             ->warning()
                             ->send();
                     }
@@ -117,7 +116,7 @@ class WhatsAppSessionResource extends BaseResource
                     \Log::info('Start session - existing session found', [
                         'session_id' => $record->id,
                         'api_status' => $apiStatus,
-                        'has_qr' => !empty($result['qr']),
+                        'has_qr' => ! empty($result['qr']),
                     ]);
 
                     if ($apiStatus === 'CONNECTED') {
@@ -158,7 +157,7 @@ class WhatsAppSessionResource extends BaseResource
                         \Log::info('New session created', [
                             'session_id' => $record->id,
                             'status' => $result['status'] ?? 'unknown',
-                            'has_qr' => !empty($result['qr']),
+                            'has_qr' => ! empty($result['qr']),
                         ]);
 
                         Notification::make()
@@ -188,19 +187,17 @@ class WhatsAppSessionResource extends BaseResource
             ->label('إنشاء جلسة')
             ->icon('heroicon-o-plus')
             ->color('success')
-            ->visible(fn() => !self::hasUserSession())
+            ->visible(fn () => ! self::hasUserSession())
             ->form([
                 \Filament\Forms\Components\TextInput::make('name')
                     ->label('اسم الجلسة')
                     ->required()
-                    ->default(fn() => 'جلسة واتساب - ' . auth()->user()->name)
+                    ->default(fn () => 'جلسة واتساب - '.auth()->user()->name)
                     ->maxLength(255),
             ])
             ->action(function (array $data) {
-                // Delete existing session for this user first
-                WhatsAppSession::query()
-                    ->forUser(auth()->id())
-                    ->delete();
+                // Delete all existing sessions for this user with cascade
+                WhatsAppSession::where('user_id', auth()->id())->delete();
 
                 $session = WhatsAppSession::create([
                     'user_id' => auth()->id(),
@@ -343,6 +340,40 @@ class WhatsAppSessionResource extends BaseResource
                     Notification::make()
                         ->title('فشل في تسجيل الخروج')
                         ->body($e->getMessage())
+                        ->danger()
+                        ->send();
+                }
+            });
+    }
+
+    public static function getDeleteSessionAction(): TableAction
+    {
+        return TableAction::make('delete_session')
+            ->label('حذف الجلسة')
+            ->icon('heroicon-o-trash')
+            ->color('danger')
+            ->requiresConfirmation()
+            ->modalHeading('حذف جلسة واتساب')
+            ->modalDescription('هل أنت متأكد من رغبتك في حذف هذه الجلسة؟ سيتم حذف الجلسة وجميع الرسائل المرتبطة بها.')
+            ->modalSubmitActionLabel('نعم، احذف الجلسة')
+            ->modalCancelActionLabel('إلغاء')
+            ->action(function (WhatsAppSession $record) {
+                try {
+                    $success = $record->delete();
+
+                    if ($success) {
+                        Notification::make()
+                            ->title('تم حذف الجلسة بنجاح')
+                            ->body('تم حذف الجلسة وجميع الرسائل المرتبطة بها')
+                            ->success()
+                            ->send();
+                    } else {
+                        throw new \Exception('فشل في حذف الجلسة');
+                    }
+                } catch (\Exception $e) {
+                    Notification::make()
+                        ->title('فشل في حذف الجلسة')
+                        ->body('حدث خطأ أثناء حذف الجلسة: '.$e->getMessage())
                         ->danger()
                         ->send();
                 }

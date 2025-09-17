@@ -29,6 +29,11 @@ class ListWhatsAppSessions extends ListRecords
             return;
         }
 
+        // Smart polling: skip if session is stable (connected/disconnected) and last check was recent
+        if ($this->shouldSkipPolling($record)) {
+            return;
+        }
+
         try {
             $whatsappService = app(WhatsAppService::class);
             $result = $whatsappService->getSessionStatus($record->id);
@@ -41,6 +46,14 @@ class ListWhatsAppSessions extends ListRecords
             // Update record based on status
             if ($apiStatus === 'CONNECTED') {
                 $record->markAsConnected($result);
+
+                // Send notification for successful connection
+                \Filament\Notifications\Notification::make()
+                    ->title('تم الاتصال بنجاح! 🎉')
+                    ->body('جلسة واتساب متصلة وجاهزة للاستخدام')
+                    ->success()
+                    ->duration(5000)
+                    ->send();
             } else {
                 $record->update([
                     'status' => $modelStatus,
@@ -55,12 +68,72 @@ class ListWhatsAppSessions extends ListRecords
                 }
             }
 
+            // Update poll count for smart polling decisions
+            $this->updatePollMetrics($record);
+
             // Refresh table if status changed
             if ($previous !== $record->status) {
                 $this->refreshTable();
             }
-        } catch (\Throwable) {
-            // Silent fail to avoid disrupting UI
+        } catch (\Throwable $e) {
+            // Handle persistent connection errors
+            $this->handlePollingError($record, $e);
+        }
+    }
+
+    protected function shouldSkipPolling(WhatsAppSession $record): bool
+    {
+        // Don't skip polling for sessions that need active monitoring
+        if ($record->status->shouldPoll()) {
+            return false;
+        }
+
+        // Skip polling for stable states if checked recently (within last minute)
+        if (in_array($record->status, [
+            WhatsAppConnectionStatus::CONNECTED,
+            WhatsAppConnectionStatus::DISCONNECTED,
+        ])) {
+            $lastChecked = cache()->get("last_poll_{$record->id}", now()->subMinutes(2));
+
+            return now()->diffInSeconds($lastChecked) < 60;
+        }
+
+        return false;
+    }
+
+    protected function updatePollMetrics(WhatsAppSession $record): void
+    {
+        cache()->put("last_poll_{$record->id}", now(), now()->addHours(1));
+
+        // Track consecutive poll count for exponential backoff
+        $pollCount = cache()->get("poll_count_{$record->id}", 0) + 1;
+        cache()->put("poll_count_{$record->id}", $pollCount, now()->addHours(1));
+    }
+
+    protected function handlePollingError(WhatsAppSession $record, \Throwable $e): void
+    {
+        $errorCount = cache()->get("error_count_{$record->id}", 0) + 1;
+        cache()->put("error_count_{$record->id}", $errorCount, now()->addHours(1));
+
+        // After 3 consecutive errors, mark as disconnected and stop polling aggressively
+        if ($errorCount >= 3) {
+            $record->update([
+                'status' => WhatsAppConnectionStatus::DISCONNECTED,
+                'last_activity_at' => now(),
+            ]);
+
+            // Send error notification
+            \Filament\Notifications\Notification::make()
+                ->title('فقدان الاتصال')
+                ->body('تم فقدان الاتصال مع خادم واتساب. يرجى إعادة تشغيل الجلسة.')
+                ->warning()
+                ->duration(8000)
+                ->send();
+
+            // Reset error count
+            cache()->forget("error_count_{$record->id}");
+
+            $this->refreshTable();
         }
     }
 
@@ -94,7 +167,7 @@ class ListWhatsAppSessions extends ListRecords
             return;
         }
 
-        // Disconnect other active sessions first
+        // Clean up any existing sessions first
         $this->disconnectExistingSessions();
 
         try {
@@ -165,27 +238,18 @@ class ListWhatsAppSessions extends ListRecords
                 ->label('إنشاء جلسة')
                 ->icon('heroicon-o-plus')
                 ->color('success')
-                ->hidden(fn() => $this->hasActiveSession())
+                ->hidden(fn () => $this->hasActiveSession())
                 ->form([
                     Forms\Components\TextInput::make('name')
                         ->label('اسم الجلسة')
                         ->maxLength(255)
                         ->required()
                         ->placeholder('أدخل اسم الجلسة')
-                        ->default(fn() => 'جلسة واتساب - ' . auth()->user()->name),
+                        ->default(fn () => 'جلسة واتساب - '.auth()->user()->name),
                 ])
                 ->action(function (array $data) {
-                    if ($this->hasActiveSession()) {
-                        Notification::make()
-                            ->title('تحذير من وجود جلسة نشطة')
-                            ->body('لديك بالفعل جلسة نشطة. يجب قطع الاتصال أولاً.')
-                            ->warning()
-                            ->send();
-
-                        return;
-                    }
-
-                    $this->disconnectExistingSessions();
+                    // Always clean up existing sessions first (both active and soft-deleted)
+                    $this->cleanupAllExistingSessions();
 
                     $record = WhatsAppSession::create([
                         'user_id' => auth()->id(),
@@ -251,6 +315,27 @@ class ListWhatsAppSessions extends ListRecords
                 ->body('تم قطع الاتصال مع الجلسات السابقة')
                 ->warning()
                 ->send();
+        }
+    }
+
+    protected function cleanupAllExistingSessions(): void
+    {
+        try {
+            // Delete all sessions for this user with cascade
+            $deletedCount = WhatsAppSession::where('user_id', auth()->id())->delete();
+
+            if ($deletedCount > 0) {
+                Notification::make()
+                    ->title('تم تنظيف الجلسات السابقة')
+                    ->body("تم حذف {$deletedCount} جلسة سابقة لإنشاء جلسة جديدة")
+                    ->info()
+                    ->send();
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Failed to cleanup existing sessions', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 
