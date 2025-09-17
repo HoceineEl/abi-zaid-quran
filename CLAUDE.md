@@ -141,4 +141,5 @@ Tests use Pest PHP framework:
 - Unit tests in `tests/Unit/`
 - Feature tests in `tests/Feature/`
 - Run all tests: `php artisan test` or `./vendor/bin/pest`
-- Tests are preferred over tinker scripts for verification
+- **IMPORTANT**: Do not run tests or create tests unless explicitly requested by the user
+- Tests are preferred over tinker scripts for verification only when specifically asked
