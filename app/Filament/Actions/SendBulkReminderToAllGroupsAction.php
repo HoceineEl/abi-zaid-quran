@@ -13,7 +13,6 @@ use App\Models\WhatsAppSession;
 use App\Services\WhatsAppService;
 use Filament\Forms;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Toggle;
 use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Filament\Tables\Actions\Action;
@@ -65,12 +64,6 @@ class SendBulkReminderToAllGroupsAction extends Action
                     })
                     ->visible(fn(Get $get) => $get('template_source') === 'global_template')
                     ->required(fn(Get $get) => $get('template_source') === 'global_template'),
-
-                Toggle::make('use_whatsapp_web')
-                    ->label('استخدام واتساب ويب (جديد)')
-                    ->default(true)
-                    ->reactive()
-                    ->helperText('استخدم الخدمة الجديدة لواتساب ويب بدلاً من API القديم'),
 
                 Textarea::make('message')
                     ->hint('يمكنك استخدام المتغيرات التالية: {student_name}, {group_name}, {curr_date}, {last_presence}')
@@ -154,11 +147,7 @@ class SendBulkReminderToAllGroupsAction extends Action
             return;
         }
 
-        if ($data['use_whatsapp_web'] ?? false) {
-            $this->sendBulkReminderViaWhatsAppWeb($allUnmarkedStudents, $data);
-        } else {
-            $this->sendBulkReminderViaLegacyWhatsApp($allUnmarkedStudents, $data);
-        }
+        $this->sendBulkReminderViaWhatsAppWeb($allUnmarkedStudents, $data);
 
         Notification::make()
             ->title('تمت معالجة التذكيرات')

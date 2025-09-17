@@ -12,7 +12,6 @@ use App\Models\WhatsAppSession;
 use App\Services\WhatsAppService;
 use Filament\Forms;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Toggle;
 use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Filament\Tables\Actions\Action;
@@ -54,13 +53,6 @@ class SendAbsentStudentsMessageAction extends Action
                     })
                     ->reactive(),
 
-                Toggle::make('use_whatsapp_web')
-                    ->label('استخدام واتساب ويب (جديد)')
-                    ->default(true)
-                    ->reactive()
-                    ->helperText('استخدم الخدمة الجديدة لواتساب ويب بدلاً من API القديم'),
-
-
                 Textarea::make('message')
                     ->hint('يمكنك استخدام المتغيرات التالية: {student_name}, {group_name}, {curr_date}, {last_presence}')
                     ->default('السلام عليكم ورحمة الله وبركاته، {student_name} لم تنس واجب اليوم، لعل المانع خير.')
@@ -97,11 +89,7 @@ class SendAbsentStudentsMessageAction extends Action
         // Get the message content
         $messageTemplate = $this->getMessageTemplate($data, $ownerRecord);
 
-        if ($data['use_whatsapp_web'] ?? false) {
-            $this->sendViaWhatsAppWeb($absentStudents, $messageTemplate, $data, $ownerRecord);
-        } else {
-            $this->sendViaLegacyWhatsApp($absentStudents, $messageTemplate, $ownerRecord);
-        }
+        $this->sendViaWhatsAppWeb($absentStudents, $messageTemplate, $data, $ownerRecord);
     }
 
     /**

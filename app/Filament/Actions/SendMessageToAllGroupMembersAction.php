@@ -13,7 +13,6 @@ use App\Models\WhatsAppSession;
 use App\Services\WhatsAppService;
 use Filament\Forms;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Toggle;
 use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Filament\Tables\Actions\Action;
@@ -65,12 +64,6 @@ class SendMessageToAllGroupMembersAction extends Action
                     })
                     ->visible(fn(Get $get) => $get('template_source') === 'global_template')
                     ->required(fn(Get $get) => $get('template_source') === 'global_template'),
-
-                Toggle::make('use_whatsapp_web')
-                    ->label('استخدام واتساب ويب (جديد)')
-                    ->default(true)
-                    ->reactive()
-                    ->helperText('استخدم الخدمة الجديدة لواتساب ويب بدلاً من API القديم'),
 
                 Textarea::make('message')
                     ->hint('يمكنك استخدام المتغيرات التالية: {student_name}, {group_name}, {curr_date}, {last_presence}')
@@ -151,11 +144,7 @@ class SendMessageToAllGroupMembersAction extends Action
             return;
         }
 
-        if ($data['use_whatsapp_web'] ?? false) {
-            $this->sendMessageViaWhatsAppWeb($allStudentsWithGroups, $data);
-        } else {
-            $this->sendMessageViaLegacyWhatsApp($allStudentsWithGroups, $data);
-        }
+        $this->sendMessageViaWhatsAppWeb($allStudentsWithGroups, $data);
 
         Notification::make()
             ->title('تمت معالجة الرسائل العامة')
@@ -327,27 +316,5 @@ class SendMessageToAllGroupMembersAction extends Action
             ->send();
     }
 
-    /**
-     * Send messages via legacy WhatsApp service (for compatibility)
-     */
-    protected function sendMessageViaLegacyWhatsApp(Collection $studentsWithGroups, array $data): void
-    {
-        foreach ($studentsWithGroups as $item) {
-            $student = $item['student'];
-            $group = $item['group'];
-
-            // Get message template for this specific group
-            $messageTemplate = $this->getMessageTemplateForGroup($data, $group);
-
-            $processedMessage = Core::processMessageTemplate($messageTemplate, $student, $group);
-            Core::sendSpecifMessageToStudent($student, $processedMessage);
-        }
-
-        Notification::make()
-            ->title('تم إرسال الرسائل العامة!')
-            ->body("تم إرسال الرسائل لـ {$studentsWithGroups->count()} طالب في جميع المجموعات")
-            ->success()
-            ->send();
-    }
 
 }

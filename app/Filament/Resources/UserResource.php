@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Classes\Core;
+use App\Filament\Actions\SendMessageToSelectedUsersAction;
 use App\Filament\Resources\UserResource\Pages;
 use App\Models\Group;
 use App\Models\Message;
@@ -128,65 +129,7 @@ class UserResource extends Resource
                     ->searchable(),
             ])
             ->headerActions([
-                Action::make('send_to_specific')
-                    ->color('info')
-                    ->icon('heroicon-o-cube')
-                    ->label('أرسل إلى مستخدمين محدد')
-                    ->form([
-                        Select::make('students')
-                            ->label('الطلبة')
-                            ->options(User::pluck('name', 'id')->toArray())
-                            ->multiple()
-                            ->required(),
-                        ToggleButtons::make('message_type')
-                            ->label('نوع الرسالة')
-                            ->options([
-                                'message' => 'قالب رسالة',
-                                'custom' => 'رسالة مخصصة',
-                            ])
-                            ->reactive()
-                            ->default('message')
-                            ->inline(),
-                        Select::make('message')
-                            ->label('الرسالة')
-                            ->native()
-                            ->hidden(fn(Get $get) => $get('message_type') === 'custom')
-                            ->options(Message::pluck('name', 'id')->toArray())
-                            ->hintActions([
-                                ActionsAction::make('create')
-                                    ->label('إنشاء قالب')
-                                    ->slideOver()
-                                    ->modalWidth('4xl')
-                                    ->icon('heroicon-o-plus-circle')
-                                    ->form([
-                                        TextInput::make('name')
-                                            ->label('اسم القالب')
-                                            ->required(),
-                                        Textarea::make('content')
-                                            ->label('الرسالة')
-                                            ->rows(10)
-                                            ->required(),
-                                    ])
-                                    ->action(function (array $data) {
-                                        Message::create($data);
 
-                                        Notification::make()
-                                            ->title('تم إنشاء قالب الرسالة')
-                                            ->color('success')
-                                            ->icon('heroicon-o-check-circle')
-                                            ->send();
-                                    }),
-                            ])
-                            ->required(),
-                        Textarea::make('message')
-                            ->label('الرسالة')
-                            ->hidden(fn(Get $get) => $get('message_type') !== 'custom')
-                            ->rows(10)
-                            ->required(),
-                    ])
-                    ->action(function (array $data) {
-                        Core::sendMessageToSpecific($data, 'user');
-                    }),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
@@ -260,6 +203,7 @@ class UserResource extends Resource
                     ->icon('heroicon-o-academic-cap'),
             ])
             ->bulkActions([
+                SendMessageToSelectedUsersAction::make(),
                 Tables\Actions\DeleteBulkAction::make(),
             ]);
     }

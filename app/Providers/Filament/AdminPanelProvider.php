@@ -50,7 +50,6 @@ class AdminPanelProvider extends PanelProvider
                 Pages\Dashboard::class,
                 SubtitleCleaner::class,
             ])
-            ->spa()
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
                 QuranProgramStatsOverview::class,

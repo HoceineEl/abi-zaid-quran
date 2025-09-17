@@ -11,7 +11,6 @@ use App\Models\WhatsAppSession;
 use App\Services\WhatsAppService;
 use Filament\Forms;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Toggle;
 use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Filament\Tables\Actions\Action;
@@ -58,13 +57,6 @@ class SendUnmarkedStudentsMessageAction extends Action
                     ->default(false)
                     ->helperText('هل تريد تسجيل الطلاب كغائبين بعذر؟'),
 
-                Toggle::make('use_whatsapp_web')
-                    ->label('استخدام واتساب ويب (جديد)')
-                    ->default(true)
-                    ->reactive()
-                    ->helperText('استخدم الخدمة الجديدة لواتساب ويب بدلاً من API القديم'),
-
-
                 Textarea::make('message')
                     ->hint('يمكنك استخدام المتغيرات التالية: {student_name}, {group_name}, {curr_date}, {last_presence}')
                     ->default('السلام عليكم ورحمة الله وبركاته، {student_name} لم ترسل الواجب المقرر اليوم، لعل المانع خير.')
@@ -106,11 +98,7 @@ class SendUnmarkedStudentsMessageAction extends Action
 
         // Only send messages if it's today's date
         if ($selectedDate === now()->format('Y-m-d')) {
-            if ($data['use_whatsapp_web'] ?? false) {
-                $this->sendViaWhatsAppWeb($unmarkedStudents, $messageTemplate, $data, $ownerRecord);
-            } else {
-                $this->sendViaLegacyWhatsApp($unmarkedStudents, $messageTemplate, $ownerRecord);
-            }
+            $this->sendViaWhatsAppWeb($unmarkedStudents, $messageTemplate, $data, $ownerRecord);
         } else {
             Notification::make()
                 ->title('تم تسجيل الطلاب كغائبين')
