@@ -217,9 +217,11 @@ class StudentsRelationManager extends RelationManager
                             ->success()
                             ->send();
                     }),
-                     SendReminderToUnmarkedStudentsAction::make()
-                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user())),
                 ActionsActionGroup::make([
+                    SendReminderToUnmarkedStudentsAction::make()
+                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user())),
+                    SendAbsentStudentsMessageAction::make()
+                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user())),
                     Action::make('copy_students_from_other_groups')
                         ->label('نسخ الطلاب من مجموعات أخرى')
                         ->icon('heroicon-o-document-duplicate')
@@ -283,13 +285,7 @@ class StudentsRelationManager extends RelationManager
                         ->slideOver(),
 
 
-                    SendUnmarkedStudentsMessageAction::make()
-                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user())),
-                    SendAbsentStudentsMessageAction::make()
-                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user())),
-
-
-                ]),
+                ])->label('إجراءات الطلاب'),
                 Action::make('export_table')
                     ->label('تصدير كشف الحضور')
                     ->icon('heroicon-o-share')

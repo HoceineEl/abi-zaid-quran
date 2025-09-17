@@ -4,6 +4,7 @@ namespace App\Filament\Actions;
 
 use App\Classes\Core;
 use App\Enums\WhatsAppMessageStatus;
+use App\Helpers\PhoneHelper;
 use App\Models\Group;
 use App\Models\GroupMessageTemplate;
 use App\Models\Student;
@@ -216,6 +217,7 @@ class SendMessageToAllGroupMembersAction extends Action
         }
 
         $messagesQueued = 0;
+        $messageIndex = 0;
 
         foreach ($studentsWithGroups as $item) {
             $student = $item['student'];
@@ -227,8 +229,8 @@ class SendMessageToAllGroupMembersAction extends Action
             // Process message template with variables
             $processedMessage = Core::processMessageTemplate($messageTemplate, $student, $group);
 
-            // Clean phone number
-            $phoneNumber = $this->cleanPhoneNumber($student->phone);
+            // Clean phone number using helper
+            $phoneNumber = PhoneHelper::cleanPhoneNumber($student->phone);
 
             if (!$phoneNumber) {
                 Log::warning('Invalid phone number for student in group message', [
@@ -251,9 +253,17 @@ class SendMessageToAllGroupMembersAction extends Action
                     'status' => WhatsAppMessageStatus::QUEUED,
                 ]);
 
-                // Use defer() to send the message asynchronously
-                defer(function () use ($session, $phoneNumber, $processedMessage, $messageHistory, $student, $group) {
+                // Use defer() to send the message asynchronously with minimal rate limiting
+                defer(function () use ($session, $phoneNumber, $processedMessage, $messageHistory, $student, $group, $messageIndex) {
                     try {
+                        // Calculate staggered delay based on message position for rate limiting
+                        $delaySeconds = ceil($messageIndex / 10) * 0.5; // 0.5 second delay for every 10 messages
+
+                        // Minimal rate limiting: Only add delay for batches to prevent spam detection
+                        if ($delaySeconds > 0) {
+                            usleep($delaySeconds * 1000000); // Convert to microseconds for sub-second delays
+                        }
+
                         $whatsappService = app(WhatsAppService::class);
                         $result = $whatsappService->sendTextMessage(
                             $session->id,
@@ -274,6 +284,8 @@ class SendMessageToAllGroupMembersAction extends Action
                             'group_name' => $group->name,
                             'student_phone' => $phoneNumber,
                             'message_id' => $result[0]['messageId'] ?? null,
+                            'message_index' => $messageIndex,
+                            'delay_seconds' => $delaySeconds,
                         ]);
 
                     } catch (\Exception $e) {
@@ -289,11 +301,14 @@ class SendMessageToAllGroupMembersAction extends Action
                             'group_name' => $group->name,
                             'student_phone' => $phoneNumber,
                             'error' => $e->getMessage(),
+                            'message_index' => $messageIndex,
+                            'delay_seconds' => $delaySeconds,
                         ]);
                     }
                 });
 
                 $messagesQueued++;
+                $messageIndex++;
 
             } catch (\Exception $e) {
                 Log::error('Failed to queue group message for student', [
@@ -335,27 +350,4 @@ class SendMessageToAllGroupMembersAction extends Action
             ->send();
     }
 
-    /**
-     * Clean and format phone number for WhatsApp
-     */
-    protected function cleanPhoneNumber(string $phone): ?string
-    {
-        // Remove any spaces, dashes or special characters
-        $number = preg_replace('/[^0-9]/', '', $phone);
-
-        // Handle different Moroccan number formats
-        if (strlen($number) === 9 && in_array(substr($number, 0, 1), ['6', '7'])) {
-            // If number starts with 6 or 7 and is 9 digits
-            return '212' . $number;
-        } elseif (strlen($number) === 10 && in_array(substr($number, 0, 2), ['06', '07'])) {
-            // If number starts with 06 or 07 and is 10 digits
-            return '212' . substr($number, 1);
-        } elseif (strlen($number) === 12 && substr($number, 0, 3) === '212') {
-            // If number already has 212 country code
-            return $number;
-        }
-
-        // Return null for invalid numbers
-        return null;
-    }
 }

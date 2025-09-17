@@ -4,6 +4,7 @@ namespace App\Filament\Actions;
 
 use App\Classes\Core;
 use App\Enums\WhatsAppMessageStatus;
+use App\Helpers\PhoneHelper;
 use App\Models\GroupMessageTemplate;
 use App\Models\Student;
 use App\Models\WhatsAppMessageHistory;
@@ -163,81 +164,91 @@ class SendAbsentStudentsMessageAction extends Action
             return;
         }
 
-        $messagesSent = 0;
-        $messagesQueued = 0;
+        // Use defer() to process all messages asynchronously
+        defer(function () use ($absentStudents, $messageTemplate, $ownerRecord, $session) {
+            $messagesSent = 0;
+            $messagesQueued = 0;
+            $messageIndex = 0;
 
-        foreach ($absentStudents as $student) {
-            // Process message template with variables
-            $processedMessage = Core::processMessageTemplate($messageTemplate, $student, $ownerRecord);
+            foreach ($absentStudents as $student) {
+                // Process message template with variables
+                $processedMessage = Core::processMessageTemplate($messageTemplate, $student, $ownerRecord);
 
-            // Clean phone number
-            $phoneNumber = $this->cleanPhoneNumber($student->phone);
+                // Clean phone number using helper
+                $phoneNumber = PhoneHelper::cleanPhoneNumber($student->phone);
 
-            if (!$phoneNumber) {
-                Log::warning('Invalid phone number for student', [
-                    'student_id' => $student->id,
-                    'student_name' => $student->name,
-                    'phone' => $student->phone,
-                ]);
-                continue;
-            }
+                if (!$phoneNumber) {
+                    Log::warning('Invalid phone number for student', [
+                        'student_id' => $student->id,
+                        'student_name' => $student->name,
+                        'phone' => $student->phone,
+                    ]);
+                    continue;
+                }
 
-            try {
-                // Create message history record as queued
-                $messageHistory = WhatsAppMessageHistory::create([
-                    'session_id' => $session->id,
-                    'sender_user_id' => auth()->id(),
-                    'recipient_phone' => $phoneNumber,
-                    'message_type' => 'text',
-                    'message_content' => $processedMessage,
-                    'status' => WhatsAppMessageStatus::QUEUED,
-                ]);
+                try {
+                    // Create message history record as queued
+                    $messageHistory = WhatsAppMessageHistory::create([
+                        'session_id' => $session->id,
+                        'sender_user_id' => auth()->id(),
+                        'recipient_phone' => $phoneNumber,
+                        'message_type' => 'text',
+                        'message_content' => $processedMessage,
+                        'status' => WhatsAppMessageStatus::QUEUED,
+                    ]);
 
-                // Use defer() to send the message asynchronously
-                defer(function () use ($session, $phoneNumber, $processedMessage, $messageHistory) {
-                    try {
-                        $whatsappService = app(WhatsAppService::class);
-                        $result = $whatsappService->sendTextMessage(
-                            $session->id,
-                            $phoneNumber,
-                            $processedMessage
-                        );
+                    // Calculate staggered delay based on message position for rate limiting
+                    $delaySeconds = ceil($messageIndex / 10) * 0.5; // 0.5 second delay for every 10 messages
 
-                        // Update message history as sent
-                        $messageHistory->update([
-                            'status' => WhatsAppMessageStatus::SENT,
-                            'whatsapp_message_id' => $result[0]['messageId'] ?? null,
-                            'sent_at' => now(),
-                        ]);
+                    // Minimal rate limiting: Only add delay for batches to prevent spam detection
+                    if ($delaySeconds > 0) {
+                        usleep($delaySeconds * 1000000); // Convert to microseconds for sub-second delays
+                    }
 
-                        Log::info('WhatsApp message sent to absent student', [
-                            'student_phone' => $phoneNumber,
-                            'message_id' => $result[0]['messageId'] ?? null,
-                        ]);
+                    $whatsappService = app(WhatsAppService::class);
+                    $result = $whatsappService->sendTextMessage(
+                        $session->id,
+                        $phoneNumber,
+                        $processedMessage
+                    );
 
-                    } catch (\Exception $e) {
-                        // Update message history as failed
+                    // Update message history as sent
+                    $messageHistory->update([
+                        'status' => WhatsAppMessageStatus::SENT,
+                        'whatsapp_message_id' => $result[0]['messageId'] ?? null,
+                        'sent_at' => now(),
+                    ]);
+
+                    Log::info('WhatsApp message sent to absent student', [
+                        'student_phone' => $phoneNumber,
+                        'message_id' => $result[0]['messageId'] ?? null,
+                        'message_index' => $messageIndex,
+                        'delay_seconds' => $delaySeconds,
+                    ]);
+
+                    $messagesQueued++;
+                    $messageIndex++;
+
+                } catch (\Exception $e) {
+                    // Update message history as failed if it was created
+                    if (isset($messageHistory)) {
                         $messageHistory->update([
                             'status' => WhatsAppMessageStatus::FAILED,
                             'error_message' => $e->getMessage(),
                         ]);
-
-                        Log::error('Failed to send WhatsApp message to absent student', [
-                            'student_phone' => $phoneNumber,
-                            'error' => $e->getMessage(),
-                        ]);
                     }
-                });
 
-                $messagesQueued++;
-
-            } catch (\Exception $e) {
-                Log::error('Failed to queue WhatsApp message for absent student', [
-                    'student_id' => $student->id,
-                    'error' => $e->getMessage(),
-                ]);
+                    Log::error('Failed to send WhatsApp message to absent student', [
+                        'student_phone' => $phoneNumber,
+                        'student_id' => $student->id,
+                        'error' => $e->getMessage(),
+                        'message_index' => $messageIndex,
+                    ]);
+                }
             }
-        }
+        });
+
+        $messagesQueued = $absentStudents->count();
 
         Notification::make()
             ->title('تم جدولة الرسائل للإرسال!')
@@ -263,27 +274,4 @@ class SendAbsentStudentsMessageAction extends Action
             ->send();
     }
 
-    /**
-     * Clean and format phone number for WhatsApp
-     */
-    protected function cleanPhoneNumber(string $phone): ?string
-    {
-        // Remove any spaces, dashes or special characters
-        $number = preg_replace('/[^0-9]/', '', $phone);
-
-        // Handle different Moroccan number formats
-        if (strlen($number) === 9 && in_array(substr($number, 0, 1), ['6', '7'])) {
-            // If number starts with 6 or 7 and is 9 digits
-            return '212' . $number;
-        } elseif (strlen($number) === 10 && in_array(substr($number, 0, 2), ['06', '07'])) {
-            // If number starts with 06 or 07 and is 10 digits
-            return '212' . substr($number, 1);
-        } elseif (strlen($number) === 12 && substr($number, 0, 3) === '212') {
-            // If number already has 212 country code
-            return $number;
-        }
-
-        // Return null for invalid numbers
-        return null;
-    }
 }
