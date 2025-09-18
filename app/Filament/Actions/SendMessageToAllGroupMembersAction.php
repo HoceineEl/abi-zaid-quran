@@ -218,8 +218,12 @@ class SendMessageToAllGroupMembersAction extends Action
             // Process message template with variables
             $processedMessage = Core::processMessageTemplate($messageTemplate, $student, $group);
 
-            // Clean phone number using helper
-            $phoneNumber = PhoneHelper::cleanPhoneNumber($student->phone);
+            // Clean phone number using phone helper (remove + sign)
+            try {
+                $phoneNumber = str_replace('+', '', phone($student->phone, 'MA')->formatE164());
+            } catch (\Exception $e) {
+                $phoneNumber = null;
+            }
 
             if (!$phoneNumber) {
                 Log::warning('Invalid phone number for student in group message', [

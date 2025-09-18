@@ -84,8 +84,12 @@ class SendMessageToSelectedUsersAction extends BulkAction
         $messageIndex = 0;
 
         foreach ($users as $user) {
-            // Clean phone number using helper
-            $phoneNumber = PhoneHelper::cleanPhoneNumber($user->phone);
+            // Clean phone number using phone helper (remove + sign)
+            try {
+                $phoneNumber = str_replace('+', '', phone($user->phone, 'MA')->formatE164());
+            } catch (\Exception $e) {
+                $phoneNumber = null;
+            }
 
             if (!$phoneNumber) {
                 Log::warning('Invalid phone number for user in bulk message', [

@@ -61,7 +61,7 @@ class WhatsAppService
                 ],
                 'json' => [
                     'messaging_product' => 'whatsapp',
-                    'to' => 'whatsapp:'.$student->phone,
+                    'to' => 'whatsapp:'.str_replace('+', '', phone($student->phone, 'MA')->formatE164()),
                     'type' => 'template',
                     'template' => [
                         'name' => 'alert',
@@ -103,7 +103,7 @@ class WhatsAppService
                 ],
                 'json' => [
                     'messaging_product' => 'whatsapp',
-                    'to' => 'whatsapp:'.$student->phone,
+                    'to' => 'whatsapp:'.str_replace('+', '', phone($student->phone, 'MA')->formatE164()),
                     'type' => 'audio',
                     'audio' => [
                         'link' => $audioUrl,
@@ -132,7 +132,7 @@ class WhatsAppService
                 ],
                 'json' => [
                     'messaging_product' => 'whatsapp',
-                    'to' => 'whatsapp:'.$student->phone,
+                    'to' => 'whatsapp:'.str_replace('+', '', phone($student->phone, 'MA')->formatE164()),
                     'type' => 'template',
                     'template' => [
                         'name' => 'absence',
@@ -182,11 +182,14 @@ class WhatsAppService
             throw new \Exception("Session token not found for session {$sessionId}");
         }
 
+        // Format phone number using the phone helper (remove + sign)
+        $formattedPhone = str_replace('+', '', phone($to, 'MA')->formatE164());
+
         try {
             $messageData = [
                 [
                     'recipient_type' => 'individual',
-                    'to' => $to,
+                    'to' => $formattedPhone,
                     'type' => 'text',
                     'text' => [
                         'body' => $message,
@@ -204,7 +207,7 @@ class WhatsAppService
 
                 Log::info('WhatsApp message sent', [
                     'session_id' => $sessionId,
-                    'to' => $to,
+                    'to' => $formattedPhone,
                     'message_id' => $result[0]['messageId'] ?? null,
                 ]);
 
@@ -224,11 +227,14 @@ class WhatsAppService
 
     public function queueMessage(WhatsAppSession $session, string $to, string $message, string $type = 'text'): void
     {
+        // Format phone number using the phone helper (remove + sign)
+        $formattedPhone = str_replace('+', '', phone($to, 'MA')->formatE164());
+
         // Store message history
         WhatsAppMessageHistory::create([
             'session_id' => $session->id,
             'sender_user_id' => auth()->id(),
-            'recipient_phone' => $to,
+            'recipient_phone' => $formattedPhone,
             'message_type' => $type,
             'message_content' => $message,
             'status' => WhatsAppMessageStatus::QUEUED,
@@ -236,7 +242,7 @@ class WhatsAppService
 
         Log::info('WhatsApp message queued for delivery', [
             'session_id' => $session->id,
-            'to' => $to,
+            'to' => $formattedPhone,
             'message_type' => $type,
         ]);
     }
