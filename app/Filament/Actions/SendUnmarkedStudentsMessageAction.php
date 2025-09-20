@@ -9,6 +9,7 @@ use App\Models\Student;
 use App\Models\WhatsAppMessageHistory;
 use App\Models\WhatsAppSession;
 use App\Services\WhatsAppService;
+use App\Traits\HandlesWhatsAppProgress;
 use Filament\Forms;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Get;
@@ -19,6 +20,7 @@ use Illuminate\Support\Facades\Log;
 
 class SendUnmarkedStudentsMessageAction extends Action
 {
+    use HandlesWhatsAppProgress;
     public static function getDefaultName(): ?string
     {
         return 'send_unmarked_students_message';
@@ -233,7 +235,7 @@ class SendUnmarkedStudentsMessageAction extends Action
                 ]);
 
                 // Use defer() to send the message asynchronously
-                defer(function () use ($session, $phoneNumber, $processedMessage, $messageHistory) {
+                defer(function () use ($session, $phoneNumber, $processedMessage, $messageHistory, $student) {
                     try {
                         $whatsappService = app(WhatsAppService::class);
                         $result = $whatsappService->sendTextMessage(
@@ -248,6 +250,9 @@ class SendUnmarkedStudentsMessageAction extends Action
                             'whatsapp_message_id' => $result[0]['messageId'] ?? null,
                             'sent_at' => now(),
                         ]);
+
+                        // Update existing progress (since student was already marked as absent)
+                        $this->createWhatsAppProgressRecord($student);
 
                         Log::info('WhatsApp message sent to unmarked student', [
                             'student_phone' => $phoneNumber,

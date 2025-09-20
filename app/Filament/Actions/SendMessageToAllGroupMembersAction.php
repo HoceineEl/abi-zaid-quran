@@ -11,6 +11,7 @@ use App\Models\Student;
 use App\Models\WhatsAppMessageHistory;
 use App\Models\WhatsAppSession;
 use App\Services\WhatsAppService;
+use App\Traits\HandlesWhatsAppProgress;
 use Filament\Forms;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Get;
@@ -22,6 +23,7 @@ use Illuminate\Support\Facades\Log;
 
 class SendMessageToAllGroupMembersAction extends Action
 {
+    use HandlesWhatsAppProgress;
     public static function getDefaultName(): ?string
     {
         return 'send_message_to_all_group_members';
@@ -270,6 +272,9 @@ class SendMessageToAllGroupMembersAction extends Action
                             'whatsapp_message_id' => $result[0]['messageId'] ?? null,
                             'sent_at' => now(),
                         ]);
+
+                        // Create or update progress record using trait
+                        $this->createWhatsAppProgressRecord($student);
 
                         Log::info('Group message sent to student', [
                             'student_id' => $student->id,

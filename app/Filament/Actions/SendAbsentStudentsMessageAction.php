@@ -10,6 +10,7 @@ use App\Models\Student;
 use App\Models\WhatsAppMessageHistory;
 use App\Models\WhatsAppSession;
 use App\Services\WhatsAppService;
+use App\Traits\HandlesWhatsAppProgress;
 use Filament\Forms;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Get;
@@ -20,6 +21,7 @@ use Illuminate\Support\Facades\Log;
 
 class SendAbsentStudentsMessageAction extends Action
 {
+    use HandlesWhatsAppProgress;
     public static function getDefaultName(): ?string
     {
         return 'send_absent_students_message';
@@ -210,6 +212,9 @@ class SendAbsentStudentsMessageAction extends Action
                         'whatsapp_message_id' => $result[0]['messageId'] ?? null,
                         'sent_at' => now(),
                     ]);
+
+                    // Create or update progress record using trait
+                    $this->createWhatsAppProgressRecord($student);
 
                     Log::info('WhatsApp message sent to absent student', [
                         'student_phone' => $phoneNumber,

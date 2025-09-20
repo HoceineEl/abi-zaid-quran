@@ -10,6 +10,7 @@ use App\Models\Student;
 use App\Models\WhatsAppMessageHistory;
 use App\Models\WhatsAppSession;
 use App\Services\WhatsAppService;
+use App\Traits\HandlesWhatsAppProgress;
 use Filament\Forms;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Get;
@@ -20,6 +21,7 @@ use Illuminate\Support\Facades\Log;
 
 class SendReminderToUnmarkedStudentsAction extends Action
 {
+    use HandlesWhatsAppProgress;
     public static function getDefaultName(): ?string
     {
         return 'send_reminder_to_unmarked';
@@ -171,7 +173,7 @@ class SendReminderToUnmarkedStudentsAction extends Action
                 ]);
 
                 // Use defer() to send the message asynchronously with minimal rate limiting
-                defer(function () use ($session, $phoneNumber, $processedMessage, $messageHistory, $messageIndex) {
+                defer(function () use ($session, $phoneNumber, $processedMessage, $messageHistory, $student, $messageIndex) {
                     try {
                         // Calculate staggered delay based on message position for rate limiting
                         $delaySeconds = ceil($messageIndex / 10) * 0.5; // 0.5 second delay for every 10 messages
@@ -194,6 +196,9 @@ class SendReminderToUnmarkedStudentsAction extends Action
                             'whatsapp_message_id' => $result[0]['messageId'] ?? null,
                             'sent_at' => now(),
                         ]);
+
+                        // Create progress record using trait (since these are unmarked students, we always create)
+                        $this->createWhatsAppProgressRecord($student);
 
                         Log::info('WhatsApp reminder sent to unmarked student', [
                             'student_phone' => $phoneNumber,

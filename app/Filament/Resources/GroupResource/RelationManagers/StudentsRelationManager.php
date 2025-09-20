@@ -8,6 +8,7 @@ use App\Enums\MessageResponseStatus;
 use App\Filament\Actions\SendAbsentStudentsMessageAction;
 use App\Filament\Actions\SendReminderToUnmarkedStudentsAction;
 use App\Filament\Actions\SendUnmarkedStudentsMessageAction;
+use App\Filament\Actions\SendWhatsAppMessageToSelectedStudentsAction;
 use App\Helpers\ProgressFormHelper;
 use App\Models\Group;
 use App\Models\GroupMessageTemplate;
@@ -775,6 +776,9 @@ class StudentsRelationManager extends RelationManager
             ->bulkActions([
                 BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
+                    SendWhatsAppMessageToSelectedStudentsAction::make()
+                        ->ownerRecord($this->ownerRecord)
+                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user())),
                     BulkAction::make('send_msg')
                         ->label('إرسال رسالة ')
                         ->icon('heroicon-o-chat-bubble-oval-left')

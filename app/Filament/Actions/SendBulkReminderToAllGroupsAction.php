@@ -11,6 +11,7 @@ use App\Models\Student;
 use App\Models\WhatsAppMessageHistory;
 use App\Models\WhatsAppSession;
 use App\Services\WhatsAppService;
+use App\Traits\HandlesWhatsAppProgress;
 use Filament\Forms;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Get;
@@ -22,6 +23,7 @@ use Illuminate\Support\Facades\Log;
 
 class SendBulkReminderToAllGroupsAction extends Action
 {
+    use HandlesWhatsAppProgress;
     public static function getDefaultName(): ?string
     {
         return 'send_bulk_reminder_to_all_groups';
@@ -269,6 +271,9 @@ class SendBulkReminderToAllGroupsAction extends Action
                             'whatsapp_message_id' => $result[0]['messageId'] ?? null,
                             'sent_at' => now(),
                         ]);
+
+                        // Create or update progress record using trait
+                        $this->createWhatsAppProgressRecord($student);
 
                         Log::info('Bulk WhatsApp reminder sent to unmarked student', [
                             'student_id' => $student->id,
