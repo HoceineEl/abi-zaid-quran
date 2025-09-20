@@ -42,6 +42,19 @@ class WhatsAppService
         }
     }
 
+    /**
+     * Get the session ID with appropriate suffix for local development
+     */
+    protected function formatSessionId($sessionId): string
+    {
+        // Add suffix for local development environment
+        if (app()->environment('local')) {
+            return $sessionId . '_local_abizaid';
+        }
+
+        return (string) $sessionId;
+    }
+
     protected function getMasterKey(): string
     {
         if (is_null($this->masterKey)) {
@@ -176,6 +189,7 @@ class WhatsAppService
 
     public function sendTextMessage(string $sessionId, string $to, string $message): array
     {
+        $formattedSessionId = $this->formatSessionId($sessionId);
         $token = Cache::get("whatsapp_token_{$sessionId}");
 
         if (!$token) {
@@ -200,7 +214,7 @@ class WhatsAppService
             $response = Http::withHeaders([
                 'Authorization' => "Bearer {$token}",
                 'Content-Type' => 'application/json',
-            ])->post("{$this->baseUrl}/api/v1/messages?sessionId={$sessionId}", $messageData);
+            ])->post("{$this->baseUrl}/api/v1/messages?sessionId={$formattedSessionId}", $messageData);
 
             if ($response->successful()) {
                 $result = $response->json();

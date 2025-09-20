@@ -33,10 +33,8 @@
             }, 5000);
         }
     }"
-    @if ($getRecord()->status->shouldPoll())
         wire:poll.3s="pollStatus('{{ $getRecord()->id }}')"
         x-effect="checkStatusChange()"
-    @endif
     class="relative w-full overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm transition-all duration-300"
 >
     <!-- Confetti Container -->

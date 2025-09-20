@@ -34,35 +34,50 @@ class SendReminderToUnmarkedStudentsAction extends Action
         $this->label('تذكير الطلاب غير المسجلين')
             ->icon('heroicon-o-megaphone')
             ->color('info')
-            ->form([
-                Forms\Components\Select::make('template_id')
-                    ->label('اختر قالب الرسالة')
-                    ->options(function () {
-                        $ownerRecord = $this->getLivewire()->ownerRecord ?? $this->getRecord();
-                        if ($ownerRecord && method_exists($ownerRecord, 'messageTemplates')) {
-                            return $ownerRecord->messageTemplates()->pluck('name', 'group_message_templates.id')
-                                ->prepend('رسالة مخصصة', 'custom');
-                        }
-                        return ['custom' => 'رسالة مخصصة'];
-                    })
-                    ->default(function () {
-                        $ownerRecord = $this->getLivewire()->ownerRecord ?? $this->getRecord();
-                        if ($ownerRecord && method_exists($ownerRecord, 'messageTemplates')) {
-                            $defaultTemplate = $ownerRecord->messageTemplates()->wherePivot('is_default', true)->first();
-                            return $defaultTemplate ? $defaultTemplate->id : 'custom';
-                        }
-                        return 'custom';
-                    })
-                    ->reactive(),
+            ->form(function() {
+                $fields = [];
+                $isAdmin = auth()->user()->isAdministrator();
+                $ownerRecord = $this->getLivewire()->ownerRecord ?? $this->getRecord();
+                $defaultTemplate = null;
 
-                Textarea::make('message')
-                    ->hint('يمكنك استخدام المتغيرات التالية: {student_name}, {group_name}, {curr_date}, {last_presence}')
-                    ->default('السلام عليكم ورحمة الله وبركاته، {student_name} تذكير بالواجب المقرر اليوم، بارك الله فيكم.')
-                    ->label('الرسالة')
-                    ->required()
-                    ->rows(4)
-                    ->hidden(fn(Get $get) => $get('template_id') !== 'custom'),
-            ])
+                if ($ownerRecord && method_exists($ownerRecord, 'messageTemplates')) {
+                    $defaultTemplate = $ownerRecord->messageTemplates()->wherePivot('is_default', true)->first();
+                }
+
+                // Only show template selection for admins
+                if ($isAdmin) {
+                    $fields[] = Forms\Components\Select::make('template_id')
+                        ->label('اختر قالب الرسالة')
+                        ->options(function () use ($ownerRecord) {
+                            if ($ownerRecord && method_exists($ownerRecord, 'messageTemplates')) {
+                                return $ownerRecord->messageTemplates()->pluck('group_message_templates.name', 'group_message_templates.id')
+                                    ->prepend('رسالة مخصصة', 'custom');
+                            }
+                            return ['custom' => 'رسالة مخصصة'];
+                        })
+                        ->default(function () use ($defaultTemplate) {
+                            return $defaultTemplate ? $defaultTemplate->id : 'custom';
+                        })
+                        ->reactive();
+                }
+
+                // Show message field for admins when custom is selected, or always for non-admins without default template
+                $showMessageField = $isAdmin || !$defaultTemplate;
+
+                if ($showMessageField) {
+                    $defaultMessage = $defaultTemplate ? $defaultTemplate->content : 'السلام عليكم ورحمة الله وبركاته، {student_name} تذكير بالواجب المقرر اليوم، بارك الله فيكم.';
+
+                    $fields[] = Textarea::make('message')
+                        ->hint('يمكنك استخدام المتغيرات التالية: {student_name}, {group_name}, {curr_date}, {last_presence}')
+                        ->default($defaultMessage)
+                        ->label('الرسالة')
+                        ->required()
+                        ->rows(4)
+                        ->hidden(fn(Get $get) => $isAdmin && $get('template_id') !== 'custom');
+                }
+
+                return $fields;
+            })
             ->action(function (array $data) {
                 $this->sendReminderToUnmarkedStudents($data);
             });
@@ -113,13 +128,26 @@ class SendReminderToUnmarkedStudentsAction extends Action
      */
     protected function getMessageTemplate(array $data, $ownerRecord): string
     {
-        if ($data['template_id'] === 'custom') {
+        $isAdmin = auth()->user()->isAdministrator();
+
+        // For non-admins, always use default template if available
+        if (!$isAdmin && $ownerRecord && method_exists($ownerRecord, 'messageTemplates')) {
+            $defaultTemplate = $ownerRecord->messageTemplates()->wherePivot('is_default', true)->first();
+            if ($defaultTemplate) {
+                return $defaultTemplate->content;
+            }
+        }
+
+        // For admins or when no default template
+        if (isset($data['template_id']) && $data['template_id'] === 'custom') {
             return $data['message'];
         }
 
-        $template = GroupMessageTemplate::find($data['template_id']);
-        if ($template) {
-            return $template->content;
+        if (isset($data['template_id'])) {
+            $template = GroupMessageTemplate::find($data['template_id']);
+            if ($template) {
+                return $template->content;
+            }
         }
 
         return $data['message'] ?? 'السلام عليكم، تذكير بالواجب المقرر اليوم، بارك الله فيكم.';

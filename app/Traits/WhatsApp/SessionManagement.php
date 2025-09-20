@@ -13,11 +13,13 @@ trait SessionManagement
     public function createSession(string $sessionId): array
     {
         try {
+            $formattedSessionId = $this->formatSessionId($sessionId);
+
             $response = Http::withHeaders([
                 'X-Master-Key' => $this->getMasterKey(),
                 'Content-Type' => 'application/json',
             ])->post("{$this->baseUrl}/api/v1/sessions", [
-                'sessionId' => $sessionId,
+                'sessionId' => $formattedSessionId,
             ]);
 
             if ($response->successful()) {
@@ -60,11 +62,13 @@ trait SessionManagement
     public function getSessionStatus(string $sessionId): array
     {
         try {
+            $formattedSessionId = $this->formatSessionId($sessionId);
+
             $response = Http::get("{$this->baseUrl}/api/v1/sessions");
 
             if ($response->successful()) {
                 $sessions = $response->json();
-                $session = collect($sessions)->firstWhere('sessionId', $sessionId);
+                $session = collect($sessions)->firstWhere('sessionId', $formattedSessionId);
 
                 if (! $session) {
                     throw new \Exception("Session {$sessionId} not found");
@@ -230,6 +234,8 @@ trait SessionManagement
     public function deleteSession(string $sessionId): array
     {
         try {
+            $formattedSessionId = $this->formatSessionId($sessionId);
+
             // Get session token - try cache first, then session data, then API
             $token = $this->getSessionToken($sessionId);
 
@@ -251,7 +257,7 @@ trait SessionManagement
                 $response = Http::withHeaders([
                     'Authorization' => "Bearer {$token}",
                     'Content-Type' => 'application/json',
-                ])->delete("{$this->baseUrl}/api/v1/sessions/{$sessionId}");
+                ])->delete("{$this->baseUrl}/api/v1/sessions/{$formattedSessionId}");
 
                 if ($response->successful()) {
                     Cache::forget("whatsapp_token_{$sessionId}");

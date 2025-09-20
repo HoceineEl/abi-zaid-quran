@@ -36,8 +36,13 @@ class SendBulkReminderToAllGroupsAction extends Action
         $this->label('تذكير')
             ->icon('heroicon-o-speaker-wave')
             ->color('warning')
-            ->form([
-                Forms\Components\Select::make('template_source')
+            ->form(function() {
+                $fields = [];
+                $isAdmin = auth()->user()->isAdministrator();
+
+                // Template source selection - only for admins
+                if ($isAdmin) {
+                    $fields[] = Forms\Components\Select::make('template_source')
                     ->label('مصدر القالب')
                     ->options([
                         'group_default' => 'استخدام القالب الافتراضي لكل مجموعة',
@@ -46,9 +51,9 @@ class SendBulkReminderToAllGroupsAction extends Action
                     ])
                     ->default('group_default')
                     ->reactive()
-                    ->helperText('اختر كيفية تحديد محتوى الرسالة لكل مجموعة'),
+                    ->helperText('اختر كيفية تحديد محتوى الرسالة لكل مجموعة');
 
-                Forms\Components\Select::make('global_template_id')
+                    $fields[] = Forms\Components\Select::make('global_template_id')
                     ->label('اختر القالب الموحد')
                     ->options(function () {
                         // Get all templates from all user's groups
@@ -65,17 +70,19 @@ class SendBulkReminderToAllGroupsAction extends Action
                         return $templates->unique()->toArray();
                     })
                     ->visible(fn(Get $get) => $get('template_source') === 'global_template')
-                    ->required(fn(Get $get) => $get('template_source') === 'global_template'),
+                    ->required(fn(Get $get) => $get('template_source') === 'global_template');
 
-                Textarea::make('message')
+                    $fields[] = Textarea::make('message')
                     ->hint('يمكنك استخدام المتغيرات التالية: {student_name}, {group_name}, {curr_date}, {last_presence}')
                     ->default('السلام عليكم ورحمة الله وبركاته\n{student_name}، نذكركم بالواجب المقرر اليوم في مجموعة {group_name}، لعل المانع خير.\nبارك الله فيكم وزادكم حرصا.')
                     ->label('الرسالة')
                     ->required()
                     ->rows(4)
-                    ->visible(fn(Get $get) => $get('template_source') === 'custom'),
+                    ->visible(fn(Get $get) => $get('template_source') === 'custom');
+                }
 
-                Forms\Components\Placeholder::make('groups_summary')
+                // Rest of form fields that are always shown
+                $fields[] = Forms\Components\Placeholder::make('groups_summary')
                     ->label('ملخص المجموعات')
                     ->content(function () {
                         $userGroups = $this->getUserGroups();
@@ -83,8 +90,10 @@ class SendBulkReminderToAllGroupsAction extends Action
                         $totalStudents = $userGroups->sum(fn($group) => $group->students->count());
 
                         return "سيتم إرسال التذكيرات لـ {$groupCount} مجموعة تحتوي على {$totalStudents} طالب إجمالي.";
-                    }),
-            ])
+                    });
+
+                return $fields;
+            })
             ->action(function (array $data) {
                 $this->sendBulkReminderToAllGroups($data);
             });
@@ -163,7 +172,25 @@ class SendBulkReminderToAllGroupsAction extends Action
      */
     protected function getMessageTemplateForGroup(array $data, Group $group): string
     {
-        switch ($data['template_source']) {
+        $isAdmin = auth()->user()->isAdministrator();
+
+        // For non-admins, always use group's default template if available
+        if (!$isAdmin) {
+            $defaultTemplate = $group->messageTemplates()->wherePivot('is_default', true)->first();
+            if ($defaultTemplate) {
+                return $defaultTemplate->content;
+            }
+            // Fallback to first template if no default
+            $firstTemplate = $group->messageTemplates()->first();
+            if ($firstTemplate) {
+                return $firstTemplate->content;
+            }
+            // Fallback to default message
+            return 'السلام عليكم ورحمة الله وبركاته\n{student_name}، نذكركم بالواجب المقرر اليوم في مجموعة {group_name}، لعل المانع خير.\nبارك الله فيكم وزادكم حرصا.';
+        }
+
+        // Admin logic for template selection
+        switch ($data['template_source'] ?? 'group_default') {
             case 'group_default':
                 // Use group's default template
                 $defaultTemplate = $group->messageTemplates()->wherePivot('is_default', true)->first();

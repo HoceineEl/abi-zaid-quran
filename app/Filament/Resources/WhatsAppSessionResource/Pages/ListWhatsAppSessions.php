@@ -83,15 +83,11 @@ class ListWhatsAppSessions extends ListRecords
 
     protected function shouldSkipPolling(WhatsAppSession $record): bool
     {
-        // Don't skip polling for sessions that need active monitoring
-        if ($record->status->shouldPoll()) {
-            return false;
-        }
+
 
         // Skip polling for stable states if checked recently (within last minute)
         if (in_array($record->status, [
             WhatsAppConnectionStatus::CONNECTED,
-            WhatsAppConnectionStatus::DISCONNECTED,
         ])) {
             $lastChecked = cache()->get("last_poll_{$record->id}", now()->subMinutes(2));
 

@@ -48,8 +48,15 @@ class SendWhatsAppMessageToSelectedStudentsAction extends BulkAction
             ->form(function () {
                 $fields = [];
 
-                // Add template selection if owner record is available
+                $isAdmin = auth()->user()->isAdministrator();
+                $defaultTemplate = null;
+
                 if ($this->ownerRecord) {
+                    $defaultTemplate = $this->ownerRecord->messageTemplates()->wherePivot('is_default', true)->first();
+                }
+
+                // Only show template selection for admins
+                if ($this->ownerRecord && $isAdmin) {
                     $fields[] = Select::make('template_id')
                         ->label('اختر قالب الرسالة')
                         ->options(function () {
@@ -57,21 +64,27 @@ class SendWhatsAppMessageToSelectedStudentsAction extends BulkAction
                                 ->pluck('group_message_templates.name', 'group_message_templates.id')
                                 ->prepend('رسالة مخصصة', 'custom');
                         })
-                        ->default(function () {
-                            $defaultTemplate = $this->ownerRecord->messageTemplates()->wherePivot('is_default', true)->first();
+                        ->default(function () use ($defaultTemplate) {
                             return $defaultTemplate ? $defaultTemplate->id : 'custom';
                         })
                         ->reactive();
                 }
 
-                $fields[] = Textarea::make('message')
-                    ->hint('يمكنك استخدام المتغيرات التالية: {{student_name}}, {{group_name}}, {{curr_date}}, {{prefix}}, {{pronoun}}, {{verb}}')
-                    ->default('السلام عليكم، نذكركم بالواجب المقرر اليوم، لعل المانع خير.')
-                    ->label('الرسالة')
-                    ->placeholder('اكتب رسالتك هنا...')
-                    ->rows(8)
-                    ->required()
-                    ->hidden(fn(Get $get) => $this->ownerRecord && $get('template_id') !== 'custom');
+                // Show message field for admins when custom is selected, or always for non-admins without default template
+                $showMessageField = $isAdmin || !$defaultTemplate;
+
+                if ($showMessageField) {
+                    $defaultMessage = $defaultTemplate ? $defaultTemplate->content : 'السلام عليكم، نذكركم بالواجب المقرر اليوم، لعل المانع خير.';
+
+                    $fields[] = Textarea::make('message')
+                        ->hint('يمكنك استخدام المتغيرات التالية: {{student_name}}, {{group_name}}, {{curr_date}}, {{prefix}}, {{pronoun}}, {{verb}}')
+                        ->default($defaultMessage)
+                        ->label('الرسالة')
+                        ->placeholder('اكتب رسالتك هنا...')
+                        ->rows(8)
+                        ->required()
+                        ->hidden(fn(Get $get) => $isAdmin && $this->ownerRecord && $get('template_id') !== 'custom');
+                }
 
                 return $fields;
             })
@@ -99,20 +112,32 @@ class SendWhatsAppMessageToSelectedStudentsAction extends BulkAction
             return;
         }
 
-        // Get the message content from template or custom message
+        $isAdmin = auth()->user()->isAdministrator();
         $messageTemplate = '';
+
         if ($this->ownerRecord) {
-            if (isset($data['template_id']) && $data['template_id'] === 'custom') {
-                $messageTemplate = $data['message'];
-            } elseif (isset($data['template_id'])) {
-                $template = GroupMessageTemplate::find($data['template_id']);
-                if ($template) {
-                    $messageTemplate = $template->content;
+            // For non-admins, always use default template if available
+            if (!$isAdmin) {
+                $defaultTemplate = $this->ownerRecord->messageTemplates()->wherePivot('is_default', true)->first();
+                if ($defaultTemplate) {
+                    $messageTemplate = $defaultTemplate->content;
                 } else {
                     $messageTemplate = $data['message'] ?? 'السلام عليكم، نذكركم بالواجب المقرر اليوم، لعل المانع خير.';
                 }
             } else {
-                $messageTemplate = $data['message'] ?? 'السلام عليكم، نذكركم بالواجب المقرر اليوم، لعل المانع خير.';
+                // Admins can choose template
+                if (isset($data['template_id']) && $data['template_id'] === 'custom') {
+                    $messageTemplate = $data['message'];
+                } elseif (isset($data['template_id'])) {
+                    $template = GroupMessageTemplate::find($data['template_id']);
+                    if ($template) {
+                        $messageTemplate = $template->content;
+                    } else {
+                        $messageTemplate = $data['message'] ?? 'السلام عليكم، نذكركم بالواجب المقرر اليوم، لعل المانع خير.';
+                    }
+                } else {
+                    $messageTemplate = $data['message'] ?? 'السلام عليكم، نذكركم بالواجب المقرر اليوم، لعل المانع خير.';
+                }
             }
         } else {
             $messageTemplate = $data['message'] ?? $data['message_content'] ?? 'السلام عليكم، نذكركم بالواجب المقرر اليوم، لعل المانع خير.';

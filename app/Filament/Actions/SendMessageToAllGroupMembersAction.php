@@ -36,46 +36,53 @@ class SendMessageToAllGroupMembersAction extends Action
         $this->label('رسالة عامة')
             ->icon('heroicon-o-megaphone')
             ->color('primary')
-            ->form([
-                Forms\Components\Select::make('template_source')
-                    ->label('مصدر القالب')
-                    ->options([
-                        'group_default' => 'استخدام القالب الافتراضي لكل مجموعة',
-                        'global_template' => 'استخدام قالب موحد',
-                        'custom' => 'رسالة مخصصة',
-                    ])
-                    ->default('group_default')
-                    ->reactive()
-                    ->helperText('اختر كيفية تحديد محتوى الرسالة لكل مجموعة'),
+            ->form(function() {
+                $fields = [];
+                $isAdmin = auth()->user()->isAdministrator();
 
-                Forms\Components\Select::make('global_template_id')
-                    ->label('اختر القالب الموحد')
-                    ->options(function () {
-                        // Get all templates from all user's groups
-                        $userGroups = $this->getUserGroups();
-                        $templates = collect();
+                // Template source selection - only for admins
+                if ($isAdmin) {
+                    $fields[] = Forms\Components\Select::make('template_source')
+                        ->label('مصدر القالب')
+                        ->options([
+                            'group_default' => 'استخدام القالب الافتراضي لكل مجموعة',
+                            'global_template' => 'استخدام قالب موحد',
+                            'custom' => 'رسالة مخصصة',
+                        ])
+                        ->default('group_default')
+                        ->reactive()
+                        ->helperText('اختر كيفية تحديد محتوى الرسالة لكل مجموعة');
 
-                        foreach ($userGroups as $group) {
-                            $groupTemplates = $group->messageTemplates()->get();
-                            foreach ($groupTemplates as $template) {
-                                $templates->put($template->id, "{$template->name} (من مجموعة: {$group->name})");
+                    $fields[] = Forms\Components\Select::make('global_template_id')
+                        ->label('اختر القالب الموحد')
+                        ->options(function () {
+                            // Get all templates from all user's groups
+                            $userGroups = $this->getUserGroups();
+                            $templates = collect();
+
+                            foreach ($userGroups as $group) {
+                                $groupTemplates = $group->messageTemplates()->get();
+                                foreach ($groupTemplates as $template) {
+                                    $templates->put($template->id, "{$template->name} (من مجموعة: {$group->name})");
+                                }
                             }
-                        }
 
-                        return $templates->unique()->toArray();
-                    })
-                    ->visible(fn(Get $get) => $get('template_source') === 'global_template')
-                    ->required(fn(Get $get) => $get('template_source') === 'global_template'),
+                            return $templates->unique()->toArray();
+                        })
+                        ->visible(fn(Get $get) => $get('template_source') === 'global_template')
+                        ->required(fn(Get $get) => $get('template_source') === 'global_template');
 
-                Textarea::make('message')
-                    ->hint('يمكنك استخدام المتغيرات التالية: {student_name}, {group_name}, {curr_date}, {last_presence}')
-                    ->default('السلام عليكم ورحمة الله وبركاته\n{student_name}، رسالة عامة من مجموعة {group_name}.\nبارك الله فيكم وزادكم حرصا.')
-                    ->label('الرسالة')
-                    ->required()
-                    ->rows(4)
-                    ->visible(fn(Get $get) => $get('template_source') === 'custom'),
+                    $fields[] = Textarea::make('message')
+                        ->hint('يمكنك استخدام المتغيرات التالية: {student_name}, {group_name}, {curr_date}, {last_presence}')
+                        ->default('السلام عليكم ورحمة الله وبركاته\n{student_name}، رسالة عامة من مجموعة {group_name}.\nبارك الله فيكم وزادكم حرصا.')
+                        ->label('الرسالة')
+                        ->required()
+                        ->rows(4)
+                        ->visible(fn(Get $get) => $get('template_source') === 'custom');
+                }
 
-                Forms\Components\Placeholder::make('groups_summary')
+                // Rest of form fields that are always shown
+                $fields[] = Forms\Components\Placeholder::make('groups_summary')
                     ->label('ملخص المجموعات')
                     ->content(function () {
                         $userGroups = $this->getUserGroups();
@@ -83,8 +90,10 @@ class SendMessageToAllGroupMembersAction extends Action
                         $totalStudents = $userGroups->sum(fn($group) => $group->students->count());
 
                         return "سيتم إرسال الرسائل لجميع الطلاب في {$groupCount} مجموعة ({$totalStudents} طالب إجمالي).";
-                    }),
-            ])
+                    });
+
+                return $fields;
+            })
             ->action(function (array $data) {
                 $this->sendMessageToAllGroupMembers($data);
             });
@@ -160,7 +169,25 @@ class SendMessageToAllGroupMembersAction extends Action
      */
     protected function getMessageTemplateForGroup(array $data, Group $group): string
     {
-        switch ($data['template_source']) {
+        $isAdmin = auth()->user()->isAdministrator();
+
+        // For non-admins, always use group's default template if available
+        if (!$isAdmin) {
+            $defaultTemplate = $group->messageTemplates()->wherePivot('is_default', true)->first();
+            if ($defaultTemplate) {
+                return $defaultTemplate->content;
+            }
+            // Fallback to first template if no default
+            $firstTemplate = $group->messageTemplates()->first();
+            if ($firstTemplate) {
+                return $firstTemplate->content;
+            }
+            // Fallback to default message
+            return 'السلام عليكم ورحمة الله وبركاته\n{student_name}، رسالة عامة من مجموعة {group_name}.\nبارك الله فيكم وزادكم حرصا.';
+        }
+
+        // Admin logic for template selection
+        switch ($data['template_source'] ?? 'group_default') {
             case 'group_default':
                 // Use group's default template
                 $defaultTemplate = $group->messageTemplates()->wherePivot('is_default', true)->first();
