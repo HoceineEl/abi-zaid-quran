@@ -190,9 +190,27 @@ class StudentDisconnectionResource extends Resource
                     ->label('تاريخ الانقطاع')
                     ->form([
                         Forms\Components\DatePicker::make('disconnection_from')
-                            ->label('من تاريخ'),
+                            ->label('من تاريخ')
+                            ->displayFormat('m/d/Y')
+                            ->default(now()->subDays(14)->format('Y-m-d')),
                         Forms\Components\DatePicker::make('disconnection_to')
-                            ->label('إلى تاريخ'),
+                            ->label('إلى تاريخ')
+                            ->displayFormat('m/d/Y')
+                            ->default(now()->format('Y-m-d')),
+                    ])
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+                        if ($data['disconnection_from']) {
+                            $indicators[] = 'من: ' . \Carbon\Carbon::parse($data['disconnection_from'])->format('m/d/Y');
+                        }
+                        if ($data['disconnection_to']) {
+                            $indicators[] = 'إلى: ' . \Carbon\Carbon::parse($data['disconnection_to'])->format('m/d/Y');
+                        }
+                        return $indicators;
+                    })
+                    ->default([
+                        'disconnection_from' => now()->subDays(14)->format('Y-m-d'),
+                        'disconnection_to' => now()->format('Y-m-d'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query

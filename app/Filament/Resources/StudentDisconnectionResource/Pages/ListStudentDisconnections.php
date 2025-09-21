@@ -50,10 +50,14 @@ class ListStudentDisconnections extends ListRecords
 
     protected function getTableQuery(): Builder
     {
+        $fourteenDaysAgo = now()->subDays(14)->format('Y-m-d');
+        $today = now()->format('Y-m-d');
+
         return parent::getTableQuery()
             ->with(['student.progresses' => function ($query) {
                 $query->where('status', 'memorized')->latest('date')->limit(1);
             }])
+            ->whereBetween('disconnection_date', [$fourteenDaysAgo, $today])
             ->orderByRaw('
                 (SELECT MAX(p.date)
                  FROM progress p
@@ -125,9 +129,11 @@ class ListStudentDisconnections extends ListRecords
                 ->form([
                     \Filament\Forms\Components\DatePicker::make('start_date')
                         ->label('من تاريخ')
-                        ->default(now()->subDays(30)->format('Y-m-d')),
+                        ->displayFormat('m/d/Y')
+                        ->default(now()->subDays(14)->format('Y-m-d')),
                     \Filament\Forms\Components\DatePicker::make('end_date')
                         ->label('إلى تاريخ')
+                        ->displayFormat('m/d/Y')
                         ->default(now()->format('Y-m-d')),
                     \Filament\Forms\Components\Toggle::make('include_returned')
                         ->label('تضمين الطلاب العائدين')
