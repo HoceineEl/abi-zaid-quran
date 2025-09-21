@@ -34,7 +34,7 @@ class StudentDisconnectionResource extends Resource
 
     public static function canAccess(): bool
     {
-        return auth()->user()->isAdministrator() || auth()->user()->email === 'mehdi@mehdi.com' || auth()->user()->phone === '0701255179';
+        return auth()->user()->isAdministrator() || auth()->user()->email === 'mehdi@mehdi.com' || auth()->user()->phone === '0701255179' || auth()->user()->email === 'youssef@abi-zaid.com';
     }
 
     public static function form(Form $form): Form
