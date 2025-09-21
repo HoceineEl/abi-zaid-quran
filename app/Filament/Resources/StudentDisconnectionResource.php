@@ -186,42 +186,44 @@ class StudentDisconnectionResource extends Resource
                     ->label('تفاعل مع الرسالة')
                     ->options(MessageResponseStatus::class),
 
-                Tables\Filters\Filter::make('disconnection_date')
-                    ->label('تاريخ الانقطاع')
+                Tables\Filters\Filter::make('last_present_date')
+                    ->label('آخر حضور')
                     ->form([
-                        Forms\Components\DatePicker::make('disconnection_from')
+                        Forms\Components\DatePicker::make('last_present_from')
                             ->label('من تاريخ')
                             ->displayFormat('m/d/Y')
                             ->default(now()->subDays(14)->format('Y-m-d')),
-                        Forms\Components\DatePicker::make('disconnection_to')
+                        Forms\Components\DatePicker::make('last_present_to')
                             ->label('إلى تاريخ')
                             ->displayFormat('m/d/Y')
                             ->default(now()->format('Y-m-d')),
                     ])
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
-                        if ($data['disconnection_from']) {
-                            $indicators[] = 'من: ' . \Carbon\Carbon::parse($data['disconnection_from'])->format('m/d/Y');
+                        if ($data['last_present_from']) {
+                            $indicators[] = 'من: ' . \Carbon\Carbon::parse($data['last_present_from'])->format('m/d/Y');
                         }
-                        if ($data['disconnection_to']) {
-                            $indicators[] = 'إلى: ' . \Carbon\Carbon::parse($data['disconnection_to'])->format('m/d/Y');
+                        if ($data['last_present_to']) {
+                            $indicators[] = 'إلى: ' . \Carbon\Carbon::parse($data['last_present_to'])->format('m/d/Y');
                         }
                         return $indicators;
                     })
                     ->default([
-                        'disconnection_from' => now()->subDays(14)->format('Y-m-d'),
-                        'disconnection_to' => now()->format('Y-m-d'),
+                        'last_present_from' => now()->subDays(14)->format('Y-m-d'),
+                        'last_present_to' => now()->format('Y-m-d'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
-                        return $query
-                            ->when(
-                                $data['disconnection_from'],
-                                fn(Builder $query, $date): Builder => $query->where('disconnection_date', '>=', $date),
-                            )
-                            ->when(
-                                $data['disconnection_to'],
-                                fn(Builder $query, $date): Builder => $query->where('disconnection_date', '<=', $date),
-                            );
+                        // Apply default 14-day filter on last present date
+                        $fromDate = $data['last_present_from'] ?? now()->subDays(14)->format('Y-m-d');
+                        $toDate = $data['last_present_to'] ?? now()->format('Y-m-d');
+
+                        return $query->whereHas('student', function ($studentQuery) use ($fromDate, $toDate) {
+                            $studentQuery->whereHas('progresses', function ($progressQuery) use ($fromDate, $toDate) {
+                                $progressQuery->where('status', 'memorized')
+                                    ->whereBetween('date', [$fromDate, $toDate])
+                                    ->whereRaw('date = (SELECT MAX(p2.date) FROM progress p2 WHERE p2.student_id = progress.student_id AND p2.status = "memorized")');
+                            });
+                        });
                     }),
             ])
             ->actions([

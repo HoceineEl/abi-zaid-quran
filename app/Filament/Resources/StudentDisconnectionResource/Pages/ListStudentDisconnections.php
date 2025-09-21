@@ -28,17 +28,25 @@ class ListStudentDisconnections extends ListRecords
 
     public function getTabs(): array
     {
-        $stats = $this->disconnectionService->getDisconnectionStats();
+        $fourteenDaysAgo = now()->subDays(14)->format('Y-m-d');
+        $today = now()->format('Y-m-d');
+
+        // Get stats for 14-day period only
+        $total = StudentDisconnection::whereBetween('disconnection_date', [$fourteenDaysAgo, $today])->count();
+        $notReturned = StudentDisconnection::whereBetween('disconnection_date', [$fourteenDaysAgo, $today])
+            ->where('has_returned', false)->count();
+        $returned = StudentDisconnection::whereBetween('disconnection_date', [$fourteenDaysAgo, $today])
+            ->where('has_returned', true)->count();
 
         return [
             'all' => Tab::make('الكل')
-                ->badge($stats['total']),
+                ->badge($total),
             'not_returned' => Tab::make('لم يعودوا')
                 ->modifyQueryUsing(fn(Builder $query) => $query->where('has_returned', false))
-                ->badge($stats['not_returned']),
+                ->badge($notReturned),
             'returned' => Tab::make('عادوا')
                 ->modifyQueryUsing(fn(Builder $query) => $query->where('has_returned', true))
-                ->badge($stats['returned']),
+                ->badge($returned),
         ];
     }
 
@@ -50,14 +58,10 @@ class ListStudentDisconnections extends ListRecords
 
     protected function getTableQuery(): Builder
     {
-        $fourteenDaysAgo = now()->subDays(14)->format('Y-m-d');
-        $today = now()->format('Y-m-d');
-
         return parent::getTableQuery()
             ->with(['student.progresses' => function ($query) {
                 $query->where('status', 'memorized')->latest('date')->limit(1);
             }])
-            ->whereBetween('disconnection_date', [$fourteenDaysAgo, $today])
             ->orderByRaw('
                 (SELECT MAX(p.date)
                  FROM progress p
