@@ -136,11 +136,11 @@ class Group extends Model
 
     public function scopeActive(Builder $query): Builder
     {
-        $fourDaysAgo = now()->subDays(4)->format('Y-m-d');
+        $sevenDaysAgo = now()->subDays(7)->format('Y-m-d');
 
         return $query->where('is_quran_group', true)
-            ->whereHas('progresses', function ($progressQuery) use ($fourDaysAgo) {
-                $progressQuery->where('date', '>=', $fourDaysAgo);
+            ->whereHas('progresses', function ($progressQuery) use ($sevenDaysAgo) {
+                $progressQuery->where('date', '>=', $sevenDaysAgo);
             });
     }
 

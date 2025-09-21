@@ -72,7 +72,7 @@ class ListStudentDisconnections extends ListRecords
                 ->color('success')
                 ->requiresConfirmation()
                 ->modalHeading('إضافة الطلاب المنقطعين')
-                ->modalDescription('سيتم إضافة الطلاب من المجموعات النشطة (لديها تقدم في آخر 4 أيام) الذين لديهم يومان أو أكثر غياب متتاليان إلى قائمة الانقطاع.')
+                ->modalDescription('سيتم إضافة الطلاب من المجموعات النشطة (لديها تقدم في آخر 7 أيام) الذين لديهم يومان أو أكثر غياب متتاليان إلى قائمة الانقطاع.')
                 ->form([
                     \Filament\Forms\Components\Select::make('excluded_groups')
                         ->label('استثناء المجموعات')
@@ -80,7 +80,7 @@ class ListStudentDisconnections extends ListRecords
                         ->options(Group::active()->pluck('name', 'id'))
                         ->searchable()
                         ->preload()
-                        ->helperText('اختر المجموعات النشطة التي لا تريد إضافة طلابها إلى قائمة الانقطاع (المجموعات النشطة = لديها تقدم في آخر 4 أيام)'),
+                        ->helperText('اختر المجموعات النشطة التي لا تريد إضافة طلابها إلى قائمة الانقطاع (المجموعات النشطة = لديها تقدم في آخر 7 أيام)'),
                 ])
                 ->action(function ($data) {
                     $this->addDisconnectedStudents($data['excluded_groups'] ?? []);
@@ -153,13 +153,13 @@ class ListStudentDisconnections extends ListRecords
         if ($addedCount > 0) {
             Notification::make()
                 ->title('تم إضافة الطلاب المنقطعين')
-                ->body("تم إضافة {$addedCount} طالب إلى قائمة الانقطاع من المجموعات النشطة (لديها تقدم في آخر 4 أيام).")
+                ->body("تم إضافة {$addedCount} طالب إلى قائمة الانقطاع من المجموعات النشطة (لديها تقدم في آخر 7 أيام).")
                 ->success()
                 ->send();
         } else {
             Notification::make()
                 ->title('لا يوجد طلاب منقطعين')
-                ->body('لا يوجد طلاب لديهم يومان أو أكثر غياب متتاليان في المجموعات النشطة (لديها تقدم في آخر 4 أيام) أو تم إضافتهم مسبقاً.')
+                ->body('لا يوجد طلاب لديهم يومان أو أكثر غياب متتاليان في المجموعات النشطة (لديها تقدم في آخر 7 أيام) أو تم إضافتهم مسبقاً.')
                 ->info()
                 ->send();
         }
