@@ -35,7 +35,14 @@ class StudentDisconnectionExport implements FromCollection, WithHeadings, Should
         $query = StudentDisconnection::with(['student', 'group']);
 
         if ($this->startDate && $this->endDate) {
-            $query->whereBetween('created_at', [$this->startDate . ' 00:00:00', $this->endDate . ' 23:59:59']);
+            // Filter by student's last attendance date (last present date)
+            $query->whereHas('student', function ($studentQuery) {
+                $studentQuery->whereHas('progresses', function ($progressQuery) {
+                    $progressQuery->where('status', 'memorized')
+                        ->whereBetween('date', [$this->startDate, $this->endDate])
+                        ->whereRaw('date = (SELECT MAX(p2.date) FROM progress p2 WHERE p2.student_id = progress.student_id AND p2.status = "memorized")');
+                });
+            });
         }
 
         // Filter by returned status if specified

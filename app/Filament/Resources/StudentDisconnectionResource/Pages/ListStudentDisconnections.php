@@ -132,11 +132,11 @@ class ListStudentDisconnections extends ListRecords
                 ->color('warning')
                 ->form([
                     \Filament\Forms\Components\DatePicker::make('start_date')
-                        ->label('من تاريخ')
+                        ->label('من تاريخ آخر حضور')
                         ->displayFormat('m/d/Y')
                         ->default(now()->subDays(14)->format('Y-m-d')),
                     \Filament\Forms\Components\DatePicker::make('end_date')
-                        ->label('إلى تاريخ')
+                        ->label('إلى تاريخ آخر حضور')
                         ->displayFormat('m/d/Y')
                         ->default(now()->format('Y-m-d')),
                     \Filament\Forms\Components\Toggle::make('include_returned')
