@@ -85,7 +85,10 @@ class DisconnectionService
 
   private function studentAlreadyDisconnected(Student $student): bool
   {
-    return StudentDisconnection::where('student_id', $student->id)->exists();
+    // Only check if student has an active disconnection (hasn't returned)
+    return StudentDisconnection::where('student_id', $student->id)
+      ->where('has_returned', false)
+      ->exists();
   }
 
   private function hasStudentReturned(StudentDisconnection $disconnection): bool

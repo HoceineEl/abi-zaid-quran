@@ -249,10 +249,22 @@ class Student extends Model
 
     public function getDisconnectionDateBasedOnGroupActivity(): ?string
     {
-        $groupWorkingDates = $this->getGroupWorkingDates(30);
+        // Only consider students with at least 2 consecutive absent days
+        if ($this->getCurrentConsecutiveAbsentDays() < 2) {
+            return null;
+        }
 
-        $consecutiveAbsentDays = 0;
-        $disconnectionDate = null;
+        // Get the last present date
+        $lastPresentDate = $this->getLastPresentDate();
+
+        if ($lastPresentDate) {
+            // Disconnection date is the day after last present
+            return Carbon::parse($lastPresentDate)->addDay()->format('Y-m-d');
+        }
+
+        // If never present, use the date of the second consecutive absence
+        $groupWorkingDates = $this->getGroupWorkingDates(30);
+        $absentCount = 0;
 
         foreach ($groupWorkingDates as $date) {
             $progress = $this->progresses()
@@ -260,16 +272,14 @@ class Student extends Model
                 ->first();
 
             if (!$progress || ($progress->status === 'absent' && (int)$progress->with_reason === 0)) {
-                $consecutiveAbsentDays++;
-                if ($consecutiveAbsentDays === 2) {
-                    $disconnectionDate = $date;
+                $absentCount++;
+                if ($absentCount === 2) {
+                    return $date;
                 }
-            } else {
-                break;
             }
         }
 
-        return $disconnectionDate;
+        return null;
     }
 
     public function getLastPresentDate(): ?string
