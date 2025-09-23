@@ -228,30 +228,8 @@ class Student extends Model
 
     public function hasConsecutiveAbsentDaysInWorkingGroup(int $requiredDays = 2): bool
     {
-        $groupWorkingDates = $this->getGroupWorkingDates(30);
-
-        if ($groupWorkingDates->count() < $requiredDays) {
-            return false;
-        }
-
-        $consecutiveAbsentDays = 0;
-
-        foreach ($groupWorkingDates as $date) {
-            $progress = $this->progresses()
-                ->where('date', $date)
-                ->first();
-
-            if (!$progress || ($progress->status === 'absent' && (int)$progress->with_reason === 0)) {
-                $consecutiveAbsentDays++;
-                if ($consecutiveAbsentDays >= $requiredDays) {
-                    return true;
-                }
-            } else {
-                $consecutiveAbsentDays = 0;
-            }
-        }
-
-        return false;
+        // Use the new method to get current consecutive absent days
+        return $this->getCurrentConsecutiveAbsentDays() >= $requiredDays;
     }
 
     public function getGroupWorkingDates(int $limitDays = 30)
@@ -322,5 +300,38 @@ class Student extends Model
     public function getLastPresentDateAttribute(): ?string
     {
         return $this->getLastPresentDate();
+    }
+
+    public function getCurrentConsecutiveAbsentDays(): int
+    {
+        $groupWorkingDates = $this->getGroupWorkingDates(30);
+
+        if ($groupWorkingDates->isEmpty()) {
+            return 0;
+        }
+
+        $consecutiveAbsentDays = 0;
+
+        // Check from most recent date backwards
+        foreach ($groupWorkingDates as $date) {
+            $progress = $this->progresses()
+                ->where('date', $date)
+                ->first();
+
+            // If no progress or absent without reason, increment counter
+            if (!$progress || ($progress->status === 'absent' && (int)$progress->with_reason === 0)) {
+                $consecutiveAbsentDays++;
+            } else {
+                // Stop counting when we find a present day
+                break;
+            }
+        }
+
+        return $consecutiveAbsentDays;
+    }
+
+    public function getCurrentConsecutiveAbsentDaysAttribute(): int
+    {
+        return $this->getCurrentConsecutiveAbsentDays();
     }
 }

@@ -108,6 +108,19 @@ class StudentDisconnectionResource extends Resource
                     ->sortable()
                     ->placeholder('لا يوجد'),
 
+                Tables\Columns\TextColumn::make('consecutive_absent_days')
+                    ->label('أيام الغياب المتتالية')
+                    ->state(function (StudentDisconnection $record): string {
+                        $consecutiveDays = $record->student->getCurrentConsecutiveAbsentDays();
+                        return $consecutiveDays . ' يوم';
+                    })
+                    ->badge()
+                    ->color(fn (StudentDisconnection $record): string =>
+                        $record->student->getCurrentConsecutiveAbsentDays() >= 5 ? 'danger' :
+                        ($record->student->getCurrentConsecutiveAbsentDays() >= 3 ? 'warning' : 'gray')
+                    )
+                    ->sortable(),
+
                 Tables\Columns\TextColumn::make('disconnection_duration')
                     ->label('مدة الانقطاع')
                     ->state(function (StudentDisconnection $record): string {
