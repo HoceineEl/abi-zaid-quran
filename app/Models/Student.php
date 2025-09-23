@@ -208,16 +208,13 @@ class Student extends Model
 
     public function getDaysSinceLastPresentAttribute(): ?int
     {
-        $lastPresentDay = $this->progresses()
-            ->where('status', 'memorized')
-            ->latest('date')
-            ->first();
+        $lastPresentDate = $this->getLastPresentDate();
 
-        if (!$lastPresentDay) {
+        if (!$lastPresentDate) {
             return null;
         }
 
-        return (int) now()->diffInDays($lastPresentDay->date) * -1;
+        return (int) now()->diffInDays($lastPresentDate);
     }
 
     public function scopeDisconnectedFromActiveGroups(Builder $query, int $consecutiveDays = 2): Builder
@@ -299,10 +296,27 @@ class Student extends Model
 
     public function getLastPresentDate(): ?string
     {
-        return $this->progresses()
-            ->where('status', 'memorized')
-            ->latest('date')
-            ->first()?->date;
+        // Get the working dates for the student's current group
+        $groupWorkingDates = $this->getGroupWorkingDates(90); // Check last 90 days for better coverage
+
+        if ($groupWorkingDates->isEmpty()) {
+            return null;
+        }
+
+        // Find the last date where the student was present (memorized)
+        // on a day when their current group was working
+        foreach ($groupWorkingDates as $date) {
+            $progress = $this->progresses()
+                ->where('date', $date)
+                ->where('status', 'memorized')
+                ->first();
+
+            if ($progress) {
+                return $date;
+            }
+        }
+
+        return null;
     }
 
     public function getLastPresentDateAttribute(): ?string
