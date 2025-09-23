@@ -31,22 +31,14 @@ class ListStudentDisconnections extends ListRecords
         $fourteenDaysAgo = now()->subDays(14)->format('Y-m-d');
         $today = now()->format('Y-m-d');
 
-        // Get stats for 14-day period only
-        $total = StudentDisconnection::whereBetween('disconnection_date', [$fourteenDaysAgo, $today])->count();
-        $notReturned = StudentDisconnection::whereBetween('disconnection_date', [$fourteenDaysAgo, $today])
-            ->where('has_returned', false)->count();
-        $returned = StudentDisconnection::whereBetween('disconnection_date', [$fourteenDaysAgo, $today])
-            ->where('has_returned', true)->count();
 
         return [
             'all' => Tab::make('الكل')
-                ->badge($total),
+                ,
             'not_returned' => Tab::make('لم يعودوا')
-                ->modifyQueryUsing(fn(Builder $query) => $query->where('has_returned', false))
-                ->badge($notReturned),
+                ->modifyQueryUsing(fn(Builder $query) => $query->where('has_returned', false)),
             'returned' => Tab::make('عادوا')
-                ->modifyQueryUsing(fn(Builder $query) => $query->where('has_returned', true))
-                ->badge($returned),
+                ->modifyQueryUsing(fn(Builder $query) => $query->where('has_returned', true)),
         ];
     }
 
