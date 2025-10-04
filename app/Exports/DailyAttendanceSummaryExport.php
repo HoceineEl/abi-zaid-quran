@@ -15,10 +15,12 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 class DailyAttendanceSummaryExport implements FromCollection, WithHeadings, ShouldAutoSize, WithTitle, WithEvents
 {
     protected $date;
+    protected $userId;
 
-    public function __construct(string $date)
+    public function __construct(string $date, $userId = null)
     {
         $this->date = $date;
+        $this->userId = $userId;
     }
 
     /**
@@ -27,7 +29,7 @@ class DailyAttendanceSummaryExport implements FromCollection, WithHeadings, Shou
     public function collection()
     {
         // Remove group number from the mapped data
-        return Group::getDailyAttendanceSummary($this->date)->map(function ($row) {
+        return Group::getDailyAttendanceSummary($this->date, $this->userId)->map(function ($row) {
             return [
                 'name' => $row['name'],
                 'present' => $row['present'],

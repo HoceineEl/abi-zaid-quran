@@ -298,7 +298,7 @@ class GroupResource extends Resource
                     ])
                     ->action(function (array $data) {
                         $selectedDate = $data['export_date'];
-                        return Excel::download(new DailyAttendanceSummaryExport($selectedDate), 'daily-attendance-summary-' . $selectedDate . '.xlsx');
+                        return Excel::download(new DailyAttendanceSummaryExport($selectedDate, auth()->id()), 'daily-attendance-summary-' . $selectedDate . '.xlsx');
                     }),
             ])
             ->modifyQueryUsing(function ($query) {

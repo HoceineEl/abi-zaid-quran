@@ -97,9 +97,18 @@ class Group extends Model
         return $this->name . ' - ' . $type;
     }
 
-    public static function getDailyAttendanceSummary(string $date)
+    public static function getDailyAttendanceSummary(string $date, $userId = null)
     {
-        return self::query()
+        $query = self::query();
+
+        // Filter by user's groups if userId is provided
+        if ($userId) {
+            $query->whereHas('managers', function ($q) use ($userId) {
+                $q->where('users.id', $userId);
+            });
+        }
+
+        return $query
             ->whereHas('students.progresses', function ($query) use ($date) {
                 $query->where('date', $date);
             })
