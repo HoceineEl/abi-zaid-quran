@@ -108,18 +108,23 @@ class SendUnmarkedStudentsMessageAction extends Action
         }
 
         // Mark students as absent first (this is part of the original logic)
-        $this->markStudentsAsAbsent($unmarkedStudents, $selectedDate, $data['with_reason'] ?? false);
+        $withReason = $data['with_reason'] ?? false;
+        $this->markStudentsAsAbsent($unmarkedStudents, $selectedDate, $withReason);
 
         // Get the message content
         $messageTemplate = $this->getMessageTemplate($data, $ownerRecord);
 
-        // Only send messages if it's today's date
-        if ($selectedDate === now()->format('Y-m-d')) {
+        // Only send messages if it's today's date and NOT marked with reason
+        if ($selectedDate === now()->format('Y-m-d') && !$withReason) {
             $this->sendViaWhatsAppWeb($unmarkedStudents, $messageTemplate, $data, $ownerRecord);
         } else {
+            $message = $withReason
+                ? "تم تسجيل {$unmarkedStudents->count()} طالب كغائبين بعذر للتاريخ المحدد"
+                : "تم تسجيل {$unmarkedStudents->count()} طالب كغائبين للتاريخ المحدد";
+
             Notification::make()
                 ->title('تم تسجيل الطلاب كغائبين')
-                ->body("تم تسجيل {$unmarkedStudents->count()} طالب كغائبين للتاريخ المحدد")
+                ->body($message)
                 ->success()
                 ->send();
         }

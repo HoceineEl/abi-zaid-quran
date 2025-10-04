@@ -119,7 +119,11 @@ class SendAbsentStudentsMessageAction extends Action
         }
 
         return $ownerRecord->students->filter(function ($student) use ($selectedDate) {
-            return $student->progresses->where('date', $selectedDate)->where('status', 'absent')->count() > 0;
+            return $student->progresses
+                ->where('date', $selectedDate)
+                ->where('status', 'absent')
+                ->where('with_reason', false)
+                ->count() > 0;
         });
     }
 
