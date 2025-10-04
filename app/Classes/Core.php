@@ -156,6 +156,6 @@ class Core
 
     public static function canChange(): bool
     {
-        return auth()->user()->role === 'admin';
+        return auth()->user()->isAdministrator();
     }
 }

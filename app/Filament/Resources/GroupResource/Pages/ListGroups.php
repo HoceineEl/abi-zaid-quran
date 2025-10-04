@@ -40,7 +40,7 @@ class ListGroups extends ListRecords
     {
         return [
             Actions\CreateAction::make()
-                ->visible(auth()->user()->role === 'admin'),
+                ->visible(auth()->user()->isAdministrator()),
         ];
     }
 

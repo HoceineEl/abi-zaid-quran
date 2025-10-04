@@ -12,7 +12,7 @@ class GroupPolicy
      */
     public function delete(User $user, Group $group): bool
     {
-        return auth()->user()->role === 'admin';
+        return $user->isAdministrator();
     }
 
     /**
@@ -20,6 +20,6 @@ class GroupPolicy
      */
     public function forceDelete(User $user, Group $group): bool
     {
-        return auth()->user()->role === 'admin';
+        return $user->isAdministrator();
     }
 }

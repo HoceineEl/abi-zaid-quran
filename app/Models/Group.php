@@ -40,7 +40,7 @@ class Group extends Model
     protected static function booted(): void
     {
         static::addGlobalScope('userGroups', function (Builder $query) {
-            if (auth()->check() && auth()->user()->role !== 'admin') {
+            if (auth()->check() && !auth()->user()->isAdministrator()) {
                 $query->whereHas('managers', function ($q) {
                     $q->where('users.id', auth()->id());
                 });

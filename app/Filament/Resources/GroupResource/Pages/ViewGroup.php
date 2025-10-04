@@ -34,7 +34,7 @@ class ViewGroup extends ViewRecord
             Action::make('remind_manager')
                 ->label('تذكير المشرفين')
                 ->icon('heroicon-o-bell')
-                ->visible(fn() => auth()->user()->role === 'admin')
+                ->visible(fn() => auth()->user()->isAdministrator())
                 ->form([
                     \Filament\Forms\Components\Textarea::make('message')
                         ->label('الرسالة')
