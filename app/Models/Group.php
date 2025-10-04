@@ -34,6 +34,20 @@ class Group extends Model
         'ignored_names_phones',
     ];
 
+    /**
+     * The "booted" method of the model.
+     */
+    protected static function booted(): void
+    {
+        static::addGlobalScope('userGroups', function (Builder $query) {
+            if (auth()->check() && auth()->user()->role !== 'admin') {
+                $query->whereHas('managers', function ($q) {
+                    $q->where('users.id', auth()->id());
+                });
+            }
+        });
+    }
+
 
 
     public function students(): HasMany

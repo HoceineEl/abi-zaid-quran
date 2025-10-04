@@ -301,14 +301,6 @@ class GroupResource extends Resource
                         return Excel::download(new DailyAttendanceSummaryExport($selectedDate, auth()->id()), 'daily-attendance-summary-' . $selectedDate . '.xlsx');
                     }),
             ])
-            ->modifyQueryUsing(function ($query) {
-                if (auth()->user()->role !== 'admin') {
-                    $query->whereHas('managers', function ($query) {
-                        $query->where('manager_id', auth()->id());
-                    });
-                } else {
-                }
-            })
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\BulkAction::make('toggle_quran_group')
