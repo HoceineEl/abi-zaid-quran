@@ -156,7 +156,7 @@ class Student extends Model
             get: function () {
                 $recentProgresses = $this->progresses()
                     ->latest('date')
-                    ->limit(30)
+                    ->limit(14)
                     ->get();
 
                 $absenceCount = $recentProgresses->where('status', 'absent')
@@ -167,13 +167,13 @@ class Student extends Model
 
                 if ($absenceCount === 0) {
                     return ['label' => 'ممتاز', 'days' => $absenceCount, 'color' => '#28a745'];
-                } elseif ($absenceCount >= 1 && $absenceCount <= 3) {
+                } elseif ($absenceCount === 1) {
                     return ['label' => 'جيد', 'days' => $absenceCount, 'color' => '#5cb85c'];
-                } elseif ($absenceCount >= 4 && $absenceCount <= 5) {
+                } elseif ($absenceCount === 2) {
                     return ['label' => 'حسن', 'days' => $absenceCount, 'color' => '#8fd19e'];
-                } elseif ($absenceCount >= 6 && $absenceCount <= 7) {
+                } elseif ($absenceCount === 3) {
                     return ['label' => 'لا بأس به', 'days' => $absenceCount, 'color' => '#ffc107'];
-                } elseif ($absenceCount >= 8 && $absenceCount <= 10) {
+                } elseif ($absenceCount === 4) {
                     return ['label' => 'متوسط', 'days' => $absenceCount, 'color' => '#fd7e14'];
                 } else {
                     return ['label' => 'ضعيف', 'days' => $absenceCount, 'color' => '#dc3545'];
