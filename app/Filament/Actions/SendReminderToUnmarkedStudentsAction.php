@@ -2,28 +2,27 @@
 
 namespace App\Filament\Actions;
 
-use Filament\Actions\Action;
-use Filament\Forms\Components\Select;
-use Filament\Schemas\Components\Utilities\Get;
-use Exception;
 use App\Classes\Core;
 use App\Enums\WhatsAppMessageStatus;
 use App\Helpers\PhoneHelper;
 use App\Models\GroupMessageTemplate;
-use App\Models\Student;
 use App\Models\WhatsAppMessageHistory;
 use App\Models\WhatsAppSession;
 use App\Services\WhatsAppService;
 use App\Traits\HandlesWhatsAppProgress;
-use Filament\Forms;
+use Exception;
+use Filament\Actions\Action;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Utilities\Get;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
 
 class SendReminderToUnmarkedStudentsAction extends Action
 {
     use HandlesWhatsAppProgress;
+
     public static function getDefaultName(): ?string
     {
         return 'send_reminder_to_unmarked';
@@ -36,7 +35,7 @@ class SendReminderToUnmarkedStudentsAction extends Action
         $this->label('تذكير الطلاب غير المسجلين')
             ->icon('heroicon-o-megaphone')
             ->color('info')
-            ->form(function() {
+            ->form(function () {
                 $fields = [];
                 $isAdmin = auth()->user()->isAdministrator();
                 $ownerRecord = $this->getLivewire()->ownerRecord ?? $this->getRecord();
@@ -55,6 +54,7 @@ class SendReminderToUnmarkedStudentsAction extends Action
                                 return $ownerRecord->messageTemplates()->pluck('group_message_templates.name', 'group_message_templates.id')
                                     ->prepend('رسالة مخصصة', 'custom');
                             }
+
                             return ['custom' => 'رسالة مخصصة'];
                         })
                         ->default(function () use ($defaultTemplate) {
@@ -64,7 +64,7 @@ class SendReminderToUnmarkedStudentsAction extends Action
                 }
 
                 // Show message field for admins when custom is selected, or always for non-admins without default template
-                $showMessageField = $isAdmin || !$defaultTemplate;
+                $showMessageField = $isAdmin || ! $defaultTemplate;
 
                 if ($showMessageField) {
                     $defaultMessage = $defaultTemplate ? $defaultTemplate->content : 'السلام عليكم ورحمة الله وبركاته، {student_name} تذكير بالواجب المقرر اليوم، بارك الله فيكم.';
@@ -75,7 +75,7 @@ class SendReminderToUnmarkedStudentsAction extends Action
                         ->label('الرسالة')
                         ->required()
                         ->rows(4)
-                        ->hidden(fn(Get $get) => $isAdmin && $get('template_id') !== 'custom');
+                        ->hidden(fn (Get $get) => $isAdmin && $get('template_id') !== 'custom');
                 }
 
                 return $fields;
@@ -102,6 +102,7 @@ class SendReminderToUnmarkedStudentsAction extends Action
                 ->body('جميع الطلاب لديهم سجلات حضور أو غياب لليوم')
                 ->info()
                 ->send();
+
             return;
         }
 
@@ -116,7 +117,7 @@ class SendReminderToUnmarkedStudentsAction extends Action
      */
     protected function getUnmarkedStudents($ownerRecord, string $today): Collection
     {
-        if (!$ownerRecord || !method_exists($ownerRecord, 'students')) {
+        if (! $ownerRecord || ! method_exists($ownerRecord, 'students')) {
             return collect();
         }
 
@@ -133,7 +134,7 @@ class SendReminderToUnmarkedStudentsAction extends Action
         $isAdmin = auth()->user()->isAdministrator();
 
         // For non-admins, always use default template if available
-        if (!$isAdmin && $ownerRecord && method_exists($ownerRecord, 'messageTemplates')) {
+        if (! $isAdmin && $ownerRecord && method_exists($ownerRecord, 'messageTemplates')) {
             $defaultTemplate = $ownerRecord->messageTemplates()->wherePivot('is_default', true)->first();
             if ($defaultTemplate) {
                 return $defaultTemplate->content;
@@ -163,12 +164,13 @@ class SendReminderToUnmarkedStudentsAction extends Action
         // Get the current user's active session
         $session = WhatsAppSession::getUserSession(auth()->id());
 
-        if (!$session || !$session->isConnected()) {
+        if (! $session || ! $session->isConnected()) {
             Notification::make()
                 ->title('جلسة واتساب غير متصلة')
                 ->body('يرجى التأكد من أن لديك جلسة واتساب متصلة قبل إرسال الرسائل')
                 ->danger()
                 ->send();
+
             return;
         }
 
@@ -182,12 +184,13 @@ class SendReminderToUnmarkedStudentsAction extends Action
             // Clean phone number using helper
             $phoneNumber = PhoneHelper::cleanPhoneNumber($student->phone);
 
-            if (!$phoneNumber) {
+            if (! $phoneNumber) {
                 Log::warning('Invalid phone number for student', [
                     'student_id' => $student->id,
                     'student_name' => $student->name,
                     'phone' => $student->phone,
                 ]);
+
                 continue;
             }
 
@@ -287,5 +290,4 @@ class SendReminderToUnmarkedStudentsAction extends Action
             ->success()
             ->send();
     }
-
 }

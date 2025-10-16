@@ -2,9 +2,8 @@
 
 namespace App\Filament\Resources\StudentDisconnectionResource\Pages;
 
-use Filament\Actions\DeleteAction;
 use App\Filament\Resources\StudentDisconnectionResource;
-use Filament\Actions;
+use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 
 class EditStudentDisconnection extends EditRecord

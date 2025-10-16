@@ -2,25 +2,21 @@
 
 namespace App\Filament\Resources;
 
-use Filament\Schemas\Schema;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Select;
-use Filament\Actions\EditAction;
-use Filament\Actions\Action;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Textarea;
-use Filament\Actions\DeleteBulkAction;
-use App\Filament\Resources\StudentResource\Pages\ListStudents;
 use App\Filament\Resources\StudentResource\Pages\CreateStudent;
 use App\Filament\Resources\StudentResource\Pages\EditStudent;
-use App\Filament\Resources\StudentResource\Pages;
+use App\Filament\Resources\StudentResource\Pages\ListStudents;
 use App\Models\Group;
 use App\Models\Student;
-use App\Enums\MessageResponseStatus;
 use App\Tables\Columns\StudentProgress;
-use Filament\Forms;
+use Filament\Actions\Action;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -30,7 +26,7 @@ class StudentResource extends Resource
 
     protected static ?string $navigationLabel = 'الطلاب';
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-user-group';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-user-group';
 
     protected static ?string $modelLabel = 'طالب';
 

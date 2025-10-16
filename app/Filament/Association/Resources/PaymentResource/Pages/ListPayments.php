@@ -2,12 +2,10 @@
 
 namespace App\Filament\Association\Resources\PaymentResource\Pages;
 
-use Filament\Actions\CreateAction;
 use App\Filament\Association\Resources\PaymentResource;
-use Filament\Actions;
-use Filament\Resources\Pages\ListRecords;
 use App\Traits\GoToIndex;
-use Filament\Notifications\Notification;
+use Filament\Actions\CreateAction;
+use Filament\Resources\Pages\ListRecords;
 
 class ListPayments extends ListRecords
 {

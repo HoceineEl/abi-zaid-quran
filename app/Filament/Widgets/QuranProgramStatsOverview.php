@@ -19,7 +19,7 @@ class QuranProgramStatsOverview extends BaseWidget
         $groupsQuery = Group::query();
 
         // Filter by managed groups if not admin
-        if (!auth()->user()->isAdministrator()) {
+        if (! auth()->user()->isAdministrator()) {
             $managedGroupIds = auth()->user()->managedGroups()->pluck('groups.id');
             $query->whereIn('group_id', $managedGroupIds);
             $groupsQuery->whereHas('managers', function ($q) {
@@ -32,6 +32,7 @@ class QuranProgramStatsOverview extends BaseWidget
             // Normalize phone number by removing +212 prefix and replacing with 0
             $phone = preg_replace('/^\+2126/', '06', $student->phone);
             $phone = preg_replace('/^\+2127/', '07', $phone);
+
             return $phone;
         })->unique()->count();
 
@@ -47,7 +48,7 @@ class QuranProgramStatsOverview extends BaseWidget
         $weeklyAttendance = Progress::where('date', '>=', now()->subDays(7))
             ->whereNotNull('status');
 
-        if (!auth()->user()->isAdministrator()) {
+        if (! auth()->user()->isAdministrator()) {
             $weeklyAttendance->whereIn('student_id', function ($q) {
                 $q->select('id')
                     ->from('students')

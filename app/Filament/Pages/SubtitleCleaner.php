@@ -3,19 +3,24 @@
 namespace App\Filament\Pages;
 
 use Exception;
-use Filament\Pages\Page;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Notifications\Notification;
+use Filament\Pages\Page;
 
 class SubtitleCleaner extends Page
 {
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-document-text';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-document-text';
+
     protected static ?string $navigationLabel = 'منظف الترجمات';
+
     protected static ?string $title = 'منظف ملفات الترجمة';
+
     protected static ?string $slug = 'subtitle-cleaner';
+
     protected string $view = 'filament.pages.subtitle-cleaner';
-    protected static string | \UnitEnum | null $navigationGroup = 'أدوات';
+
+    protected static string|\UnitEnum|null $navigationGroup = 'أدوات';
 
     protected function getHeaderActions(): array
     {
@@ -27,11 +32,11 @@ class SubtitleCleaner extends Page
                 ->schema([
                     FileUpload::make('subtitle_file')
                         ->label('رفع ملف SRT')
-                        ->required()
+                        ->required(),
                 ])
                 ->action(function (array $data) {
                     try {
-                        $filePath = storage_path('app/public/' . $data['subtitle_file']);
+                        $filePath = storage_path('app/public/'.$data['subtitle_file']);
                         $content = file_get_contents($filePath);
 
                         // Split content into lines
@@ -42,8 +47,8 @@ class SubtitleCleaner extends Page
                         for ($i = 0; $i < count($lines); $i++) {
                             // Skip subtitle number, timestamp and blank lines
                             if (
-                                !preg_match('/^\d+$/', trim($lines[$i])) &&
-                                !preg_match('/^\d{2}:\d{2}:\d{2},\d{3}\s-->\s\d{2}:\d{2}:\d{2},\d{3}$/', trim($lines[$i])) &&
+                                ! preg_match('/^\d+$/', trim($lines[$i])) &&
+                                ! preg_match('/^\d{2}:\d{2}:\d{2},\d{3}\s-->\s\d{2}:\d{2}:\d{2},\d{3}$/', trim($lines[$i])) &&
                                 trim($lines[$i]) !== ''
                             ) {
                                 $cleaned[] = $lines[$i];
@@ -60,8 +65,8 @@ class SubtitleCleaner extends Page
                         // Generate cleaned text file
                         $words = explode(' ', $cleaned);
                         $firstSixWords = implode(' ', array_slice($words, 0, 6));
-                        $cleanedFileName = $firstSixWords . '.txt';
-                        $cleanedFilePath = storage_path('app/public/' . $cleanedFileName);
+                        $cleanedFileName = $firstSixWords.'.txt';
+                        $cleanedFilePath = storage_path('app/public/'.$cleanedFileName);
                         file_put_contents($cleanedFilePath, $cleaned);
 
                         // Create download response
@@ -69,7 +74,7 @@ class SubtitleCleaner extends Page
                             readfile($cleanedFilePath);
                         }, $cleanedFileName, [
                             'Content-Type' => 'text/plain',
-                            'Content-Disposition' => 'attachment; filename=' . $cleanedFileName
+                            'Content-Disposition' => 'attachment; filename='.$cleanedFileName,
                         ]);
                     } catch (Exception $e) {
                         Notification::make()
@@ -79,7 +84,7 @@ class SubtitleCleaner extends Page
 
                         return null;
                     }
-                })
+                }),
         ];
     }
 

@@ -9,9 +9,12 @@ use Illuminate\Support\Carbon;
 class StudentProgressTimeline extends ChartWidget
 {
     protected ?string $heading = 'تطور الحضور والغياب';
+
     protected ?string $maxHeight = '300px';
+
     protected static ?int $sort = 2;
-    protected int | string | array $columnSpan = 'full';
+
+    protected int|string|array $columnSpan = 'full';
 
     protected function getData(): array
     {
@@ -21,7 +24,7 @@ class StudentProgressTimeline extends ChartWidget
             $query = Progress::whereDate('date', $date);
 
             // Filter by managed groups if not admin
-            if (!auth()->user()->isAdministrator()) {
+            if (! auth()->user()->isAdministrator()) {
                 $query->whereIn('student_id', function ($q) {
                     $q->select('id')
                         ->from('students')
@@ -53,7 +56,7 @@ class StudentProgressTimeline extends ChartWidget
                     'fill' => true,
                 ],
             ],
-            'labels' => $data->map(fn($item) => Carbon::parse($item['date'])->format('d/m')),
+            'labels' => $data->map(fn ($item) => Carbon::parse($item['date'])->format('d/m')),
         ];
     }
 

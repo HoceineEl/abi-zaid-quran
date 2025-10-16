@@ -2,24 +2,23 @@
 
 namespace App\Filament\Resources\StudentDisconnectionResource\Pages;
 
-use Filament\Schemas\Components\Tabs\Tab;
-use Filament\Actions\CreateAction;
-use Filament\Actions\Action;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Toggle;
-use Maatwebsite\Excel\Facades\Excel;
-use App\Filament\Exports\StudentDisconnectionExporter;
 use App\Exports\StudentDisconnectionExport;
+use App\Filament\Exports\StudentDisconnectionExporter;
 use App\Filament\Resources\StudentDisconnectionResource;
 use App\Models\Group;
-use App\Models\Student;
 use App\Models\StudentDisconnection;
 use App\Services\DisconnectionService;
 use Filament\Actions;
-use Filament\Resources\Pages\ListRecords;
+use Filament\Actions\Action;
+use Filament\Actions\CreateAction;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
+use Filament\Resources\Pages\ListRecords;
+use Filament\Schemas\Components\Tabs\Tab;
 use Illuminate\Database\Eloquent\Builder;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ListStudentDisconnections extends ListRecords
 {
@@ -37,17 +36,14 @@ class ListStudentDisconnections extends ListRecords
         $fourteenDaysAgo = now()->subDays(14)->format('Y-m-d');
         $today = now()->format('Y-m-d');
 
-
         return [
-            'all' => Tab::make('الكل')
-                ,
+            'all' => Tab::make('الكل'),
             'not_returned' => Tab::make('لم يعودوا')
-                ->modifyQueryUsing(fn(Builder $query) => $query->where('has_returned', false)),
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('has_returned', false)),
             'returned' => Tab::make('عادوا')
-                ->modifyQueryUsing(fn(Builder $query) => $query->where('has_returned', true)),
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('has_returned', true)),
         ];
     }
-
 
     public function getDefaultActiveTab(): string|int|null
     {
@@ -117,7 +113,7 @@ class ListStudentDisconnections extends ListRecords
                     $this->dispatch('export-table', [
                         'html' => $html,
                         'title' => 'كشف الطلاب المنقطعين',
-                        'dateRange' => 'جميع الطلاب المنقطعين'
+                        'dateRange' => 'جميع الطلاب المنقطعين',
                     ]);
                 }),
             // Actions\ExportAction::make()
@@ -149,7 +145,8 @@ class ListStudentDisconnections extends ListRecords
                     $dateRange = "من {$startDate} إلى {$endDate}";
 
                     $export = new StudentDisconnectionExport($dateRange, $startDate, $endDate, $includeReturned);
-                    return Excel::download($export, 'students-disconnection-' . now()->format('Y-m-d') . '.xlsx');
+
+                    return Excel::download($export, 'students-disconnection-'.now()->format('Y-m-d').'.xlsx');
                 }),
         ];
     }

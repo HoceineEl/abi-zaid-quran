@@ -3,18 +3,18 @@
 namespace App\Services;
 
 use Illuminate\Support\Collection;
-use Mpdf\Mpdf;
 use Mpdf\Config\ConfigVariables;
 use Mpdf\Config\FontVariables;
+use Mpdf\Mpdf;
 
 class ReceiptService
 {
     public function generatePdf(Collection $payments): string
     {
-        $defaultConfig = (new ConfigVariables())->getDefaults();
+        $defaultConfig = (new ConfigVariables)->getDefaults();
         $fontDirs = $defaultConfig['fontDir'];
 
-        $defaultFontConfig = (new FontVariables())->getDefaults();
+        $defaultFontConfig = (new FontVariables)->getDefaults();
         $fontData = $defaultFontConfig['fontdata'];
 
         $mpdf = new Mpdf([
@@ -32,9 +32,9 @@ class ReceiptService
                 'cairo' => [
                     'R' => 'Cairo-Regular.ttf',
                     'B' => 'Cairo-Bold.ttf',
-                ]
+                ],
             ]),
-            'default_font' => 'cairo'
+            'default_font' => 'cairo',
         ]);
 
         $mpdf->SetDirectionality('rtl');

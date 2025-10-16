@@ -2,48 +2,34 @@
 
 namespace App\Filament\Association\Resources\GroupResource\RelationManagers;
 
-use Filament\Schemas\Schema;
-use Filament\Actions\CreateAction;
-use Filament\Actions\ActionGroup;
-use Filament\Actions\EditAction;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\ViewAction;
-use Filament\Actions\Action;
-use Filament\Tables\Enums\RecordActionsPosition;
-use Filament\Actions\BulkAction;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use App\Enums\Troubles;
-use App\Enums\MemorizationScore;
 use App\Filament\Association\Resources\MemorizerResource;
 use App\Models\Attendance;
 use App\Models\Memorizer;
-use BaconQrCode\Renderer\Image\SvgImageBackEnd;
-use BaconQrCode\Renderer\ImageRenderer;
-use BaconQrCode\Renderer\RendererStyle\RendererStyle;
-use BaconQrCode\Writer;
-use Barryvdh\DomPDF\Facade\Pdf;
-use Filament\Forms\Components\Textarea;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\CreateAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\ToggleButtons;
-use Filament\Infolists\Components\Grid;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Schema;
 use Filament\Support\Colors\Color;
 use Filament\Support\Enums\FontWeight;
-use Filament\Tables;
 use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\ToggleColumn;
+use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
-use Mpdf\Mpdf;
 
 class MemorizersRelationManager extends RelationManager
 {
@@ -59,8 +45,7 @@ class MemorizersRelationManager extends RelationManager
 
     protected static ?string $pluralModelLabel = 'الطلبة';
 
-    protected static string | \BackedEnum | null $icon = 'heroicon-o-user-group';
-
+    protected static string|\BackedEnum|null $icon = 'heroicon-o-user-group';
 
     public function form(Schema $schema): Schema
     {
@@ -88,7 +73,7 @@ class MemorizersRelationManager extends RelationManager
                         if ($record->has_reminder_this_month) {
                             return 'heroicon-o-exclamation-circle';
                         }
-                        if (!$record->has_payment_this_month) {
+                        if (! $record->has_payment_this_month) {
                             return 'heroicon-o-x-circle';
                         }
 
@@ -123,6 +108,7 @@ class MemorizersRelationManager extends RelationManager
                         if ($record->phone) {
                             return $record->phone;
                         }
+
                         return $record->guardian?->phone;
                     }),
 
@@ -139,7 +125,7 @@ class MemorizersRelationManager extends RelationManager
                         return $query
                             ->when(
                                 $data['trouble_threshold'],
-                                fn(Builder $query, $threshold): Builder => $query->whereHas('hasTroubles', function (Builder $query) use ($threshold) {
+                                fn (Builder $query, $threshold): Builder => $query->whereHas('hasTroubles', function (Builder $query) use ($threshold) {
                                     $query->select(DB::raw('COUNT(*) as trouble_count'))
                                         ->having('trouble_count', '>=', $threshold);
                                 }, '>=', 1)
@@ -167,7 +153,7 @@ class MemorizersRelationManager extends RelationManager
                     ->icon('heroicon-o-chat-bubble-left-ellipsis')
                     ->hidden(function (Memorizer $record) {
                         // Skip if no phone number available
-                        if (!$record->phone && !$record->guardian?->phone) {
+                        if (! $record->phone && ! $record->guardian?->phone) {
                             return true;
                         }
 
@@ -266,12 +252,12 @@ class MemorizersRelationManager extends RelationManager
 
     public static function getPayAction(): Action
     {
-        return  Action::make('pay_this_month')
+        return Action::make('pay_this_month')
             ->label('دفع')
             ->icon('heroicon-o-currency-dollar')
             ->color('success')
             ->requiresConfirmation()
-            ->hidden(fn(Memorizer $record) => $record->has_payment_this_month)
+            ->hidden(fn (Memorizer $record) => $record->has_payment_this_month)
             ->modalDescription('هل تريد تسجيل دفعة جديدة لهذا الشهر؟')
             ->modalHeading('تسجيل دفعة جديدة')
             ->schema(function (Memorizer $record) {
@@ -280,7 +266,7 @@ class MemorizersRelationManager extends RelationManager
                         ->label('المبلغ')
                         ->helperText('المبلغ المستحق للشهر')
                         ->numeric()
-                        ->default(fn() => $record->group->price ?? 70),
+                        ->default(fn () => $record->group->price ?? 70),
                 ];
             })
             ->action(function (Memorizer $record, array $data) {
@@ -302,7 +288,7 @@ class MemorizersRelationManager extends RelationManager
                             ->icon('heroicon-o-printer')
                             ->button()
                             ->color('success')
-                            ->url($receiptUrl, shouldOpenInNewTab: true)
+                            ->url($receiptUrl, shouldOpenInNewTab: true),
                     ])
                     ->send();
             });
@@ -325,8 +311,9 @@ class MemorizersRelationManager extends RelationManager
                                 }
                             }
                         }
+
                         return implode(', ', $troubles);
-                    })
+                    }),
             ]);
     }
 
@@ -339,8 +326,9 @@ class MemorizersRelationManager extends RelationManager
             ->modalHeading('قائمة المشاكل')
             ->modalSubmitAction(false)
             ->modalCancelAction(false)
-            ->schema(fn(Memorizer $record) => self::getTroublesInfolist($record));
+            ->schema(fn (Memorizer $record) => self::getTroublesInfolist($record));
     }
+
     public static function getTroublesInfolist(Memorizer $record): Schema
     {
         return Schema::make()
@@ -351,24 +339,24 @@ class MemorizersRelationManager extends RelationManager
                     ->schema([
                         TextEntry::make('date')
                             ->label('التاريخ')
-                            ->formatStateUsing(fn($state) => $state->format('Y-m-d')),
+                            ->formatStateUsing(fn ($state) => $state->format('Y-m-d')),
                         TextEntry::make('notes')
                             ->label('المشاكل')
                             ->badge()
-                            ->hidden(fn($state) => empty($state))
-                            ->getStateUsing(fn($record) => $record->notes ? array_map(fn($note) => Troubles::tryFrom($note)?->getLabel(), $record->notes) : []),
+                            ->hidden(fn ($state) => empty($state))
+                            ->getStateUsing(fn ($record) => $record->notes ? array_map(fn ($note) => Troubles::tryFrom($note)?->getLabel(), $record->notes) : []),
                         TextEntry::make('score')
                             ->label('التقييم')
                             ->badge()
-                            ->hidden(fn($state) => empty($state))
-                            ->getStateUsing(fn($record) => $record->score),
+                            ->hidden(fn ($state) => empty($state))
+                            ->getStateUsing(fn ($record) => $record->score),
                         TextEntry::make('custom_note')
                             ->label('التعليق الخاص')
                             ->badge()
-                            ->hidden(fn($state) => empty($state))
-                            ->getStateUsing(fn($record) => $record->custom_note),
+                            ->hidden(fn ($state) => empty($state))
+                            ->getStateUsing(fn ($record) => $record->custom_note),
                     ])
-                    ->grid(2)
+                    ->grid(2),
             ]);
     }
 }

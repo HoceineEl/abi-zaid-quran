@@ -2,28 +2,25 @@
 
 namespace App\Filament\Association\Resources;
 
-use Filament\Schemas\Schema;
-use Filament\Schemas\Components\Utilities\Set;
-use Filament\Schemas\Components\Utilities\Get;
-use Filament\Actions\ActionGroup;
-use Filament\Actions\Action;
-use Filament\Actions\EditAction;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
-use App\Filament\Association\Resources\PaymentResource\Pages\ListPayments;
 use App\Filament\Association\Resources\PaymentResource\Pages\CreatePayment;
-use App\Filament\Association\Resources\PaymentResource\Pages;
-use App\Models\MemoGroup;
+use App\Filament\Association\Resources\PaymentResource\Pages\ListPayments;
 use App\Models\Memorizer;
 use App\Models\Payment;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -33,11 +30,12 @@ class PaymentResource extends Resource
 {
     protected static ?string $model = Payment::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-banknotes';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-banknotes';
 
     protected static ?string $modelLabel = 'دفعة';
 
     protected static ?string $pluralModelLabel = 'الدفعات';
+
     public static function form(Schema $schema): Schema
     {
         return $schema
@@ -48,7 +46,7 @@ class PaymentResource extends Resource
                     ->searchable()
                     ->preload()
                     ->reactive()
-                    ->afterStateUpdated(fn(Set $set, $state) => $set('amount', Memorizer::find($state)?->group->price ?? 70))
+                    ->afterStateUpdated(fn (Set $set, $state) => $set('amount', Memorizer::find($state)?->group->price ?? 70))
                     ->required(),
                 TextInput::make('amount')
                     ->label('المبلغ كامل')
@@ -70,6 +68,7 @@ class PaymentResource extends Resource
                                 foreach ($get('../../payments') as $index => $payment) {
                                     $set("../../payments.{$index}.paid_amount_month", $equalShare);
                                 }
+
                                 return $equalShare;
                             })
 
@@ -77,11 +76,12 @@ class PaymentResource extends Resource
                         DatePicker::make('payment_date')
                             ->default(function ($get) {
                                 $count = count($get('../*.payment_date') ?? []) - 1;
+
                                 return now()->subMonths($count);
                             })
                             ->label('تاريخ الدفع')
                             ->required(),
-                    ])->cloneable()
+                    ])->cloneable(),
 
             ])->columns(1);
     }
@@ -111,7 +111,7 @@ class PaymentResource extends Resource
                         });
                     })
                     ->default(now()->month)
-                    ->query(fn(Builder $query, $state) =>  $query->when($state['value'], fn($query) => $query->whereMonth('payment_date', $state['value'])))
+                    ->query(fn (Builder $query, $state) => $query->when($state['value'], fn ($query) => $query->whereMonth('payment_date', $state['value'])))
                     ->label('الشهر'),
                 SelectFilter::make('year')
                     ->options(function () {
@@ -120,7 +120,7 @@ class PaymentResource extends Resource
                         });
                     })
                     ->default(now()->year)
-                    ->query(fn(Builder $query, $state) => $query->when($state['value'], fn($query) => $query->whereYear('payment_date', $state['value'])))
+                    ->query(fn (Builder $query, $state) => $query->when($state['value'], fn ($query) => $query->whereYear('payment_date', $state['value'])))
                     ->label('السنة'),
             ])
             ->recordActions([
@@ -128,8 +128,8 @@ class PaymentResource extends Resource
                     Action::make('show_receipt')
                         ->label('عرض الإيصال')
                         ->icon('heroicon-o-printer')
-                        ->modalContent(fn(Payment $record) => view('filament.resources.payment-resource.pages.receipt-preview', [
-                            'payments' => collect([$record])
+                        ->modalContent(fn (Payment $record) => view('filament.resources.payment-resource.pages.receipt-preview', [
+                            'payments' => collect([$record]),
                         ]))
                         ->modalWidth('4xl')
                         ->slideOver(),
@@ -151,7 +151,7 @@ class PaymentResource extends Resource
                                 ->send();
                         }),
                     DeleteAction::make(),
-                ])
+                ]),
             ])
             ->emptyStateHeading('لا توجد دفعات مسجلة للفترة المحددة في الفلتر')
             ->emptyStateDescription('يمكنك إضافة دفعات جديدة بالضغط على زر الإضافة')

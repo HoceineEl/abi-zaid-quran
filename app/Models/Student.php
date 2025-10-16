@@ -2,14 +2,13 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Database\Eloquent\Builder;
-use Carbon\Carbon;
 
 class Student extends Model
 {
@@ -50,6 +49,7 @@ class Student extends Model
 
         return $absentCount >= 2;
     }
+
     public function consecutiveAbsentDays(): Attribute
     {
         return Attribute::make(
@@ -62,9 +62,9 @@ class Student extends Model
 
                 $currentConsecutive = 0;
                 foreach ($recentProgresses as $progress) {
-                    if ($progress->status === 'absent' && (int)$progress->with_reason === 0) {
+                    if ($progress->status === 'absent' && (int) $progress->with_reason === 0) {
                         $currentConsecutive++;
-                    } else if ($progress->status === 'memorized' || ($progress->status === 'absent' && (int)$progress->with_reason === 1)) {
+                    } elseif ($progress->status === 'memorized' || ($progress->status === 'absent' && (int) $progress->with_reason === 1)) {
                         $currentConsecutive = 0;
                     }
                 }
@@ -88,13 +88,13 @@ class Student extends Model
 
                 $twoDaysEbsentCount = $twoDays->where('status', 'absent')
                     ->where(function ($item) {
-                        return (int)$item->with_reason === 0 || $item->with_reason === null;
+                        return (int) $item->with_reason === 0 || $item->with_reason === null;
                     })
                     ->count();
 
                 $threeDaysEbsentCount = $threeDays->where('status', 'absent')
                     ->where(function ($item) {
-                        return (int)$item->with_reason === 0 || $item->with_reason === null;
+                        return (int) $item->with_reason === 0 || $item->with_reason === null;
                     })
                     ->count();
 
@@ -137,6 +137,7 @@ class Student extends Model
             get: function () {
                 $recentProgresses = $this->progresses()->latest()->limit(3)->get();
                 $absentCount = $recentProgresses->where('status', 'absent')->count();
+
                 return $absentCount >= 3;
             }
         );
@@ -160,7 +161,7 @@ class Student extends Model
 
                 $absenceCount = $recentProgresses->where('status', 'absent')
                     ->where(function ($item) {
-                        return (int)$item->with_reason === 0;
+                        return (int) $item->with_reason === 0;
                     })
                     ->count();
 
@@ -198,7 +199,7 @@ class Student extends Model
             ->latest('date')
             ->first();
 
-        if (!$lastPresentDay) {
+        if (! $lastPresentDay) {
             return null;
         }
 
@@ -210,7 +211,7 @@ class Student extends Model
     {
         $lastPresentDate = $this->getLastPresentDate();
 
-        if (!$lastPresentDate) {
+        if (! $lastPresentDate) {
             return null;
         }
 
@@ -271,7 +272,7 @@ class Student extends Model
                 ->where('date', $date)
                 ->first();
 
-            if (!$progress || ($progress->status === 'absent' && (int)$progress->with_reason === 0)) {
+            if (! $progress || ($progress->status === 'absent' && (int) $progress->with_reason === 0)) {
                 $absentCount++;
                 if ($absentCount === 2) {
                     return $date;
@@ -329,7 +330,7 @@ class Student extends Model
                 ->first();
 
             // If no progress or absent without reason, increment counter
-            if (!$progress || ($progress->status === 'absent' && (int)$progress->with_reason === 0)) {
+            if (! $progress || ($progress->status === 'absent' && (int) $progress->with_reason === 0)) {
                 $consecutiveAbsentDays++;
             } else {
                 // Stop counting when we find a present day

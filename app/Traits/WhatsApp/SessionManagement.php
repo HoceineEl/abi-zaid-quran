@@ -2,9 +2,9 @@
 
 namespace App\Traits\WhatsApp;
 
-use Exception;
 use App\Enums\WhatsAppConnectionStatus;
 use App\Models\WhatsAppSession;
+use Exception;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -30,7 +30,7 @@ trait SessionManagement
                 return $data;
             }
 
-            throw new Exception("HTTP {$response->status()}: " . $response->body());
+            throw new Exception("HTTP {$response->status()}: ".$response->body());
         } catch (Exception $e) {
             Log::error('Failed to create WhatsApp session', [
                 'session_id' => $sessionId,
@@ -50,7 +50,7 @@ trait SessionManagement
                 return $response->json();
             }
 
-            throw new Exception("HTTP {$response->status()}: " . $response->body());
+            throw new Exception("HTTP {$response->status()}: ".$response->body());
         } catch (Exception $e) {
             Log::error('Failed to get all WhatsApp sessions', [
                 'error' => $e->getMessage(),
@@ -93,7 +93,7 @@ trait SessionManagement
                 return $session;
             }
 
-            throw new Exception("HTTP {$response->status()}: " . $response->body());
+            throw new Exception("HTTP {$response->status()}: ".$response->body());
         } catch (Exception $e) {
             Log::error('Failed to get WhatsApp session status', [
                 'session_id' => $sessionId,
@@ -146,7 +146,7 @@ trait SessionManagement
                 Log::info('Found existing session on API', [
                     'session_id' => $sessionId,
                     'status' => $existingStatus['status'] ?? 'unknown',
-                    'has_qr' => !empty($existingStatus['qr']),
+                    'has_qr' => ! empty($existingStatus['qr']),
                 ]);
 
                 // Use existing session instead of creating new one
@@ -177,7 +177,7 @@ trait SessionManagement
 
                 try {
                     $result = $this->getSessionStatus($sessionId);
-                    if (!empty($result['qr']) || $result['status'] === 'CONNECTED') {
+                    if (! empty($result['qr']) || $result['status'] === 'CONNECTED') {
                         break;
                     }
                 } catch (Exception $e) {
@@ -198,7 +198,7 @@ trait SessionManagement
 
             // Clean up QR code data to ensure it's valid
             $qrCode = null;
-            if (!empty($finalStatus['qr'])) {
+            if (! empty($finalStatus['qr'])) {
                 $qrCode = $this->cleanQrCodeData($finalStatus['qr']);
                 Log::info('QR code processed', [
                     'session_id' => $sessionId,
@@ -218,7 +218,7 @@ trait SessionManagement
             Log::info('Session started successfully', [
                 'session_id' => $sessionId,
                 'final_status' => $status,
-                'has_qr' => !empty($qrCode),
+                'has_qr' => ! empty($qrCode),
             ]);
 
             return $finalStatus;

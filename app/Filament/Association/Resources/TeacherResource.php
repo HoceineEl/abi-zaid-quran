@@ -2,35 +2,33 @@
 
 namespace App\Filament\Association\Resources;
 
-use Filament\Schemas\Schema;
-use Filament\Actions\ViewAction;
-use Filament\Actions\EditAction;
+use App\Filament\Association\Resources\TeacherResource\Pages\CreateTeacher;
+use App\Filament\Association\Resources\TeacherResource\Pages\EditTeacher;
+use App\Filament\Association\Resources\TeacherResource\Pages\ListTeachers;
+use App\Filament\Association\Resources\TeacherResource\Pages\ViewTeacher;
+use App\Filament\Association\Resources\TeacherResource\RelationManagers\AttendanceLogsRelationManager;
+use App\Filament\Association\Resources\TeacherResource\RelationManagers\ReminderLogsRelationManager;
+use App\Models\User;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
-use App\Filament\Association\Resources\TeacherResource\Pages\ListTeachers;
-use App\Filament\Association\Resources\TeacherResource\Pages\CreateTeacher;
-use App\Filament\Association\Resources\TeacherResource\Pages\ViewTeacher;
-use App\Filament\Association\Resources\TeacherResource\Pages\EditTeacher;
-use App\Filament\Association\Resources\TeacherResource\Pages;
-use App\Filament\Association\Resources\TeacherResource\RelationManagers\ReminderLogsRelationManager;
-use App\Filament\Association\Resources\TeacherResource\RelationManagers\AttendanceLogsRelationManager;
-use App\Models\User;
+use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Schema;
 use Filament\Tables\Columns\SelectColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Hash;
-use Filament\Forms\Components\Hidden;
 
 class TeacherResource extends Resource
 {
     protected static ?string $model = User::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-academic-cap';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-academic-cap';
 
     protected static ?string $navigationLabel = 'الأساتذة';
 
@@ -61,9 +59,9 @@ class TeacherResource extends Resource
                 TextInput::make('password')
                     ->label('كلمة المرور')
                     ->password()
-                    ->required(fn($record) => ! $record)
-                    ->dehydrated(fn($state) => filled($state))
-                    ->dehydrateStateUsing(fn($state) => Hash::make($state)),
+                    ->required(fn ($record) => ! $record)
+                    ->dehydrated(fn ($state) => filled($state))
+                    ->dehydrateStateUsing(fn ($state) => Hash::make($state)),
 
                 TextInput::make('phone')
                     ->label('رقم الهاتف')

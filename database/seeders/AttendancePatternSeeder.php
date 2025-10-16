@@ -23,7 +23,7 @@ class AttendancePatternSeeder extends Seeder
 
         // Generate data for the last 30 days
         $startDate = Carbon::now()->subDays(30);
-        $dates = collect(range(0, 30))->map(fn($day) => $startDate->copy()->addDays($day));
+        $dates = collect(range(0, 30))->map(fn ($day) => $startDate->copy()->addDays($day));
 
         // Determine which days will have records for all students (90% of days)
         $daysWithRecords = [];
@@ -45,9 +45,9 @@ class AttendancePatternSeeder extends Seeder
         $assignedPatterns = [];
         $studentCount = $students->count();
 
-        $excellentCount = (int)($studentCount * $patterns['excellent']);
-        $goodCount = (int)($studentCount * $patterns['good']);
-        $fairCount = (int)($studentCount * $patterns['fair']);
+        $excellentCount = (int) ($studentCount * $patterns['excellent']);
+        $goodCount = (int) ($studentCount * $patterns['good']);
+        $fairCount = (int) ($studentCount * $patterns['fair']);
 
         $studentIds = $students->pluck('id')->toArray();
         shuffle($studentIds);

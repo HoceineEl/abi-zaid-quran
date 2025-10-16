@@ -2,8 +2,8 @@
 
 namespace App\Console\Commands;
 
-use Exception;
 use App\Services\WhatsAppService;
+use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
 
@@ -22,10 +22,11 @@ class TestWhatsAppConnection extends Command
         $apiToken = config('whatsapp.api_token');
 
         $this->line("API URL: {$apiUrl}");
-        $this->line("API Token: " . (empty($apiToken) ? 'NOT SET' : '***' . substr($apiToken, -8)));
+        $this->line('API Token: '.(empty($apiToken) ? 'NOT SET' : '***'.substr($apiToken, -8)));
 
         if (empty($apiToken)) {
             $this->error('WHATSAPP_API_TOKEN is not set in .env file');
+
             return 1;
         }
 
@@ -37,13 +38,13 @@ class TestWhatsAppConnection extends Command
 
             if ($response->successful()) {
                 $this->info('✓ API health check passed');
-                $this->line('Response: ' . $response->body());
+                $this->line('Response: '.$response->body());
             } else {
                 $this->warn("API health check returned status: {$response->status()}");
-                $this->line('Response: ' . $response->body());
+                $this->line('Response: '.$response->body());
             }
         } catch (Exception $e) {
-            $this->error('✗ API health check failed: ' . $e->getMessage());
+            $this->error('✗ API health check failed: '.$e->getMessage());
         }
 
         // Test sessions endpoint
@@ -57,19 +58,19 @@ class TestWhatsAppConnection extends Command
             if ($response->successful()) {
                 $sessions = $response->json();
                 $this->info('✓ Sessions endpoint accessible');
-                $this->line('Active sessions: ' . count($sessions));
+                $this->line('Active sessions: '.count($sessions));
 
-                if (!empty($sessions)) {
-                    $this->table(['Session ID', 'Status'], array_map(function($session) {
+                if (! empty($sessions)) {
+                    $this->table(['Session ID', 'Status'], array_map(function ($session) {
                         return [$session['sessionId'] ?? 'unknown', $session['status'] ?? 'unknown'];
                     }, $sessions));
                 }
             } else {
                 $this->error("✗ Sessions endpoint failed with status: {$response->status()}");
-                $this->line('Response: ' . $response->body());
+                $this->line('Response: '.$response->body());
             }
         } catch (Exception $e) {
-            $this->error('✗ Sessions endpoint failed: ' . $e->getMessage());
+            $this->error('✗ Sessions endpoint failed: '.$e->getMessage());
         }
 
         // Test WhatsAppService
@@ -84,14 +85,15 @@ class TestWhatsAppConnection extends Command
                 if (str_contains($e->getMessage(), 'not found')) {
                     $this->info('✓ WhatsAppService is working (test session not found as expected)');
                 } else {
-                    $this->warn('WhatsAppService error: ' . $e->getMessage());
+                    $this->warn('WhatsAppService error: '.$e->getMessage());
                 }
             }
         } catch (Exception $e) {
-            $this->error('✗ WhatsAppService failed: ' . $e->getMessage());
+            $this->error('✗ WhatsAppService failed: '.$e->getMessage());
         }
 
         $this->info('Connection test completed.');
+
         return 0;
     }
 }

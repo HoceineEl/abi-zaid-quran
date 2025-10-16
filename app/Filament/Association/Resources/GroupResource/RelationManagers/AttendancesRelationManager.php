@@ -2,19 +2,18 @@
 
 namespace App\Filament\Association\Resources\GroupResource\RelationManagers;
 
-use Filament\Schemas\Schema;
+use DateInterval;
 use DatePeriod;
 use DateTime;
-use DateInterval;
 use Filament\Forms\Components\DatePicker;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Schema;
 use Filament\Support\Enums\IconSize;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class AttendancesRelationManager extends RelationManager
@@ -22,16 +21,22 @@ class AttendancesRelationManager extends RelationManager
     protected static string $relationship = 'memorizers';
 
     protected static ?string $title = 'الحضور';
+
     protected static ?string $navigationLabel = 'الحضور';
+
     protected static ?string $modelLabel = 'حضور';
+
     protected static ?string $pluralModelLabel = 'الحضور';
 
     public $dateFrom;
+
     public $dateTo;
+
     protected function canView(Model $record): bool
     {
-        return !auth()->user()->isTeacher();
+        return ! auth()->user()->isTeacher();
     }
+
     public function form(Schema $schema): Schema
     {
         return $schema->components([]);
@@ -60,19 +65,19 @@ class AttendancesRelationManager extends RelationManager
                             ->whereDate('date', $formattedDate)
                             ->first();
 
-                        if (!$attendance) {
+                        if (! $attendance) {
                             return 'none';
                         }
 
                         return $attendance->check_in_time ? 'present' : 'absent';
                     })
-                    ->icon(fn(string $state): string => match ($state) {
+                    ->icon(fn (string $state): string => match ($state) {
                         'present' => 'heroicon-o-check-circle',
                         'absent' => 'heroicon-o-x-circle',
                         default => 'heroicon-o-minus-circle',
                     })
                     ->size(IconSize::ExtraLarge)
-                    ->color(fn(string $state): string => match ($state) {
+                    ->color(fn (string $state): string => match ($state) {
                         'present' => 'success',
                         'absent' => 'danger',
                         default => 'secondary',
@@ -86,8 +91,9 @@ class AttendancesRelationManager extends RelationManager
                 TextColumn::make('name')
                     ->label('الاسم')
                     ->getStateUsing(function ($record) {
-                        $number = $this->getTable()->getQuery()->get()->search(fn($memorizer) => $memorizer->id == $record->id) + 1;
-                        return $number . '. ' . $record->name;
+                        $number = $this->getTable()->getQuery()->get()->search(fn ($memorizer) => $memorizer->id == $record->id) + 1;
+
+                        return $number.'. '.$record->name;
                     })
                     ->sortable(),
                 ...$attendanceColumns->toArray(),
@@ -100,12 +106,12 @@ class AttendancesRelationManager extends RelationManager
                         DatePicker::make('date_from')
                             ->label('من تاريخ')
                             ->reactive()
-                            ->afterStateUpdated(fn($state) => $this->dateFrom = $state ?? now()->subDays(4)->format('Y-m-d'))
+                            ->afterStateUpdated(fn ($state) => $this->dateFrom = $state ?? now()->subDays(4)->format('Y-m-d'))
                             ->default(now()->subDays(4)->format('Y-m-d')),
                         DatePicker::make('date_to')
                             ->reactive()
                             ->label('إلى تاريخ')
-                            ->afterStateUpdated(fn($state) => $this->dateTo = $state ?? now()->format('Y-m-d'))
+                            ->afterStateUpdated(fn ($state) => $this->dateTo = $state ?? now()->format('Y-m-d'))
                             ->default(now()->format('Y-m-d')),
                     ], FiltersLayout::AboveContent),
             ])
@@ -113,6 +119,7 @@ class AttendancesRelationManager extends RelationManager
             ->query(function () {
                 $dateFrom = $this->dateFrom;
                 $dateTo = $this->dateTo;
+
                 return $this->ownerRecord->memorizers()
                     ->withCount(['attendances as attendance_count' => function ($query) use ($dateFrom, $dateTo) {
                         $query->whereBetween('date', [$dateFrom, $dateTo]);
@@ -127,6 +134,6 @@ class AttendancesRelationManager extends RelationManager
 
     public function isReadOnly(): bool
     {
-        return !$this->ownerRecord->managers->contains(auth()->user());
+        return ! $this->ownerRecord->managers->contains(auth()->user());
     }
 }

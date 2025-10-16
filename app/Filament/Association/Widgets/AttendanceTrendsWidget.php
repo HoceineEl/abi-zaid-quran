@@ -10,7 +10,9 @@ use Illuminate\Support\Carbon;
 class AttendanceTrendsWidget extends ChartWidget
 {
     protected ?string $heading = 'تحليل نسب الحضور الأسبوعية';
+
     protected ?string $maxHeight = '300px';
+
     protected ?string $pollingInterval = '300s';
 
     protected function getData(): array
@@ -43,7 +45,7 @@ class AttendanceTrendsWidget extends ChartWidget
                     'borderColor' => '#10B981',
                 ],
             ],
-            'labels' => $data->map(fn($item) => Carbon::parse($item['date'])->format('d/m')),
+            'labels' => $data->map(fn ($item) => Carbon::parse($item['date'])->format('d/m')),
         ];
     }
 

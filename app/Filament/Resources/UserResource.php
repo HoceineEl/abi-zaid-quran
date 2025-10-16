@@ -2,42 +2,33 @@
 
 namespace App\Filament\Resources;
 
-use Filament\Schemas\Schema;
-use Filament\Actions\EditAction;
-use Filament\Actions\ActionGroup;
-use Filament\Schemas\Components\Section;
-use Filament\Actions\DeleteBulkAction;
-use App\Filament\Resources\UserResource\Pages\ListUsers;
+use App\Filament\Actions\SendMessageToSelectedUsersAction;
 use App\Filament\Resources\UserResource\Pages\CreateUser;
 use App\Filament\Resources\UserResource\Pages\EditUser;
-use App\Classes\Core;
-use App\Filament\Actions\SendMessageToSelectedUsersAction;
-use App\Filament\Resources\UserResource\Pages;
+use App\Filament\Resources\UserResource\Pages\ListUsers;
 use App\Models\Group;
-use App\Models\Message;
 use App\Models\User;
-use Filament\Forms;
-use Filament\Forms\Components\Actions\Action as ActionsAction;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\ToggleButtons;
-use Filament\Forms\Get;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
-use Filament\Infolists\Components\TextEntry;
 
 class UserResource extends Resource
 {
     protected static ?string $model = User::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-user-group';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-user-group';
 
     protected static ?string $navigationLabel = 'المستخدمين';
 
@@ -91,7 +82,7 @@ class UserResource extends Resource
                     ->searchable(),
                 TextColumn::make('role')->label('الدور')
                     ->badge()
-                    ->color(fn(string $state): string => match ($state) {
+                    ->color(fn (string $state): string => match ($state) {
                         'admin' => 'danger',
                         'follower' => 'warning',
                         'teacher' => 'success',
@@ -160,13 +151,13 @@ class UserResource extends Resource
                         ->label('إرفاق مجموعة')
                         ->icon('heroicon-o-plus-circle')
                         ->color('success')
-                        ->schema(fn(User $record) => [
+                        ->schema(fn (User $record) => [
                             Select::make('group_ids')
                                 ->label('المجموعات')
                                 ->multiple()
                                 ->options(
                                     Group::query()
-                                        ->whereDoesntHave('managers', fn($q) => $q->where('users.id', $record->id))
+                                        ->whereDoesntHave('managers', fn ($q) => $q->where('users.id', $record->id))
                                         ->pluck('name', 'id')
                                         ->toArray()
                                 )
@@ -185,8 +176,8 @@ class UserResource extends Resource
                         ->label('إزالة مجموعة')
                         ->icon('heroicon-o-minus-circle')
                         ->color('danger')
-                        ->visible(fn(User $record) => $record->managedGroups()->exists())
-                        ->schema(fn(User $record) => [
+                        ->visible(fn (User $record) => $record->managedGroups()->exists())
+                        ->schema(fn (User $record) => [
                             Select::make('group_ids')
                                 ->label('المجموعات')
                                 ->multiple()

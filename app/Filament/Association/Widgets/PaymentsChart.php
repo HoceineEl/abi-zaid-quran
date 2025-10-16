@@ -12,6 +12,7 @@ class PaymentsChart extends ChartWidget
     use InteractsWithPageFilters;
 
     protected ?string $heading = 'تحليل الرسوم المحصّلة';
+
     protected ?string $maxHeight = '300px';
 
     protected function getData(): array
@@ -35,7 +36,7 @@ class PaymentsChart extends ChartWidget
                     'backgroundColor' => 'rgba(16, 185, 129, 0.1)',
                 ],
             ],
-            'labels' => $payments->map(fn($payment) => Carbon::parse($payment->date)->format('Y-m-d'))->toArray(),
+            'labels' => $payments->map(fn ($payment) => Carbon::parse($payment->date)->format('Y-m-d'))->toArray(),
         ];
     }
 

@@ -2,42 +2,44 @@
 
 namespace App\Filament\Association\Resources\GroupResource\RelationManagers;
 
-use Filament\Schemas\Schema;
+use App\Enums\MemorizationScore;
+use App\Models\Attendance;
+use DateInterval;
 use DatePeriod;
 use DateTime;
-use DateInterval;
 use Filament\Actions\Action;
-use Filament\Support\Enums\Size;
-use App\Enums\MemorizationScore;
-use App\Enums\Troubles;
-use App\Models\Attendance;
 use Filament\Forms\Components\DatePicker;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Support\Enums\IconSize;
-use Filament\Tables\Columns\IconColumn;
+use Filament\Schemas\Schema;
+use Filament\Support\Colors\Color;
+use Filament\Support\Enums\Size;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Filament\Support\Colors\Color;
 
 class AttendancesScoreRelationManager extends RelationManager
 {
     protected static string $relationship = 'memorizers';
+
     protected static ?string $title = 'الحضور والتقييم';
+
     protected static ?string $navigationLabel = 'الحضور والتقييم';
+
     protected static ?string $modelLabel = 'حضور وتقييم';
+
     protected static ?string $pluralModelLabel = 'الحضور والتقييم';
-    protected static string | \BackedEnum | null $icon = 'heroicon-o-clipboard-document-check';
+
+    protected static string|\BackedEnum|null $icon = 'heroicon-o-clipboard-document-check';
 
     public $dateFrom;
+
     public $dateTo;
 
     protected function canView(Model $record): bool
     {
-        return !auth()->user()->isTeacher();
+        return ! auth()->user()->isTeacher();
     }
 
     public function form(Schema $schema): Schema
@@ -63,7 +65,7 @@ class AttendancesScoreRelationManager extends RelationManager
             $query->with(['attendances:id,memorizer_id,date,check_in_time,score' => function ($query) use ($dateRange) {
                 $query->whereBetween('date', [
                     $dateRange->getStartDate()->format('Y-m-d'),
-                    $dateRange->getEndDate()->format('Y-m-d')
+                    $dateRange->getEndDate()->format('Y-m-d'),
                 ]);
             }]);
         }]);
@@ -80,20 +82,27 @@ class AttendancesScoreRelationManager extends RelationManager
                             return $attendance->date->format('Y-m-d') === $formattedDate;
                         });
 
-                        if (!$attendance) {
+                        if (! $attendance) {
                             return 'غ.م';
                         }
 
-                        if (!$attendance->check_in_time) {
+                        if (! $attendance->check_in_time) {
                             return 'absent';
                         }
+
                         return $attendance->score ?? 'present';
                     })
                     ->badge()
                     ->color(function ($state) {
-                        if ($state === 'غ.م') return Color::Gray;
-                        if ($state === 'absent') return Color::Red;
-                        if ($state === 'present') return Color::Green;
+                        if ($state === 'غ.م') {
+                            return Color::Gray;
+                        }
+                        if ($state === 'absent') {
+                            return Color::Red;
+                        }
+                        if ($state === 'present') {
+                            return Color::Green;
+                        }
 
                         $scores = collect(MemorizationScore::cases())->pluck('value');
                         if ($scores->contains($state)) {
@@ -103,9 +112,15 @@ class AttendancesScoreRelationManager extends RelationManager
                         return Color::Gray;
                     })
                     ->icon(function ($state) {
-                        if ($state === 'غ.م') return 'heroicon-o-question-mark-circle';
-                        if ($state === 'absent') return 'heroicon-o-x-circle';
-                        if ($state === 'present') return 'heroicon-o-check-circle';
+                        if ($state === 'غ.م') {
+                            return 'heroicon-o-question-mark-circle';
+                        }
+                        if ($state === 'absent') {
+                            return 'heroicon-o-x-circle';
+                        }
+                        if ($state === 'present') {
+                            return 'heroicon-o-check-circle';
+                        }
 
                         $scores = collect(MemorizationScore::cases())->pluck('value');
                         if ($scores->contains($state)) {
@@ -127,10 +142,10 @@ class AttendancesScoreRelationManager extends RelationManager
                         return null;
                     })
                     ->action(
-                        Action::make('view_details_' . $formattedDate)
-                            ->modalHeading(fn($record) => "تفاصيل يوم {$day} للطالب {$record->name}")
+                        Action::make('view_details_'.$formattedDate)
+                            ->modalHeading(fn ($record) => "تفاصيل يوم {$day} للطالب {$record->name}")
                             ->hidden(function ($record) use ($formattedDate) {
-                                return !$record->attendances->contains(function ($attendance) use ($formattedDate) {
+                                return ! $record->attendances->contains(function ($attendance) use ($formattedDate) {
                                     return $attendance->date->format('Y-m-d') === $formattedDate;
                                 });
                             })
@@ -158,7 +173,8 @@ class AttendancesScoreRelationManager extends RelationManager
                     ->label('الاسم')
                     ->getStateUsing(function ($record, $rowLoop) {
                         $number = $rowLoop->iteration;
-                        return $number . '. ' . $record->name;
+
+                        return $number.'. '.$record->name;
                     })
                     ->sortable(),
                 ...$attendanceColumns->toArray(),
@@ -170,18 +186,19 @@ class AttendancesScoreRelationManager extends RelationManager
                         DatePicker::make('date_from')
                             ->label('من تاريخ')
                             ->reactive()
-                            ->afterStateUpdated(fn($state) => $this->dateFrom = $state ?? now()->subDays(4)->format('Y-m-d'))
+                            ->afterStateUpdated(fn ($state) => $this->dateFrom = $state ?? now()->subDays(4)->format('Y-m-d'))
                             ->default(now()->subDays(4)->format('Y-m-d')),
                         DatePicker::make('date_to')
                             ->reactive()
                             ->label('إلى تاريخ')
-                            ->afterStateUpdated(fn($state) => $this->dateTo = $state ?? now()->format('Y-m-d'))
+                            ->afterStateUpdated(fn ($state) => $this->dateTo = $state ?? now()->format('Y-m-d'))
                             ->default(now()->format('Y-m-d')),
                     ], FiltersLayout::AboveContent),
             ])
             ->query(function () {
                 $dateFrom = $this->dateFrom;
                 $dateTo = $this->dateTo;
+
                 return $this->ownerRecord->memorizers()
                     ->select('id', 'name')
                     ->withCount(['attendances as attendance_count' => function ($query) use ($dateFrom, $dateTo) {
@@ -211,9 +228,9 @@ class AttendancesScoreRelationManager extends RelationManager
 
                         $this->dispatch('export-table', [
                             'html' => $html,
-                            'groupName' => $this->ownerRecord->name
+                            'groupName' => $this->ownerRecord->name,
                         ]);
-                    })
+                    }),
             ])
             ->recordActions([])
             ->toolbarActions([]);
@@ -221,6 +238,6 @@ class AttendancesScoreRelationManager extends RelationManager
 
     public function isReadOnly(): bool
     {
-        return !$this->ownerRecord->managers->contains(auth()->user());
+        return ! $this->ownerRecord->managers->contains(auth()->user());
     }
 }

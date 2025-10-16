@@ -2,14 +2,12 @@
 
 namespace App\Filament\Association\Widgets;
 
-use App\Models\Attendance;
 use App\Models\Memorizer;
 use App\Models\Payment;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 
 class ComprehensivePerformanceWidget extends BaseWidget
 {
@@ -50,19 +48,19 @@ class ComprehensivePerformanceWidget extends BaseWidget
         $overallScore = round(($consistencyRate + $paymentCompliance) / 2, 1);
 
         return [
-            Stat::make('معدل الانضباط في الحضور للسنة الحالية', $consistencyRate . '%')
+            Stat::make('معدل الانضباط في الحضور للسنة الحالية', $consistencyRate.'%')
                 ->description('نسبة الطلاب المنتظمين في الحضور خلال السنة الحالية')
                 ->descriptionIcon('heroicon-m-clock')
                 ->chart([60, 70, 80, $consistencyRate])
                 ->color('success'),
 
-            Stat::make('معدل الالتزام بالرسوم للسنة الحالية', $paymentCompliance . '%')
+            Stat::make('معدل الالتزام بالرسوم للسنة الحالية', $paymentCompliance.'%')
                 ->description('نسبة الطلاب المسددين للرسوم في موعدها خلال السنة الحالية')
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->chart([75, 80, 85, $paymentCompliance])
                 ->color('warning'),
 
-            Stat::make('التقييم الشامل للسنة الحالية', $overallScore . '%')
+            Stat::make('التقييم الشامل للسنة الحالية', $overallScore.'%')
                 ->description('التقييم العام لأداء المؤسسة التعليمية للسنة الحالية')
                 ->descriptionIcon('heroicon-m-chart-bar')
                 ->chart([70, 75, 80, $overallScore])

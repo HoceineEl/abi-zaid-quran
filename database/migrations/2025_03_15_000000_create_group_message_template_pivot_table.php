@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -49,7 +49,7 @@ return new class extends Migration
             AND CONSTRAINT_NAME LIKE '%group_id%'
         ");
 
-        if (!empty($foreignKeys)) {
+        if (! empty($foreignKeys)) {
             $foreignKeyName = $foreignKeys[0]->CONSTRAINT_NAME;
 
             Schema::table('group_message_templates', function (Blueprint $table) use ($foreignKeyName) {

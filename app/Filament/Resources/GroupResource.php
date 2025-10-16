@@ -2,61 +2,56 @@
 
 namespace App\Filament\Resources;
 
-use Filament\Schemas\Schema;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Components\Utilities\Get;
-use Filament\Forms\Components\TagsInput;
-use Filament\Actions\Action;
-use Filament\Tables\Filters\TrashedFilter;
-use Filament\Actions\ActionGroup;
-use Filament\Actions\ViewAction;
-use Filament\Actions\EditAction;
-use Filament\Actions\RestoreAction;
-use Filament\Actions\ForceDeleteAction;
-use Filament\Forms\Components\DatePicker;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\BulkAction;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\RestoreBulkAction;
-use Filament\Actions\ForceDeleteBulkAction;
-use App\Filament\Resources\GroupResource\Pages\ListGroups;
-use App\Filament\Resources\GroupResource\Pages\CreateGroup;
-use App\Filament\Resources\GroupResource\Pages\EditGroup;
-use App\Filament\Resources\GroupResource\Pages\ViewGroup;
 use App\Classes\Core;
 use App\Enums\MessageSubmissionType;
 use App\Exports\DailyAttendanceSummaryExport;
 use App\Filament\Actions\SendBulkReminderToAllGroupsAction;
 use App\Filament\Actions\SendMessageToAllGroupMembersAction;
-use App\Filament\Resources\GroupResource\Pages;
+use App\Filament\Resources\GroupResource\Pages\CreateGroup;
+use App\Filament\Resources\GroupResource\Pages\EditGroup;
+use App\Filament\Resources\GroupResource\Pages\ListGroups;
+use App\Filament\Resources\GroupResource\Pages\ViewGroup;
 use App\Filament\Resources\GroupResource\RelationManagers\ManagersRelationManager;
 use App\Filament\Resources\GroupResource\RelationManagers\ProgressesRelationManager;
 use App\Filament\Resources\GroupResource\RelationManagers\StudentsRelationManager;
 use App\Models\Group;
 use App\Models\GroupMessageTemplate;
 use App\Models\Message;
-use App\Models\Student;
-use Filament\Forms;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\ForceDeleteAction;
+use Filament\Actions\ForceDeleteBulkAction;
+use Filament\Actions\RestoreAction;
+use Filament\Actions\RestoreBulkAction;
+use Filament\Actions\ViewAction;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\ToggleButtons;
-use Filament\Forms\Set;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Maatwebsite\Excel\Facades\Excel;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class GroupResource extends Resource
 {
     protected static ?string $model = Group::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-users';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-users';
 
     protected static ?string $navigationLabel = 'المجموعات';
 
@@ -88,7 +83,7 @@ class GroupResource extends Resource
                         ToggleButtons::make('type')
                             ->label('نوع المجموعة')
                             ->inline()
-                            ->hidden(fn(Get $get) => $get('custom_type') === true)
+                            ->hidden(fn (Get $get) => $get('custom_type') === true)
                             ->options([
                                 'two_lines' => 'سطران',
                                 'half_page' => 'نصف صفحة',
@@ -97,7 +92,7 @@ class GroupResource extends Resource
                         TextInput::make('type')
                             ->label('نوع المجموعة')
                             ->reactive()
-                            ->hidden(fn(Get $get) => $get('custom_type') === false),
+                            ->hidden(fn (Get $get) => $get('custom_type') === false),
                         Toggle::make('is_onsite')
                             ->label('مجموعة الحصة الحضورية')
                             ->default(false),
@@ -125,15 +120,16 @@ class GroupResource extends Resource
                     ->afterStateUpdated(function ($state, Group $record) {
                         if ($state && $record->exists) {
                             // Sync the selected template and make it default
-                                    $record->messageTemplates()->sync([
-                                $state => ['is_default' => true]
-                                    ]);
+                            $record->messageTemplates()->sync([
+                                $state => ['is_default' => true],
+                            ]);
                         }
                     })
                     ->default(function (?Group $record) {
-                        if (!$record || !$record->exists) {
+                        if (! $record || ! $record->exists) {
                             return null;
                         }
+
                         return $record->messageTemplates()->wherePivot('is_default', true)->first()?->id;
                     })
                     ->createOptionForm([
@@ -193,10 +189,11 @@ class GroupResource extends Resource
                     ->badge()
                     ->color('info')
                     ->getStateUsing(function (?Group $record) {
-                        if (!$record) {
+                        if (! $record) {
                             return 'لا يوجد';
                         }
                         $defaultTemplate = $record->messageTemplates()->wherePivot('is_default', true)->first();
+
                         return $defaultTemplate?->name ?? 'لا يوجد';
                     }),
                 TextColumn::make('managers.name')
@@ -219,7 +216,7 @@ class GroupResource extends Resource
             ->filters([
                 TrashedFilter::make(),
             ])
-            ->recordUrl(fn(?Group $record) => $record ? GroupResource::getUrl('edit', ['record' => $record, 'activeRelationManager' => 0]) : null)
+            ->recordUrl(fn (?Group $record) => $record ? GroupResource::getUrl('edit', ['record' => $record, 'activeRelationManager' => 0]) : null)
             ->recordActions([
 
                 Action::make('export_attendance')
@@ -248,7 +245,7 @@ class GroupResource extends Resource
                             'html' => $html,
                             'groupName' => $record->name,
                             'presencePercentage' => $presencePercentage,
-                            'dateRange' => 'آخر 30 يوم'
+                            'dateRange' => 'آخر 30 يوم',
                         ]);
                     }),
                 ActionGroup::make([
@@ -290,7 +287,7 @@ class GroupResource extends Resource
                     EditAction::make(),
                     RestoreAction::make(),
                     ForceDeleteAction::make(),
-                ])
+                ]),
             ])
             ->headerActions([
                 SendBulkReminderToAllGroupsAction::make(),
@@ -309,11 +306,12 @@ class GroupResource extends Resource
                             ->helperText('اختر التاريخ المراد تصدير موجز الحضور له')
                             ->displayFormat('Y-m-d')
                             ->format('Y-m-d')
-                            ->native(false)
+                            ->native(false),
                     ])
                     ->action(function (array $data) {
                         $selectedDate = $data['export_date'];
-                        return Excel::download(new DailyAttendanceSummaryExport($selectedDate, auth()->id()), 'daily-attendance-summary-' . $selectedDate . '.xlsx');
+
+                        return Excel::download(new DailyAttendanceSummaryExport($selectedDate, auth()->id()), 'daily-attendance-summary-'.$selectedDate.'.xlsx');
                     }),
             ])
             ->toolbarActions([
@@ -321,7 +319,7 @@ class GroupResource extends Resource
                     BulkAction::make('toggle_quran_group')
                         ->label('تبديل حالة مجموعة القرآن')
                         ->icon('heroicon-o-academic-cap')
-                        ->visible(fn() => auth()->user()->isAdministrator())
+                        ->visible(fn () => auth()->user()->isAdministrator())
                         ->color('warning')
                         ->requiresConfirmation()
                         ->modalHeading('تبديل حالة مجموعة القرآن')
@@ -332,7 +330,7 @@ class GroupResource extends Resource
 
                             foreach ($records as $group) {
                                 $group->update([
-                                    'is_quran_group' => !$group->is_quran_group
+                                    'is_quran_group' => ! $group->is_quran_group,
                                 ]);
                                 $updatedCount++;
                             }
@@ -347,7 +345,7 @@ class GroupResource extends Resource
                     BulkAction::make('set_template')
                         ->label('تعيين قالب رسالة')
                         ->icon('heroicon-o-chat-bubble-left-right')
-                        ->visible(fn() => auth()->user()->isAdministrator())
+                        ->visible(fn () => auth()->user()->isAdministrator())
                         ->color('primary')
                         ->form([
                             Select::make('template_id')
@@ -365,7 +363,7 @@ class GroupResource extends Resource
                                 if ($templateId) {
                                     // Sync the selected template and make it default
                                     $group->messageTemplates()->sync([
-                                        $templateId => ['is_default' => true]
+                                        $templateId => ['is_default' => true],
                                     ]);
                                 } else {
                                     // Remove all templates

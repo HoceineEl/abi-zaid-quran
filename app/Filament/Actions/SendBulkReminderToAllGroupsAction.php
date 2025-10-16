@@ -2,24 +2,22 @@
 
 namespace App\Filament\Actions;
 
-use Filament\Actions\Action;
-use Filament\Forms\Components\Select;
-use Filament\Schemas\Components\Utilities\Get;
-use Filament\Forms\Components\Placeholder;
-use Exception;
 use App\Classes\Core;
 use App\Enums\WhatsAppMessageStatus;
 use App\Helpers\PhoneHelper;
 use App\Models\Group;
 use App\Models\GroupMessageTemplate;
-use App\Models\Student;
 use App\Models\WhatsAppMessageHistory;
 use App\Models\WhatsAppSession;
 use App\Services\WhatsAppService;
 use App\Traits\HandlesWhatsAppProgress;
-use Filament\Forms;
+use Exception;
+use Filament\Actions\Action;
+use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Utilities\Get;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -27,6 +25,7 @@ use Illuminate\Support\Facades\Log;
 class SendBulkReminderToAllGroupsAction extends Action
 {
     use HandlesWhatsAppProgress;
+
     public static function getDefaultName(): ?string
     {
         return 'send_bulk_reminder_to_all_groups';
@@ -39,49 +38,49 @@ class SendBulkReminderToAllGroupsAction extends Action
         $this->label('تذكير')
             ->icon('heroicon-o-speaker-wave')
             ->color('warning')
-            ->form(function() {
+            ->form(function () {
                 $fields = [];
                 $isAdmin = auth()->user()->isAdministrator();
 
                 // Template source selection - only for admins
                 if ($isAdmin) {
                     $fields[] = Select::make('template_source')
-                    ->label('مصدر القالب')
-                    ->options([
-                        'group_default' => 'استخدام القالب الافتراضي لكل مجموعة',
-                        'global_template' => 'استخدام قالب موحد',
-                        'custom' => 'رسالة مخصصة',
-                    ])
-                    ->default('group_default')
-                    ->reactive()
-                    ->helperText('اختر كيفية تحديد محتوى الرسالة لكل مجموعة');
+                        ->label('مصدر القالب')
+                        ->options([
+                            'group_default' => 'استخدام القالب الافتراضي لكل مجموعة',
+                            'global_template' => 'استخدام قالب موحد',
+                            'custom' => 'رسالة مخصصة',
+                        ])
+                        ->default('group_default')
+                        ->reactive()
+                        ->helperText('اختر كيفية تحديد محتوى الرسالة لكل مجموعة');
 
                     $fields[] = Select::make('global_template_id')
-                    ->label('اختر القالب الموحد')
-                    ->options(function () {
-                        // Get all templates from all user's groups
-                        $userGroups = $this->getUserGroups();
-                        $templates = collect();
+                        ->label('اختر القالب الموحد')
+                        ->options(function () {
+                            // Get all templates from all user's groups
+                            $userGroups = $this->getUserGroups();
+                            $templates = collect();
 
-                        foreach ($userGroups as $group) {
-                            $groupTemplates = $group->messageTemplates()->get();
-                            foreach ($groupTemplates as $template) {
-                                $templates->put($template->id, "{$template->name} (من مجموعة: {$group->name})");
+                            foreach ($userGroups as $group) {
+                                $groupTemplates = $group->messageTemplates()->get();
+                                foreach ($groupTemplates as $template) {
+                                    $templates->put($template->id, "{$template->name} (من مجموعة: {$group->name})");
+                                }
                             }
-                        }
 
-                        return $templates->unique()->toArray();
-                    })
-                    ->visible(fn(Get $get) => $get('template_source') === 'global_template')
-                    ->required(fn(Get $get) => $get('template_source') === 'global_template');
+                            return $templates->unique()->toArray();
+                        })
+                        ->visible(fn (Get $get) => $get('template_source') === 'global_template')
+                        ->required(fn (Get $get) => $get('template_source') === 'global_template');
 
                     $fields[] = Textarea::make('message')
-                    ->hint('يمكنك استخدام المتغيرات التالية: {student_name}, {group_name}, {curr_date}, {last_presence}')
-                    ->default('السلام عليكم ورحمة الله وبركاته\n{student_name}، نذكركم بالواجب المقرر اليوم في مجموعة {group_name}، لعل المانع خير.\nبارك الله فيكم وزادكم حرصا.')
-                    ->label('الرسالة')
-                    ->required()
-                    ->rows(4)
-                    ->visible(fn(Get $get) => $get('template_source') === 'custom');
+                        ->hint('يمكنك استخدام المتغيرات التالية: {student_name}, {group_name}, {curr_date}, {last_presence}')
+                        ->default('السلام عليكم ورحمة الله وبركاته\n{student_name}، نذكركم بالواجب المقرر اليوم في مجموعة {group_name}، لعل المانع خير.\nبارك الله فيكم وزادكم حرصا.')
+                        ->label('الرسالة')
+                        ->required()
+                        ->rows(4)
+                        ->visible(fn (Get $get) => $get('template_source') === 'custom');
                 }
 
                 // Rest of form fields that are always shown
@@ -90,7 +89,7 @@ class SendBulkReminderToAllGroupsAction extends Action
                     ->content(function () {
                         $userGroups = $this->getUserGroups();
                         $groupCount = $userGroups->count();
-                        $totalStudents = $userGroups->sum(fn($group) => $group->students->count());
+                        $totalStudents = $userGroups->sum(fn ($group) => $group->students->count());
 
                         return "سيتم إرسال التذكيرات لـ {$groupCount} مجموعة تحتوي على {$totalStudents} طالب إجمالي.";
                     });
@@ -126,6 +125,7 @@ class SendBulkReminderToAllGroupsAction extends Action
                 ->body('لا تملك صلاحية إدارة أي مجموعة')
                 ->warning()
                 ->send();
+
             return;
         }
 
@@ -158,6 +158,7 @@ class SendBulkReminderToAllGroupsAction extends Action
                 ->body('جميع الطلاب في جميع المجموعات لديهم سجلات حضور أو غياب لليوم')
                 ->info()
                 ->send();
+
             return;
         }
 
@@ -178,7 +179,7 @@ class SendBulkReminderToAllGroupsAction extends Action
         $isAdmin = auth()->user()->isAdministrator();
 
         // For non-admins, always use group's default template if available
-        if (!$isAdmin) {
+        if (! $isAdmin) {
             $defaultTemplate = $group->messageTemplates()->wherePivot('is_default', true)->first();
             if ($defaultTemplate) {
                 return $defaultTemplate->content;
@@ -188,6 +189,7 @@ class SendBulkReminderToAllGroupsAction extends Action
             if ($firstTemplate) {
                 return $firstTemplate->content;
             }
+
             // Fallback to default message
             return 'السلام عليكم ورحمة الله وبركاته\n{student_name}، نذكركم بالواجب المقرر اليوم في مجموعة {group_name}، لعل المانع خير.\nبارك الله فيكم وزادكم حرصا.';
         }
@@ -205,6 +207,7 @@ class SendBulkReminderToAllGroupsAction extends Action
                 if ($firstTemplate) {
                     return $firstTemplate->content;
                 }
+
                 // Fallback to default message
                 return 'السلام عليكم ورحمة الله وبركاته\n{student_name}، نذكركم بالواجب المقرر اليوم في مجموعة {group_name}، لعل المانع خير.\nبارك الله فيكم وزادكم حرصا.';
 
@@ -213,6 +216,7 @@ class SendBulkReminderToAllGroupsAction extends Action
                 if ($template) {
                     return $template->content;
                 }
+
                 return 'السلام عليكم ورحمة الله وبركاته\n{student_name}، نذكركم بالواجب المقرر اليوم في مجموعة {group_name}، لعل المانع خير.\nبارك الله فيكم وزادكم حرصا.';
 
             case 'custom':
@@ -231,12 +235,13 @@ class SendBulkReminderToAllGroupsAction extends Action
         // Get the current user's active session
         $session = WhatsAppSession::getUserSession(auth()->id());
 
-        if (!$session || !$session->isConnected()) {
+        if (! $session || ! $session->isConnected()) {
             Notification::make()
                 ->title('جلسة واتساب غير متصلة')
                 ->body('يرجى التأكد من أن لديك جلسة واتساب متصلة قبل إرسال الرسائل')
                 ->danger()
                 ->send();
+
             return;
         }
 
@@ -256,13 +261,14 @@ class SendBulkReminderToAllGroupsAction extends Action
             // Clean phone number using helper
             $phoneNumber = PhoneHelper::cleanPhoneNumber($student->phone);
 
-            if (!$phoneNumber) {
+            if (! $phoneNumber) {
                 Log::warning('Invalid phone number for student in bulk reminder', [
                     'student_id' => $student->id,
                     'student_name' => $student->name,
                     'group_name' => $group->name,
                     'phone' => $student->phone,
                 ]);
+
                 continue;
             }
 
@@ -376,5 +382,4 @@ class SendBulkReminderToAllGroupsAction extends Action
             ->success()
             ->send();
     }
-
 }

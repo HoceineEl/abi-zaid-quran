@@ -2,16 +2,16 @@
 
 namespace App\Filament\Pages;
 
-use Filament\Facades\Filament;
 use App\Models\Attendance;
 use App\Models\Memorizer;
+use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Contracts\Support\Htmlable;
 
 class ScanAttendance extends Page
 {
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-camera';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-camera';
 
     protected string $view = 'filament.association.pages.scan-attendance';
 
@@ -30,10 +30,12 @@ class ScanAttendance extends Page
     {
         $this->memorizer = Memorizer::with(['memoGroup'])->find($value);
     }
+
     public static function shouldRegisterNavigation(): bool
     {
         return Filament::getCurrentOrDefaultPanel()->getId() === 'association';
     }
+
     public function processScannedData(): void
     {
         if (! $this->memorizer) {

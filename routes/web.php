@@ -1,11 +1,10 @@
 <?php
 
+use App\Http\Controllers\PaymentReceiptController;
 use App\Models\Memorizer;
 use App\Models\Student;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
-use App\Models\ReminderLog;
-use App\Http\Controllers\PaymentReceiptController;
 
 Route::view('/', 'welcome');
 
@@ -27,6 +26,7 @@ Route::middleware('auth')->group(function () {
                 'status' => null,
             ]);
         }
+
         return view('redirects.whatsapp', ['number' => $number, 'message' => $message]);
     })->name('whatsapp');
 
@@ -42,10 +42,9 @@ Route::middleware('auth')->group(function () {
         ]);
 
         $message = urlencode($message);
+
         return view('redirects.whatsapp', ['number' => $number, 'message' => $message]);
     })->name('memorizer-whatsapp');
-
-
 
     Route::get('/send-absence-whatsapp/{number}/{message}/{memorizer_id}', function ($number, $message, $memorizer_id) {
         $message = urldecode($message);
@@ -59,6 +58,7 @@ Route::middleware('auth')->group(function () {
         ]);
         dd($memorizer);
         $message = urlencode($message);
+
         return view('redirects.whatsapp', ['number' => $number, 'message' => $message]);
     })->name('memorizer-absence-whatsapp');
 
@@ -74,6 +74,7 @@ Route::middleware('auth')->group(function () {
         ]);
 
         $message = urlencode($message);
+
         return view('redirects.whatsapp', ['number' => $number, 'message' => $message]);
     })->name('memorizer-trouble-whatsapp');
     Route::get('/send-no_memorization-whatsapp/{number}/{message}/{memorizer_id}', function ($number, $message, $memorizer_id) {
@@ -88,6 +89,7 @@ Route::middleware('auth')->group(function () {
         ]);
 
         $message = urlencode($message);
+
         return view('redirects.whatsapp', ['number' => $number, 'message' => $message]);
     })->name('memorizer-no_memorization-whatsapp');
     Route::get('/send-late-whatsapp/{number}/{message}/{memorizer_id}', function ($number, $message, $memorizer_id) {
@@ -102,6 +104,7 @@ Route::middleware('auth')->group(function () {
         ]);
 
         $message = urlencode($message);
+
         return view('redirects.whatsapp', ['number' => $number, 'message' => $message]);
     })->name('memorizer-late-whatsapp');
 

@@ -18,7 +18,7 @@ class Attendance extends Model
         'check_in_time',
         'check_out_time',
         'score',
-        'custom_note'
+        'custom_note',
     ];
 
     protected $casts = [
@@ -37,11 +37,11 @@ class Attendance extends Model
             $model->created_by = auth()->id();
         });
     }
+
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
     }
-
 
     public function memorizer(): BelongsTo
     {

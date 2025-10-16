@@ -2,28 +2,27 @@
 
 namespace App\Filament\Association\Resources;
 
-use Filament\Schemas\Schema;
-use Filament\Schemas\Components\Section;
-use Filament\Actions\EditAction;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
-use App\Filament\Association\Resources\GuardianResource\Pages\ListGuardians;
 use App\Filament\Association\Resources\GuardianResource\Pages\CreateGuardian;
 use App\Filament\Association\Resources\GuardianResource\Pages\EditGuardian;
-use App\Filament\Association\Resources\GuardianResource\Pages;
+use App\Filament\Association\Resources\GuardianResource\Pages\ListGuardians;
+use App\Filament\Association\Resources\GuardianResource\RelationManagers\MemorizersRelationManager;
 use App\Models\Guardian;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-use App\Filament\Association\Resources\GuardianResource\RelationManagers\MemorizersRelationManager;
 
 class GuardianResource extends Resource
 {
     protected static ?string $model = Guardian::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-users';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-users';
+
     protected static bool $shouldRegisterNavigation = false;
 
     protected static ?string $navigationLabel = 'أولياء الأمور';

@@ -2,43 +2,40 @@
 
 namespace App\Filament\Resources;
 
-use Filament\Schemas\Schema;
-use Filament\Forms\Components\Select;
-use Filament\Schemas\Components\Utilities\Set;
-use App\Models\Student;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\ToggleButtons;
-use Filament\Forms\Components\Textarea;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Filters\Filter;
-use Carbon\Carbon;
-use Filament\Actions\EditAction;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\BulkAction;
-use App\Filament\Resources\StudentDisconnectionResource\Pages\ListStudentDisconnections;
-use App\Filament\Resources\StudentDisconnectionResource\Pages\CreateStudentDisconnection;
-use App\Enums\DisconnectionStatus;
 use App\Enums\MessageResponseStatus;
-use App\Filament\Resources\StudentDisconnectionResource\Pages;
-use Illuminate\Support\Collection;
+use App\Filament\Resources\StudentDisconnectionResource\Pages\CreateStudentDisconnection;
+use App\Filament\Resources\StudentDisconnectionResource\Pages\ListStudentDisconnections;
+use App\Models\Student;
 use App\Models\StudentDisconnection;
+use Carbon\Carbon;
+use Filament\Actions\BulkAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Schema;
 use Filament\Tables;
-use Filament\Tables\Table;
 use Filament\Tables\Columns\SelectColumn;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 
 class StudentDisconnectionResource extends Resource
 {
     protected static ?string $model = StudentDisconnection::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-exclamation-triangle';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-exclamation-triangle';
 
     protected static ?string $navigationLabel = 'الطلاب المنقطعون';
 
@@ -47,7 +44,6 @@ class StudentDisconnectionResource extends Resource
     protected static ?string $pluralModelLabel = 'الطلاب المنقطعون';
 
     protected static ?int $navigationSort = 5;
-
 
     public static function canAccess(): bool
     {
@@ -118,7 +114,6 @@ class StudentDisconnectionResource extends Resource
                     ->searchable()
                     ->sortable(),
 
-
                 TextColumn::make('student.last_present_date')
                     ->label('آخر حضور')
                     ->date('Y-m-d')
@@ -129,11 +124,11 @@ class StudentDisconnectionResource extends Resource
                     ->label('أيام الغياب المتتالية')
                     ->state(function (StudentDisconnection $record): string {
                         $consecutiveDays = $record->student->getCurrentConsecutiveAbsentDays();
-                        return $consecutiveDays . ' يوم';
+
+                        return $consecutiveDays.' يوم';
                     })
                     ->badge()
-                    ->color(fn (StudentDisconnection $record): string =>
-                        $record->student->getCurrentConsecutiveAbsentDays() >= 5 ? 'danger' :
+                    ->color(fn (StudentDisconnection $record): string => $record->student->getCurrentConsecutiveAbsentDays() >= 5 ? 'danger' :
                         ($record->student->getCurrentConsecutiveAbsentDays() >= 3 ? 'warning' : 'gray')
                     )
                     ->sortable(),
@@ -145,7 +140,8 @@ class StudentDisconnectionResource extends Resource
                         if ($daysSinceLastPresent === null) {
                             return 'غير محدد';
                         }
-                        return $daysSinceLastPresent . ' يوم';
+
+                        return $daysSinceLastPresent.' يوم';
                     })
                     ->badge()
                     ->sortable(),
@@ -231,11 +227,12 @@ class StudentDisconnectionResource extends Resource
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
                         if ($data['last_present_from']) {
-                            $indicators[] = 'من: ' . Carbon::parse($data['last_present_from'])->format('m/d/Y');
+                            $indicators[] = 'من: '.Carbon::parse($data['last_present_from'])->format('m/d/Y');
                         }
                         if ($data['last_present_to']) {
-                            $indicators[] = 'إلى: ' . Carbon::parse($data['last_present_to'])->format('m/d/Y');
+                            $indicators[] = 'إلى: '.Carbon::parse($data['last_present_to'])->format('m/d/Y');
                         }
+
                         return $indicators;
                     })
                     ->default([
@@ -365,7 +362,7 @@ class StudentDisconnectionResource extends Resource
                         ])
                         ->action(function (Collection $records, array $data) {
                             $records->filter(function ($record) {
-                                return !$record->contact_date;
+                                return ! $record->contact_date;
                             })->each(function ($record) use ($data) {
                                 $record->update([
                                     'contact_date' => $data['contact_date'],

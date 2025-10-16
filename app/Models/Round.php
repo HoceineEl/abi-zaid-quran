@@ -19,7 +19,6 @@ class Round extends Model
         'days' => 'array',
     ];
 
-
     public function memorizers(): HasMany
     {
         return $this->hasMany(Memorizer::class);

@@ -3,7 +3,6 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Progress;
-use App\Models\User;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Number;
@@ -19,7 +18,7 @@ class UserActivityStats extends BaseWidget
             ->groupBy('created_by');
 
         // Filter by managed groups if not admin
-        if (!auth()->user()->isAdministrator()) {
+        if (! auth()->user()->isAdministrator()) {
             $query->whereIn('student_id', function ($q) {
                 $q->select('id')
                     ->from('students')

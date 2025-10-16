@@ -2,28 +2,26 @@
 
 namespace App\Filament\Actions;
 
-use Filament\Actions\Action;
-use Filament\Forms\Components\Select;
-use Filament\Schemas\Components\Utilities\Get;
-use Exception;
 use App\Classes\Core;
 use App\Enums\WhatsAppMessageStatus;
-use App\Helpers\PhoneHelper;
 use App\Models\GroupMessageTemplate;
-use App\Models\Student;
 use App\Models\WhatsAppMessageHistory;
 use App\Models\WhatsAppSession;
 use App\Services\WhatsAppService;
 use App\Traits\HandlesWhatsAppProgress;
-use Filament\Forms;
+use Exception;
+use Filament\Actions\Action;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Utilities\Get;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
 
 class SendAbsentStudentsMessageAction extends Action
 {
     use HandlesWhatsAppProgress;
+
     public static function getDefaultName(): ?string
     {
         return 'send_absent_students_message';
@@ -36,7 +34,7 @@ class SendAbsentStudentsMessageAction extends Action
         $this->label('إرسال رسالة تذكير للغائبين')
             ->icon('heroicon-o-chat-bubble-oval-left')
             ->color('danger')
-            ->form(function() {
+            ->form(function () {
                 $fields = [];
                 $isAdmin = auth()->user()->isAdministrator();
                 $ownerRecord = $this->getLivewire()->ownerRecord ?? $this->getRecord();
@@ -55,6 +53,7 @@ class SendAbsentStudentsMessageAction extends Action
                                 return $ownerRecord->messageTemplates()->pluck('group_message_templates.name', 'group_message_templates.id')
                                     ->prepend('رسالة مخصصة', 'custom');
                             }
+
                             return ['custom' => 'رسالة مخصصة'];
                         })
                         ->default(function () use ($defaultTemplate) {
@@ -64,7 +63,7 @@ class SendAbsentStudentsMessageAction extends Action
                 }
 
                 // Show message field for admins when custom is selected, or always for non-admins without default template
-                $showMessageField = $isAdmin || !$defaultTemplate;
+                $showMessageField = $isAdmin || ! $defaultTemplate;
 
                 if ($showMessageField) {
                     $defaultMessage = $defaultTemplate ? $defaultTemplate->content : 'السلام عليكم ورحمة الله وبركاته، {student_name} لم تنس واجب اليوم، لعل المانع خير.';
@@ -75,7 +74,7 @@ class SendAbsentStudentsMessageAction extends Action
                         ->label('الرسالة')
                         ->required()
                         ->rows(4)
-                        ->hidden(fn(Get $get) => $isAdmin && $get('template_id') !== 'custom');
+                        ->hidden(fn (Get $get) => $isAdmin && $get('template_id') !== 'custom');
                 }
 
                 return $fields;
@@ -102,6 +101,7 @@ class SendAbsentStudentsMessageAction extends Action
                 ->body('لم يتم العثور على طلاب غائبين في التاريخ المحدد')
                 ->warning()
                 ->send();
+
             return;
         }
 
@@ -116,7 +116,7 @@ class SendAbsentStudentsMessageAction extends Action
      */
     protected function getAbsentStudents($ownerRecord, string $selectedDate): Collection
     {
-        if (!$ownerRecord || !method_exists($ownerRecord, 'students')) {
+        if (! $ownerRecord || ! method_exists($ownerRecord, 'students')) {
             return collect();
         }
 
@@ -138,6 +138,7 @@ class SendAbsentStudentsMessageAction extends Action
         if (method_exists($livewire, 'getTableFilters') && isset($livewire->tableFilters['date']['value'])) {
             return $livewire->tableFilters['date']['value'];
         }
+
         return now()->format('Y-m-d');
     }
 
@@ -149,7 +150,7 @@ class SendAbsentStudentsMessageAction extends Action
         $isAdmin = auth()->user()->isAdministrator();
 
         // For non-admins, always use default template if available
-        if (!$isAdmin && $ownerRecord && method_exists($ownerRecord, 'messageTemplates')) {
+        if (! $isAdmin && $ownerRecord && method_exists($ownerRecord, 'messageTemplates')) {
             $defaultTemplate = $ownerRecord->messageTemplates()->wherePivot('is_default', true)->first();
             if ($defaultTemplate) {
                 return $defaultTemplate->content;
@@ -179,12 +180,13 @@ class SendAbsentStudentsMessageAction extends Action
         // Get the current user's active session
         $session = WhatsAppSession::getUserSession(auth()->id());
 
-        if (!$session || !$session->isConnected()) {
+        if (! $session || ! $session->isConnected()) {
             Notification::make()
                 ->title('جلسة واتساب غير متصلة')
                 ->body('يرجى التأكد من أن لديك جلسة واتساب متصلة قبل إرسال الرسائل')
                 ->danger()
                 ->send();
+
             return;
         }
 
@@ -205,12 +207,13 @@ class SendAbsentStudentsMessageAction extends Action
                     $phoneNumber = null;
                 }
 
-                if (!$phoneNumber) {
+                if (! $phoneNumber) {
                     Log::warning('Invalid phone number for student', [
                         'student_id' => $student->id,
                         'student_name' => $student->name,
                         'phone' => $student->phone,
                     ]);
+
                     continue;
                 }
 
@@ -304,5 +307,4 @@ class SendAbsentStudentsMessageAction extends Action
             ->success()
             ->send();
     }
-
 }

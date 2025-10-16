@@ -40,7 +40,7 @@ enum WhatsAppConnectionStatus: string
             self::CREATING,
             self::CONNECTING,
             self::PENDING,
-            self::GENERATING_QR
+            self::GENERATING_QR,
         ]);
     }
 
@@ -50,7 +50,7 @@ enum WhatsAppConnectionStatus: string
             self::CREATING,
             self::CONNECTING,
             self::PENDING,
-            self::GENERATING_QR
+            self::GENERATING_QR,
         ]);
     }
 
@@ -73,7 +73,7 @@ enum WhatsAppConnectionStatus: string
             self::CREATING,
             self::CONNECTING,
             self::PENDING,
-            self::GENERATING_QR
+            self::GENERATING_QR,
         ]);
     }
 
@@ -88,7 +88,7 @@ enum WhatsAppConnectionStatus: string
             self::CREATING,
             self::CONNECTING,
             self::PENDING,
-            self::GENERATING_QR
+            self::GENERATING_QR,
         ]);
     }
 
@@ -98,7 +98,7 @@ enum WhatsAppConnectionStatus: string
             self::CREATING,
             self::CONNECTING,
             self::PENDING,
-            self::GENERATING_QR
+            self::GENERATING_QR,
         ]);
     }
 
@@ -109,7 +109,7 @@ enum WhatsAppConnectionStatus: string
             self::CREATING,
             self::CONNECTING,
             self::PENDING,
-            self::GENERATING_QR
+            self::GENERATING_QR,
         ]);
     }
 }

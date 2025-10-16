@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 return new class extends Migration
@@ -18,13 +18,13 @@ return new class extends Migration
 
         // Transfer teachers to users
         $teachers = DB::table('teachers')->get();
-        
+
         // Drop existing foreign key first
         Schema::table('memorizers', function (Blueprint $table) {
             $table->dropForeign(['teacher_id']);
             $table->dropColumn('teacher_id');
         });
-        
+
         Schema::table('memorizers', function (Blueprint $table) {
             $table->foreignId('teacher_id')->nullable()->constrained('users')->nullOnDelete();
         });
@@ -32,7 +32,7 @@ return new class extends Migration
         foreach ($teachers as $teacher) {
             DB::table('users')->insert([
                 'name' => $teacher->name,
-                'email' => Str::slug($teacher->name) . rand(100, 999) . '@association.com',
+                'email' => Str::slug($teacher->name).rand(100, 999).'@association.com',
                 'phone' => $teacher->phone,
                 'password' => bcrypt(Str::random(10)),
                 'role' => 'teacher',

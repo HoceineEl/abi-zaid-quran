@@ -2,8 +2,6 @@
 
 namespace App\Helpers;
 
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Components\Utilities\Get;
 use App\Models\Group;
 use App\Models\Page;
 use App\Models\Progress;
@@ -14,6 +12,8 @@ use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\ToggleButtons;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Utilities\Get;
 use Illuminate\Database\Eloquent\Model;
 
 class ProgressFormHelper
@@ -28,16 +28,16 @@ class ProgressFormHelper
                 ->schema([
                     Placeholder::make('student_name')
                         ->label('الطالب')
-                        ->hidden(fn() => ! $student)
-                        ->content($student ? $student->name . ' - ' . $student->phone : ''),
+                        ->hidden(fn () => ! $student)
+                        ->content($student ? $student->name.' - '.$student->phone : ''),
 
                     Select::make('student_id')
                         ->label('الطالب')
-                        ->options(fn(Get $get) => $students->filter(function ($student) use ($get) {
+                        ->options(fn (Get $get) => $students->filter(function ($student) use ($get) {
                             return $student->progresses->where('date', $get('date'))->count() == 0;
-                        })->mapWithKeys(fn(Student $student) => [$student->id => $student->name . ' - ' . $student->phone])->toArray())
+                        })->mapWithKeys(fn (Student $student) => [$student->id => $student->name.' - '.$student->phone])->toArray())
                         ->preload()
-                        ->hidden(fn() => $student)
+                        ->hidden(fn () => $student)
                         ->required(),
                     DatePicker::make('date')
                         ->label('التاريخ')
@@ -71,7 +71,7 @@ class ProgressFormHelper
                         ->label('غياب بعذر')
                         ->inline()
                         ->default(false)
-                        ->hidden(fn(Get $get) => $get('status') !== 'absent')
+                        ->hidden(fn (Get $get) => $get('status') !== 'absent')
                         ->colors([
                             true => 'success',
                             false => 'danger',

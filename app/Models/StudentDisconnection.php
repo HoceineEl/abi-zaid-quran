@@ -12,7 +12,6 @@ class StudentDisconnection extends Model
 {
     use HasFactory;
 
-
     protected $casts = [
         'disconnection_date' => 'date',
         'contact_date' => 'date',

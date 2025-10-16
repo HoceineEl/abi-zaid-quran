@@ -3,9 +3,8 @@
 use App\Enums\Days;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -29,7 +28,7 @@ return new class extends Migration
 
                 // Find teacher by name in users table
                 $teacher = DB::table('users')
-                    ->where('name', 'like', '%' . $teacherName . '%')
+                    ->where('name', 'like', '%'.$teacherName.'%')
                     ->where('role', 'teacher')
                     ->first();
 
@@ -48,7 +47,7 @@ return new class extends Migration
                         ->where('id', $group->id)
                         ->update([
                             'teacher_id' => $teacher->id,
-                            'days' => $selectedDays
+                            'days' => $selectedDays,
                         ]);
                 }
             }

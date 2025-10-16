@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use App\Enums\WhatsAppConnectionStatus;
 use App\Services\WhatsAppService;
 use Exception;
-use App\Enums\WhatsAppConnectionStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;

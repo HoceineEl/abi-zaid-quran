@@ -7,8 +7,8 @@ use App\Enums\MessageResponseStatus;
 use App\Models\StudentDisconnection;
 use Filament\Actions\Exports\ExportColumn;
 use Filament\Actions\Exports\Exporter;
-use Illuminate\Database\Eloquent\Builder;
 use Filament\Actions\Exports\Models\Export;
+use Illuminate\Database\Eloquent\Builder;
 
 class StudentDisconnectionExporter extends Exporter
 {
@@ -23,7 +23,7 @@ class StudentDisconnectionExporter extends Exporter
                 ->label('المجموعة'),
             ExportColumn::make('disconnection_date')
                 ->label('تاريخ الانقطاع')
-                ->formatStateUsing(fn($state) => $state ? $state->format('Y-m-d') : ''),
+                ->formatStateUsing(fn ($state) => $state ? $state->format('Y-m-d') : ''),
             ExportColumn::make('disconnection_duration')
                 ->label('مدة الانقطاع')
                 ->formatStateUsing(function ($state, StudentDisconnection $record) {
@@ -31,14 +31,15 @@ class StudentDisconnectionExporter extends Exporter
                     if ($daysSinceLastPresent === null) {
                         return 'غير محدد';
                     }
-                    return $daysSinceLastPresent . ' يوم';
+
+                    return $daysSinceLastPresent.' يوم';
                 }),
             ExportColumn::make('contact_date')
                 ->label('تاريخ التواصل')
-                ->formatStateUsing(fn($state) => $state ? $state->format('Y-m-d') : 'لم يتم التواصل'),
+                ->formatStateUsing(fn ($state) => $state ? $state->format('Y-m-d') : 'لم يتم التواصل'),
             ExportColumn::make('message_response')
                 ->label('تفاعل مع الرسالة')
-                ->formatStateUsing(fn($state) => match ($state) {
+                ->formatStateUsing(fn ($state) => match ($state) {
                     MessageResponseStatus::Yes => 'نعم',
                     MessageResponseStatus::No => 'لا',
                     MessageResponseStatus::NotContacted => 'لم يتم التواصل',
@@ -47,7 +48,7 @@ class StudentDisconnectionExporter extends Exporter
                 }),
             ExportColumn::make('status')
                 ->label('الحالة')
-                ->formatStateUsing(fn($state) => match ($state) {
+                ->formatStateUsing(fn ($state) => match ($state) {
                     DisconnectionStatus::Disconnected => 'منقطع',
                     DisconnectionStatus::Contacted => 'تم الاتصال',
                     DisconnectionStatus::Responded => 'تم التواصل',
@@ -58,7 +59,7 @@ class StudentDisconnectionExporter extends Exporter
                 ->label('ملاحظات'),
             ExportColumn::make('created_at')
                 ->label('تاريخ الإنشاء')
-                ->formatStateUsing(fn($state) => $state ? $state->format('Y-m-d H:i') : ''),
+                ->formatStateUsing(fn ($state) => $state ? $state->format('Y-m-d H:i') : ''),
         ];
     }
 
@@ -69,10 +70,10 @@ class StudentDisconnectionExporter extends Exporter
 
     public static function getCompletedNotificationBody(Export $export): string
     {
-        $body = 'تم تصدير ' . number_format($export->successful_rows) . ' ' . str('سجل')->plural($export->successful_rows) . ' بنجاح.';
+        $body = 'تم تصدير '.number_format($export->successful_rows).' '.str('سجل')->plural($export->successful_rows).' بنجاح.';
 
         if ($failedRowsCount = $export->getFailedRowsCount()) {
-            $body .= ' فشل تصدير ' . number_format($failedRowsCount) . ' ' . str('سجل')->plural($failedRowsCount) . '.';
+            $body .= ' فشل تصدير '.number_format($failedRowsCount).' '.str('سجل')->plural($failedRowsCount).'.';
         }
 
         return $body;

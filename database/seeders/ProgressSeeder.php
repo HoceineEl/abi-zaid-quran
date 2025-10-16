@@ -7,7 +7,6 @@ use App\Models\Student;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Log;
 
 class ProgressSeeder extends Seeder
 {
@@ -16,15 +15,13 @@ class ProgressSeeder extends Seeder
         // First create a fallback user if needed
         $fallbackUser = User::factory()->create();
 
-
-
         $students = Student::with(['group.managers'])->get();
-        $dates = collect(range(0, 30))->map(fn($daysAgo) => Carbon::now()->subDays($daysAgo));
+        $dates = collect(range(0, 30))->map(fn ($daysAgo) => Carbon::now()->subDays($daysAgo));
 
         foreach ($students as $student) {
 
             $manager = $student->group->managers()->first() ?? $fallbackUser;
-            if (!$student->group->managers->contains($manager)) {
+            if (! $student->group->managers->contains($manager)) {
                 $student->group->managers()->attach($manager);
             }
 
@@ -38,7 +35,6 @@ class ProgressSeeder extends Seeder
                     'created_at' => $date,
                     'updated_at' => $date,
                 ];
-
 
                 Progress::create($progressData);
             }

@@ -3,12 +3,11 @@
 namespace App\Filament\Resources\GroupResource\RelationManagers;
 
 use Filament\Actions\AttachAction;
-use Filament\Actions\EditAction;
-use Filament\Actions\DetachAction;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DetachAction;
 use Filament\Actions\DetachBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 

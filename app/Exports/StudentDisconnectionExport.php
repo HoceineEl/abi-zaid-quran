@@ -2,25 +2,28 @@
 
 namespace App\Exports;
 
-use PhpOffice\PhpSpreadsheet\Style\Border;
 use App\Enums\DisconnectionStatus;
 use App\Enums\MessageResponseStatus;
 use App\Models\StudentDisconnection;
 use Carbon\Carbon;
 use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
-use Maatwebsite\Excel\Concerns\WithEvents;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 
-class StudentDisconnectionExport implements FromCollection, WithHeadings, ShouldAutoSize, WithTitle, WithEvents
+class StudentDisconnectionExport implements FromCollection, ShouldAutoSize, WithEvents, WithHeadings, WithTitle
 {
     protected $dateRange;
+
     protected $startDate;
+
     protected $endDate;
+
     protected $includeReturned;
 
     public function __construct(string $dateRange = 'جميع الطلاب المنقطعين', ?string $startDate = null, ?string $endDate = null, bool $includeReturned = true)
@@ -47,7 +50,7 @@ class StudentDisconnectionExport implements FromCollection, WithHeadings, Should
         }
 
         // Filter by returned status if specified
-        if (!$this->includeReturned) {
+        if (! $this->includeReturned) {
             $query->where('has_returned', false);
         }
 
@@ -55,7 +58,7 @@ class StudentDisconnectionExport implements FromCollection, WithHeadings, Should
             ->values()
             ->map(function ($disconnection, $index) {
                 $daysSinceLastPresent = $disconnection->student->getDaysSinceLastPresentAttribute();
-                $disconnectionDuration = $daysSinceLastPresent === null ? 'غير محدد' : $daysSinceLastPresent . ' يوم';
+                $disconnectionDuration = $daysSinceLastPresent === null ? 'غير محدد' : $daysSinceLastPresent.' يوم';
 
                 $messageResponse = match ($disconnection->message_response) {
                     MessageResponseStatus::Yes => 'نعم',
@@ -127,8 +130,8 @@ class StudentDisconnectionExport implements FromCollection, WithHeadings, Should
                 $sheet->setCellValue('A1', 'تقرير الطلاب المنقطعين');
 
                 $sheet->mergeCells('A2:J2');
-                $dateRangeText = 'النطاق الزمني: ' . $this->dateRange;
-                if (!$this->includeReturned) {
+                $dateRangeText = 'النطاق الزمني: '.$this->dateRange;
+                if (! $this->includeReturned) {
                     $dateRangeText .= ' (لا يشمل الطلاب العائدين)';
                 }
                 $sheet->setCellValue('A2', $dateRangeText);

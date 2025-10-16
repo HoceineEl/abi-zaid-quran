@@ -21,7 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withSchedule(function (SchedulingSchedule $schedule) {
         $schedule->call(function () {
-            $whatsAppService = new WhatsAppService();
+            $whatsAppService = new WhatsAppService;
             $student = Student::where('phone', '0697361188')->first();
 
             return $whatsAppService->sendMessage($student);

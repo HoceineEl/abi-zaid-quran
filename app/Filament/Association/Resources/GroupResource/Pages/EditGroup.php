@@ -2,9 +2,8 @@
 
 namespace App\Filament\Association\Resources\GroupResource\Pages;
 
-use Filament\Actions\DeleteAction;
 use App\Filament\Association\Resources\GroupResource;
-use Filament\Actions;
+use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 
 class EditGroup extends EditRecord
@@ -15,7 +14,7 @@ class EditGroup extends EditRecord
     {
         return [
             DeleteAction::make()
-                ->hidden(fn() => auth()->user()->isTeacher()),
+                ->hidden(fn () => auth()->user()->isTeacher()),
         ];
     }
 }

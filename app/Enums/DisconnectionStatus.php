@@ -6,7 +6,7 @@ use Filament\Support\Contracts\HasColor;
 use Filament\Support\Contracts\HasIcon;
 use Filament\Support\Contracts\HasLabel;
 
-enum DisconnectionStatus: string implements HasLabel, HasColor, HasIcon
+enum DisconnectionStatus: string implements HasColor, HasIcon, HasLabel
 {
     case Disconnected = 'disconnected';
     case Contacted = 'contacted';
@@ -21,7 +21,7 @@ enum DisconnectionStatus: string implements HasLabel, HasColor, HasIcon
         };
     }
 
-    public function getColor(): string | array | null
+    public function getColor(): string|array|null
     {
         return match ($this) {
             self::Disconnected => 'danger',

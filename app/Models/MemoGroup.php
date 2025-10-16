@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Enums\Days;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class MemoGroup extends Model
 {
@@ -16,7 +16,7 @@ class MemoGroup extends Model
     protected $with = ['memorizers', 'teacher'];
 
     protected $casts = [
-        'days' => 'array'
+        'days' => 'array',
     ];
 
     public function memorizers(): HasMany
@@ -36,7 +36,7 @@ class MemoGroup extends Model
 
     public function getArabicDaysAttribute(): string
     {
-        if (!$this->days) {
+        if (! $this->days) {
             return '';
         }
 

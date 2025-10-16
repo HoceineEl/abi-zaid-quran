@@ -85,6 +85,7 @@ class WhatsAppMessageHistory extends Model
 
         if ($this->message_type === 'document') {
             $fileName = $this->media_data['original_name'] ?? 'Document';
+
             return "Document: {$fileName}";
         }
 

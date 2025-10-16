@@ -2,8 +2,8 @@
 
 namespace App\Classes;
 
-use App\Models\GroupMessageTemplate;
 use App\Models\Group;
+use App\Models\GroupMessageTemplate;
 use App\Models\Message;
 use App\Models\Student;
 use App\Models\User;
@@ -15,7 +15,7 @@ class Core
 {
     public static function sendMessageToAbsence(?Group $group = null): void
     {
-        $whatsAppService = new WhatsAppService();
+        $whatsAppService = new WhatsAppService;
         if ($group !== null) {
             $students = $group->students()->with(['progresses' => function ($query) {
                 $query->where('date', '>=', Carbon::now()->subDays(3)->toDateString())
@@ -64,7 +64,7 @@ class Core
 
     public static function sendMessageToSpecific($data, $type = 'student'): void
     {
-        $whatsAppService = new WhatsAppService();
+        $whatsAppService = new WhatsAppService;
         $message = $data['message_type'] === 'custom' ? $data['message'] : Message::find($data['message'])->content;
         foreach ($data['students'] as $studentId) {
             if ($type === 'student') {
@@ -81,7 +81,7 @@ class Core
                 //     ->send();
             } else {
                 Notification::make()
-                    ->title('حدث خطأ أثناء إرسال رسالة واتساب ل ' . $user->name)
+                    ->title('حدث خطأ أثناء إرسال رسالة واتساب ل '.$user->name)
                     ->color('danger')
                     ->icon('heroicon-o-x-circle')
                     ->send();
@@ -91,7 +91,7 @@ class Core
 
     public static function sendMessageToStudent(Student $student)
     {
-        $whatsAppService = new WhatsAppService();
+        $whatsAppService = new WhatsAppService;
         $res = $whatsAppService->sendMessage($student);
         if (isset($res['contacts'])) {
             // Notification::make()
@@ -101,7 +101,7 @@ class Core
             //     ->send();
         } else {
             Notification::make()
-                ->title('حدث خطأ أثناء إرسال رسالة واتساب للطالب ' . $student->name)
+                ->title('حدث خطأ أثناء إرسال رسالة واتساب للطالب '.$student->name)
                 ->color('danger')
                 ->icon('heroicon-o-x-circle')
                 ->send();
@@ -110,7 +110,7 @@ class Core
 
     public static function sendSpecifMessageToStudent(Student $student, $message)
     {
-        $whatsAppService = new WhatsAppService();
+        $whatsAppService = new WhatsAppService;
         $res = $whatsAppService->sendCustomMessage($student, $message);
         if (isset($res['contacts'])) {
             // Notification::make()
@@ -120,7 +120,7 @@ class Core
             //     ->send();
         } else {
             Notification::make()
-                ->title('حدث خطأ أثناء إرسال رسالة واتساب للطالب ' . $student->name)
+                ->title('حدث خطأ أثناء إرسال رسالة واتساب للطالب '.$student->name)
                 ->color('danger')
                 ->icon('heroicon-o-x-circle')
                 ->send();
@@ -130,9 +130,9 @@ class Core
     /**
      * Process a message template by replacing variables with actual values
      *
-     * @param string $template The message template with variables
-     * @param Student $student The student object
-     * @param Group|null $group The group object (optional)
+     * @param  string  $template  The message template with variables
+     * @param  Student  $student  The student object
+     * @param  Group|null  $group  The group object (optional)
      * @return string The processed message with variables replaced
      */
     public static function processMessageTemplate(string $template, Student $student, ?Group $group = null): string

@@ -2,12 +2,8 @@
 
 namespace App\Filament\Actions;
 
-use Filament\Actions\BulkAction;
-use Filament\Schemas\Components\Utilities\Get;
-use Exception;
 use App\Classes\Core;
 use App\Enums\WhatsAppMessageStatus;
-use App\Helpers\PhoneHelper;
 use App\Models\Group;
 use App\Models\GroupMessageTemplate;
 use App\Models\Progress;
@@ -16,9 +12,12 @@ use App\Models\WhatsAppMessageHistory;
 use App\Models\WhatsAppSession;
 use App\Services\WhatsAppService;
 use App\Traits\HandlesWhatsAppProgress;
+use Exception;
+use Filament\Actions\BulkAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Utilities\Get;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
@@ -36,6 +35,7 @@ class SendWhatsAppMessageToSelectedStudentsAction extends BulkAction
     public function ownerRecord(Group $record): static
     {
         $this->ownerRecord = $record;
+
         return $this;
     }
 
@@ -72,7 +72,7 @@ class SendWhatsAppMessageToSelectedStudentsAction extends BulkAction
                 }
 
                 // Show message field for admins when custom is selected, or always for non-admins without default template
-                $showMessageField = $isAdmin || !$defaultTemplate;
+                $showMessageField = $isAdmin || ! $defaultTemplate;
 
                 if ($showMessageField) {
                     $defaultMessage = $defaultTemplate ? $defaultTemplate->content : 'السلام عليكم، نذكركم بالواجب المقرر اليوم، لعل المانع خير.';
@@ -84,7 +84,7 @@ class SendWhatsAppMessageToSelectedStudentsAction extends BulkAction
                         ->placeholder('اكتب رسالتك هنا...')
                         ->rows(8)
                         ->required()
-                        ->hidden(fn(Get $get) => $isAdmin && $this->ownerRecord && $get('template_id') !== 'custom');
+                        ->hidden(fn (Get $get) => $isAdmin && $this->ownerRecord && $get('template_id') !== 'custom');
                 }
 
                 return $fields;
@@ -110,6 +110,7 @@ class SendWhatsAppMessageToSelectedStudentsAction extends BulkAction
                 ->title('لا يوجد طلاب محددين')
                 ->warning()
                 ->send();
+
             return;
         }
 
@@ -118,7 +119,7 @@ class SendWhatsAppMessageToSelectedStudentsAction extends BulkAction
 
         if ($this->ownerRecord) {
             // For non-admins, always use default template if available
-            if (!$isAdmin) {
+            if (! $isAdmin) {
                 $defaultTemplate = $this->ownerRecord->messageTemplates()->wherePivot('is_default', true)->first();
                 if ($defaultTemplate) {
                     $messageTemplate = $defaultTemplate->content;
@@ -155,12 +156,13 @@ class SendWhatsAppMessageToSelectedStudentsAction extends BulkAction
         // Get the current user's active session
         $session = WhatsAppSession::getUserSession(auth()->id());
 
-        if (!$session || !$session->isConnected()) {
+        if (! $session || ! $session->isConnected()) {
             Notification::make()
                 ->title('جلسة واتساب غير متصلة')
                 ->body('يرجى التأكد من أن لديك جلسة واتساب متصلة قبل إرسال الرسائل')
                 ->danger()
                 ->send();
+
             return;
         }
 
@@ -170,9 +172,9 @@ class SendWhatsAppMessageToSelectedStudentsAction extends BulkAction
 
         foreach ($students as $student) {
             // Ensure we have a Student model
-            if (!($student instanceof Student)) {
+            if (! ($student instanceof Student)) {
                 $student = Student::find($student);
-                if (!$student) {
+                if (! $student) {
                     continue;
                 }
             }
@@ -190,13 +192,14 @@ class SendWhatsAppMessageToSelectedStudentsAction extends BulkAction
                 $phoneNumber = null;
             }
 
-            if (!$phoneNumber) {
+            if (! $phoneNumber) {
                 Log::warning('Invalid phone number for student in bulk message', [
                     'student_id' => $student->id,
                     'student_name' => $student->name,
                     'phone' => $student->phone,
                 ]);
                 $failedPhones[] = $student->name;
+
                 continue;
             }
 
@@ -286,8 +289,8 @@ class SendWhatsAppMessageToSelectedStudentsAction extends BulkAction
         // Show notification with results
         $notificationTitle = "تم جدولة {$messagesQueued} رسالة لإرسالها للطلاب المحددين";
 
-        if (!empty($failedPhones)) {
-            $notificationTitle .= "\n" . "فشل الإرسال لـ: " . implode(', ', $failedPhones);
+        if (! empty($failedPhones)) {
+            $notificationTitle .= "\n".'فشل الإرسال لـ: '.implode(', ', $failedPhones);
         }
 
         Notification::make()

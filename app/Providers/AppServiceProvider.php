@@ -30,15 +30,13 @@ class AppServiceProvider extends ServiceProvider
     {
         FilamentView::registerRenderHook(
             PanelsRenderHook::HEAD_END,
-            fn() => view('laravelpwa::meta', ['config' => (new ManifestService)->generate()])
+            fn () => view('laravelpwa::meta', ['config' => (new ManifestService)->generate()])
         );
-
 
         Page::formActionsAlignment(Alignment::Right);
         Action::configureUsing(function (Action $action) {
             $action->modalFooterActionsAlignment(Alignment::Right)
-                ->modalSubmitActionLabel(__('حفظ'))
-            ;
+                ->modalSubmitActionLabel(__('حفظ'));
         });
 
         Column::configureUsing(function (Column $column) {

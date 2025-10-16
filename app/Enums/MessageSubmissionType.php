@@ -3,11 +3,11 @@
 namespace App\Enums;
 
 use Filament\Support\Contracts\HasColor;
+use Filament\Support\Contracts\HasDescription;
 use Filament\Support\Contracts\HasIcon;
 use Filament\Support\Contracts\HasLabel;
-use Filament\Support\Contracts\HasDescription;
 
-enum MessageSubmissionType: string implements HasLabel, HasColor, HasIcon, HasDescription
+enum MessageSubmissionType: string implements HasColor, HasDescription, HasIcon, HasLabel
 {
     case Media = 'media';
     case Text = 'text';
@@ -22,7 +22,7 @@ enum MessageSubmissionType: string implements HasLabel, HasColor, HasIcon, HasDe
         };
     }
 
-    public function getColor(): string | array | null
+    public function getColor(): string|array|null
     {
         return match ($this) {
             self::Media => 'success',

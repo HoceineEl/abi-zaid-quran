@@ -2,26 +2,21 @@
 
 namespace App\Filament\Resources\GroupResource\RelationManagers;
 
-use Filament\Schemas\Schema;
-use DatePeriod;
-use DateTime;
-use DateInterval;
-use Filament\Support\Enums\IconSize;
-use Filament\Actions\ExportAction;
-use Filament\Actions\Action;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\ExportBulkAction;
-use Filament\Actions\BulkAction;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Tables\Enums\RecordActionsPosition;
-use Filament\Actions\CreateAction;
-use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\Grid;
 use App\Classes\Core;
 use App\Filament\Exports\ProgressExporter;
 use App\Helpers\ProgressFormHelper;
 use App\Models\Student;
 use App\Models\StudentDisconnection;
+use DateInterval;
+use DatePeriod;
+use DateTime;
+use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\CreateAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\ExportAction;
+use Filament\Actions\ExportBulkAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\Select;
@@ -29,13 +24,16 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Schema;
 use Filament\Support\Colors\Color;
-use Filament\Tables;
+use Filament\Support\Enums\IconSize;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
 class ProgressesRelationManager extends RelationManager
@@ -140,7 +138,7 @@ class ProgressesRelationManager extends RelationManager
                     TextColumn::make('name')
                         ->getStateUsing(function ($record, $rowLoop) {
 
-                            return $rowLoop->iteration . '. ' . $record->name;
+                            return $rowLoop->iteration.'. '.$record->name;
                         })
                         ->label('الطالب'),
                     ...$statusColumns->toArray(),
@@ -160,7 +158,7 @@ class ProgressesRelationManager extends RelationManager
             ->headerActions([
                 ExportAction::make()
                     ->label('تصدير الكل')
-                    ->visible(fn() => Auth::user()->isAdministrator())
+                    ->visible(fn () => Auth::user()->isAdministrator())
                     ->exporter(ProgressExporter::class)
                     ->successNotification(null)
                     ->icon('heroicon-o-arrow-down-tray'),
@@ -209,7 +207,7 @@ class ProgressesRelationManager extends RelationManager
 
                         $this->dispatch('export-table', [
                             'html' => $html,
-                            'groupName' => $this->ownerRecord->name
+                            'groupName' => $this->ownerRecord->name,
                         ]);
                     }),
             ])
@@ -219,12 +217,12 @@ class ProgressesRelationManager extends RelationManager
                         DatePicker::make('date_from')
                             ->label('من تاريخ')
                             ->reactive()
-                            ->afterStateUpdated(fn($state) => $this->dateFrom = $state ?? now()->subDays(4)->format('Y-m-d'))
+                            ->afterStateUpdated(fn ($state) => $this->dateFrom = $state ?? now()->subDays(4)->format('Y-m-d'))
                             ->default(now()->subDays(4)->format('Y-m-d')),
                         DatePicker::make('date_to')
                             ->reactive()
                             ->label('إلى تاريخ')
-                            ->afterStateUpdated(fn($state) => $this->dateTo = $state ?? now()->format('Y-m-d'))
+                            ->afterStateUpdated(fn ($state) => $this->dateTo = $state ?? now()->format('Y-m-d'))
                             ->default(now()->format('Y-m-d')),
                     ]),
                 Filter::make('present_number')
@@ -284,11 +282,11 @@ class ProgressesRelationManager extends RelationManager
                         ->modalDescription('سيتم إضافة الطلاب المحددين إلى قائمة الطلاب المنقطعين.')
                         ->action(function ($records) {
                             $addedCount = 0;
-                            
+
                             foreach ($records as $student) {
-                                if (!StudentDisconnection::where('student_id', $student->id)->exists()) {
+                                if (! StudentDisconnection::where('student_id', $student->id)->exists()) {
                                     $disconnectionDate = $student->getDisconnectionDateAttribute();
-                                    
+
                                     if ($disconnectionDate) {
                                         StudentDisconnection::create([
                                             'student_id' => $student->id,
@@ -299,7 +297,7 @@ class ProgressesRelationManager extends RelationManager
                                     }
                                 }
                             }
-                            
+
                             if ($addedCount > 0) {
                                 Notification::make()
                                     ->title('تم إضافة الطلاب إلى قائمة الانقطاع')
@@ -361,7 +359,7 @@ class ProgressesRelationManager extends RelationManager
         return [
             CreateAction::make(),
             Action::make('make_others_as_absent')
-                ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
+                ->visible(fn () => $this->ownerRecord->managers->contains(auth()->user()))
                 ->label('تسجيل البقية كغائبين اليوم')
                 ->color('danger')
                 ->action(function () {
@@ -378,7 +376,7 @@ class ProgressesRelationManager extends RelationManager
                             'lines_to' => null,
                         ]);
                         Notification::make()
-                            ->title('تم تسجيل الطالب ' . $student->name . ' كغائب اليوم')
+                            ->title('تم تسجيل الطالب '.$student->name.' كغائب اليوم')
                             ->color('success')
                             ->icon('heroicon-o-check-circle')
                             ->send();
@@ -389,7 +387,7 @@ class ProgressesRelationManager extends RelationManager
                 }),
             Action::make('group')
                 ->label('تسجيل تقدم جماعي')
-                ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
+                ->visible(fn () => $this->ownerRecord->managers->contains(auth()->user()))
                 ->color(Color::Teal)
                 ->schema(function (Get $get) {
                     $students = $this->ownerRecord->students->filter(function ($student) {
@@ -407,7 +405,7 @@ class ProgressesRelationManager extends RelationManager
                                         })->pluck('name', 'id');
                                     })
                                     ->required()
-                                    ->default(fn() => $students->keys()->toArray())
+                                    ->default(fn () => $students->keys()->toArray())
                                     ->multiple(),
                                 DatePicker::make('date')
                                     ->label('التاريخ')

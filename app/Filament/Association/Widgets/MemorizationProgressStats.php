@@ -4,11 +4,9 @@ namespace App\Filament\Association\Widgets;
 
 use App\Enums\MemorizationScore;
 use App\Models\Attendance;
-use App\Models\Memorizer;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use Filament\Widgets\Concerns\InteractsWithPageFilters;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class MemorizationProgressStats extends BaseWidget
@@ -36,11 +34,11 @@ class MemorizationProgressStats extends BaseWidget
         $averageScore = Attendance::whereBetween('date', [$dateFrom, $dateTo])
             ->whereNotNull('score')
             ->avg(DB::raw('CASE 
-                WHEN score = "' . MemorizationScore::EXCELLENT->value . '" THEN 5
-                WHEN score = "' . MemorizationScore::VERY_GOOD->value . '" THEN 4
-                WHEN score = "' . MemorizationScore::GOOD->value . '" THEN 3
-                WHEN score = "' . MemorizationScore::FAIR->value . '" THEN 2
-                WHEN score = "' . MemorizationScore::POOR->value . '" THEN 1
+                WHEN score = "'.MemorizationScore::EXCELLENT->value.'" THEN 5
+                WHEN score = "'.MemorizationScore::VERY_GOOD->value.'" THEN 4
+                WHEN score = "'.MemorizationScore::GOOD->value.'" THEN 3
+                WHEN score = "'.MemorizationScore::FAIR->value.'" THEN 2
+                WHEN score = "'.MemorizationScore::POOR->value.'" THEN 1
                 ELSE 0 
             END'));
 
@@ -51,7 +49,7 @@ class MemorizationProgressStats extends BaseWidget
                 ->chart([2, 4, 6, 8, 10, $excellentCount])
                 ->color('success'),
 
-            Stat::make('المعدل العام للحفظ', number_format($averageScore ?? 0, 1) . ' / 5')
+            Stat::make('المعدل العام للحفظ', number_format($averageScore ?? 0, 1).' / 5')
                 ->description('متوسط تقييم مستوى الحفظ لجميع الطلاب')
                 ->descriptionIcon('heroicon-m-academic-cap')
                 ->chart([3, 3.5, 4, $averageScore])

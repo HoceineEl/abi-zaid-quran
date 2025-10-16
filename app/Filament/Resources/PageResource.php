@@ -2,20 +2,18 @@
 
 namespace App\Filament\Resources;
 
-use Filament\Schemas\Schema;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Placeholder;
-use Filament\Actions\EditAction;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use App\Filament\Resources\PageResource\Pages\CreatePage;
 use App\Filament\Resources\PageResource\Pages\EditPage;
 use App\Filament\Resources\PageResource\Pages\ListPages;
 use App\Filament\Resources\PageResource\RelationManagers\AyahsRelationManager;
 use App\Models\Page;
-use Filament\Forms;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -23,7 +21,7 @@ class PageResource extends Resource
 {
     protected static ?string $model = Page::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-document';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-document';
 
     protected static ?string $navigationLabel = 'الصفحات';
 

@@ -2,22 +2,24 @@
 
 namespace App\Exports;
 
-use Exception;
-use PhpOffice\PhpSpreadsheet\Style\Border;
 use App\Models\MemoGroup;
+use Exception;
 use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
-use Maatwebsite\Excel\Concerns\WithEvents;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 
-class GroupStudentsPaymentExport implements FromCollection, WithHeadings, ShouldAutoSize, WithTitle, WithEvents
+class GroupStudentsPaymentExport implements FromCollection, ShouldAutoSize, WithEvents, WithHeadings, WithTitle
 {
     protected $group;
+
     protected $selectedMonth;
+
     protected $selectedMonthName;
 
     public function __construct(MemoGroup $group, string $selectedMonth)
@@ -104,7 +106,7 @@ class GroupStudentsPaymentExport implements FromCollection, WithHeadings, Should
 
     public function title(): string
     {
-        return 'قائمة طلاب المجموعة - ' . $this->group->name;
+        return 'قائمة طلاب المجموعة - '.$this->group->name;
     }
 
     public function registerEvents(): array
@@ -125,16 +127,16 @@ class GroupStudentsPaymentExport implements FromCollection, WithHeadings, Should
 
                 // Group name and teacher
                 $sheet->mergeCells('A2:H2');
-                $groupInfo = 'المجموعة: ' . $this->group->name;
+                $groupInfo = 'المجموعة: '.$this->group->name;
                 if ($this->group->teacher) {
-                    $groupInfo .= ' - المدرس: ' . $this->group->teacher->name;
+                    $groupInfo .= ' - المدرس: '.$this->group->teacher->name;
                 }
                 $sheet->setCellValue('A2', $groupInfo);
 
                 // Date and months info
                 $sheet->mergeCells('A3:H3');
-                $dateInfo = 'تاريخ التقرير: ' . now()->format('Y-m-d') .
-                    ' - الشهر المحدد: ' . $this->selectedMonthName;
+                $dateInfo = 'تاريخ التقرير: '.now()->format('Y-m-d').
+                    ' - الشهر المحدد: '.$this->selectedMonthName;
                 $sheet->setCellValue('A3', $dateInfo);
 
                 // Parent header for 'أداء الواجب' - merge cells F4:G4

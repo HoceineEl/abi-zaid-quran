@@ -2,42 +2,40 @@
 
 namespace App\Filament\Association\Resources;
 
-use Filament\Schemas\Schema;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
+use App\Enums\Days;
+use App\Exports\GroupStudentsPaymentExport;
+use App\Filament\Association\Resources\GroupResource\Pages\CreateGroup;
+use App\Filament\Association\Resources\GroupResource\Pages\EditGroup;
+use App\Filament\Association\Resources\GroupResource\Pages\ListGroups;
+use App\Filament\Association\Resources\GroupResource\Pages\ViewGroup;
+use App\Filament\Association\Resources\GroupResource\RelationManagers\AttendancesRelationManager;
+use App\Filament\Association\Resources\GroupResource\RelationManagers\AttendancesScoreRelationManager;
+use App\Filament\Association\Resources\GroupResource\RelationManagers\AttendanceTeacherRelationManager;
+use App\Filament\Association\Resources\GroupResource\RelationManagers\MemorizersRelationManager;
+use App\Filament\Association\Resources\GroupResource\RelationManagers\PaymentsRelationManager;
+use App\Models\MemoGroup;
+use App\Models\User;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
-use App\Filament\Association\Resources\GroupResource\Pages\ListGroups;
-use App\Filament\Association\Resources\GroupResource\Pages\ViewGroup;
-use App\Filament\Association\Resources\GroupResource\Pages\CreateGroup;
-use App\Filament\Association\Resources\GroupResource\Pages\EditGroup;
-use App\Enums\Days;
-use App\Filament\Association\Resources\GroupResource\Pages;
-use App\Filament\Association\Resources\GroupResource\RelationManagers\AttendancesRelationManager;
-use App\Filament\Association\Resources\GroupResource\RelationManagers\AttendancesScoreRelationManager;
-use App\Filament\Association\Resources\GroupResource\RelationManagers\MemorizersRelationManager;
-use App\Filament\Association\Resources\GroupResource\RelationManagers\PaymentsRelationManager;
-use App\Filament\Association\Resources\GroupResource\RelationManagers\AttendanceTeacherRelationManager;
-use App\Models\MemoGroup;
-use App\Exports\GroupStudentsPaymentExport;
-use Filament\Forms\Components\TextInput;
+use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use App\Models\User;
 use Maatwebsite\Excel\Facades\Excel;
 
 class GroupResource extends Resource
 {
     protected static ?string $model = MemoGroup::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-user-group';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-user-group';
 
     protected static ?string $navigationLabel = 'المجموعات';
 
@@ -58,7 +56,7 @@ class GroupResource extends Resource
                     ->default(70)
                     ->required(),
                 Select::make('teacher_id')
-                    ->options(fn() => User::where('role', 'teacher')->pluck('name', 'id'))
+                    ->options(fn () => User::where('role', 'teacher')->pluck('name', 'id'))
                     ->label('المدرس')
                     ->searchable()
                     ->preload(),
@@ -66,7 +64,7 @@ class GroupResource extends Resource
                     ->multiple()
                     ->inline()
                     ->options(Days::class)
-                    ->label('الأيام')
+                    ->label('الأيام'),
             ]);
     }
 
@@ -79,7 +77,7 @@ class GroupResource extends Resource
                 TextEntry::make('teacher.name')
                     ->label('المدرس'),
                 TextEntry::make('arabic_days')
-                    ->label('الأيام')
+                    ->label('الأيام'),
             ]);
     }
 
@@ -90,9 +88,9 @@ class GroupResource extends Resource
                 TextColumn::make('name')
                     ->searchable(query: function ($query, string $search) {
                         return $query->where(function ($query) use ($search) {
-                            $query->where('name', 'like', '%' . $search . '%')
+                            $query->where('name', 'like', '%'.$search.'%')
                                 ->orWhereHas('memorizers', function ($query) use ($search) {
-                                    $query->where('name', 'like', '%' . $search . '%');
+                                    $query->where('name', 'like', '%'.$search.'%');
                                 });
                         });
                     })
@@ -110,7 +108,7 @@ class GroupResource extends Resource
 
                 TextColumn::make('memorizers_count')
                     ->searchable(false)
-                    ->getStateUsing(fn($record) => $record->memorizers_count)
+                    ->getStateUsing(fn ($record) => $record->memorizers_count)
                     ->label('عدد الطلاب')
                     ->sortable(false),
             ])
@@ -119,13 +117,13 @@ class GroupResource extends Resource
             ])
             ->recordActions([
                 EditAction::make()
-                    ->hidden(fn() => auth()->user()->isTeacher()),
+                    ->hidden(fn () => auth()->user()->isTeacher()),
                 ViewAction::make(),
                 Action::make('export_students_payment')
                     ->label('تصدير Excel')
                     ->icon('heroicon-o-document-arrow-down')
                     ->color('success')
-                    ->hidden(fn() => auth()->user()->isTeacher())
+                    ->hidden(fn () => auth()->user()->isTeacher())
                     ->schema([
                         Select::make('selected_month')
                             ->label('الشهر المختار')
@@ -147,19 +145,19 @@ class GroupResource extends Resource
                             ->required(),
                     ])
                     ->action(function (MemoGroup $record, array $data) {
-                        $fileName = 'قائمة_طلاب_' . str_replace(' ', '_', $record->name) . '_' . now()->format('Y-m-d') . '.xlsx';
-                        
+                        $fileName = 'قائمة_طلاب_'.str_replace(' ', '_', $record->name).'_'.now()->format('Y-m-d').'.xlsx';
+
                         return Excel::download(
                             new GroupStudentsPaymentExport($record, $data['selected_month']),
                             $fileName
                         );
                     }),
             ])
-            ->recordUrl(fn($record) => GroupResource::getUrl('view', ['record' => $record->id]))
+            ->recordUrl(fn ($record) => GroupResource::getUrl('view', ['record' => $record->id]))
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
-                        ->hidden(fn() => auth()->user()->isTeacher()),
+                        ->hidden(fn () => auth()->user()->isTeacher()),
                 ]),
             ]);
     }
@@ -172,6 +170,7 @@ class GroupResource extends Resource
                 AttendancesScoreRelationManager::class,
             ];
         }
+
         return [
             MemorizersRelationManager::class,
             AttendancesRelationManager::class,
@@ -179,6 +178,7 @@ class GroupResource extends Resource
             PaymentsRelationManager::class,
         ];
     }
+
     public static function getEloquentQuery(): Builder
     {
         if (auth()->user()->isTeacher()) {
@@ -190,8 +190,10 @@ class GroupResource extends Resource
                         ->whereJsonContains('days', $today);
                 });
         }
+
         return parent::getEloquentQuery();
     }
+
     public static function getPages(): array
     {
         if (auth()->check() && auth()->user()->isTeacher()) {
@@ -200,6 +202,7 @@ class GroupResource extends Resource
                 'view' => ViewGroup::route('/{record}'),
             ];
         }
+
         return [
             'index' => ListGroups::route('/'),
             'create' => CreateGroup::route('/create'),

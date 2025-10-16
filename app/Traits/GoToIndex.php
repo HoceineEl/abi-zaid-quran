@@ -2,7 +2,6 @@
 
 namespace App\Traits;
 
-
 trait GoToIndex
 {
     public function getRedirectUrl(): string

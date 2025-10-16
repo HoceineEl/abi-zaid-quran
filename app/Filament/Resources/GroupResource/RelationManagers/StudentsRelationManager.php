@@ -2,51 +2,44 @@
 
 namespace App\Filament\Resources\GroupResource\RelationManagers;
 
-use Filament\Schemas\Schema;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Select;
-use Filament\Actions\ActionGroup;
-use Filament\Actions\EditAction;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\ViewAction;
-use Filament\Actions\Action;
-use Filament\Tables\Enums\RecordActionsPosition;
-use Filament\Support\Enums\Size;
-use Filament\Forms\Components\CheckboxList;
-use Filament\Schemas\Components\Utilities\Get;
-use Filament\Actions\CreateAction;
-use Filament\Forms\Components\FileUpload;
-use ZipArchive;
-use Exception;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\BulkAction;
-use Illuminate\Support\Collection;
 use App\Classes\Core;
 use App\Enums\MessageSubmissionType;
-use App\Enums\MessageResponseStatus;
 use App\Filament\Actions\SendAbsentStudentsMessageAction;
 use App\Filament\Actions\SendReminderToUnmarkedStudentsAction;
-use App\Filament\Actions\SendUnmarkedStudentsMessageAction;
 use App\Filament\Actions\SendWhatsAppMessageToSelectedStudentsAction;
 use App\Helpers\ProgressFormHelper;
 use App\Models\Group;
 use App\Models\GroupMessageTemplate;
 use App\Models\Progress;
 use App\Models\Student;
-use App\Models\StudentDisconnection;
 use Carbon\Carbon;
-use Filament\Forms;
-use Filament\Forms\Components\Tabs;
+use Exception;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\CreateAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
+use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Tables;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Table;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Schema;
+use Filament\Support\Enums\Size;
 use Filament\Tables\Columns\IconColumn;
-use Propaganistas\LaravelPhone\PhoneNumber;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\RecordActionsPosition;
+use Filament\Tables\Table;
+use Illuminate\Support\Collection;
+use ZipArchive;
 
 class StudentsRelationManager extends RelationManager
 {
@@ -124,7 +117,7 @@ class StudentsRelationManager extends RelationManager
                     ->label('الاسم'),
 
                 TextColumn::make('phone')
-                    ->url(fn($record) => "tel:{$record->phone}")
+                    ->url(fn ($record) => "tel:{$record->phone}")
                     ->badge()
                     ->searchable()
 
@@ -139,6 +132,7 @@ class StudentsRelationManager extends RelationManager
                         if ($todayProgress && $todayProgress->status === 'absent') {
                             return $todayProgress->with_reason === 1 ? true : false;
                         }
+
                         return null;
                     })
                     ->trueColor('info')
@@ -191,7 +185,7 @@ class StudentsRelationManager extends RelationManager
                     ->icon('heroicon-o-exclamation-circle')
                     ->modalSubmitActionLabel('تأكيد')
                     ->size(Size::ExtraSmall)
-                    ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
+                    ->visible(fn () => $this->ownerRecord->managers->contains(auth()->user()))
                     ->schema([
                         Toggle::make('with_reason')
                             ->label('غياب بعذر')
@@ -231,18 +225,18 @@ class StudentsRelationManager extends RelationManager
                     }),
                 ActionGroup::make([
                     SendReminderToUnmarkedStudentsAction::make()
-                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user())),
+                        ->visible(fn () => $this->ownerRecord->managers->contains(auth()->user())),
                     SendAbsentStudentsMessageAction::make()
-                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user())),
+                        ->visible(fn () => $this->ownerRecord->managers->contains(auth()->user())),
                     Action::make('copy_students_from_other_groups')
                         ->label('نسخ الطلاب من مجموعات أخرى')
                         ->icon('heroicon-o-document-duplicate')
                         ->color('primary')
-                        ->visible(fn() => auth()->user()->isAdministrator())
+                        ->visible(fn () => auth()->user()->isAdministrator())
                         ->schema([
                             Select::make('source_group_id')
                                 ->label('المجموعة المصدر')
-                                ->options(fn() => Group::where('id', '!=', $this->ownerRecord->id)->pluck('name', 'id'))
+                                ->options(fn () => Group::where('id', '!=', $this->ownerRecord->id)->pluck('name', 'id'))
                                 ->required()
                                 ->reactive(),
                             CheckboxList::make('student_ids')
@@ -293,9 +287,8 @@ class StudentsRelationManager extends RelationManager
                     CreateAction::make()
                         ->label('إضافة طالب')
                         ->icon('heroicon-o-plus-circle')
-                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
+                        ->visible(fn () => $this->ownerRecord->managers->contains(auth()->user()))
                         ->slideOver(),
-
 
                 ])->label('إجراءات الطلاب'),
                 Action::make('export_table')
@@ -323,7 +316,7 @@ class StudentsRelationManager extends RelationManager
                             'html' => $html,
                             'groupName' => $this->ownerRecord->name,
                             'presencePercentage' => $presencePercentage,
-                            'dateRange' => 'آخر 30 يوم'
+                            'dateRange' => 'آخر 30 يوم',
                         ]);
                     }),
                 Action::make('import_whatsapp_attendance')
@@ -331,7 +324,7 @@ class StudentsRelationManager extends RelationManager
                     ->icon('heroicon-o-chat-bubble-left-right')
                     ->size(Size::Small)
                     ->color('primary')
-                    ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
+                    ->visible(fn () => $this->ownerRecord->managers->contains(auth()->user()))
                     ->schema([
                         FileUpload::make('chat_file')
                             ->label('ملف محادثة واتساب')
@@ -344,13 +337,14 @@ class StudentsRelationManager extends RelationManager
                     ])
                     ->action(function (array $data) {
                         $uploadedPath = $data['chat_file'];
-                        $storagePath = storage_path('app/' . $uploadedPath);
+                        $storagePath = storage_path('app/'.$uploadedPath);
 
-                        if (!file_exists($storagePath)) {
+                        if (! file_exists($storagePath)) {
                             Notification::make()
                                 ->warning()
                                 ->title('لم يتم العثور على الملف المرفوع.')
                                 ->send();
+
                             return;
                         }
 
@@ -359,13 +353,13 @@ class StudentsRelationManager extends RelationManager
                         $tempTxtPath = null;
 
                         if ($isZip) {
-                            $zip = new ZipArchive();
+                            $zip = new ZipArchive;
                             if ($zip->open($storagePath) === true) {
                                 for ($i = 0; $i < $zip->numFiles; $i++) {
                                     $entry = $zip->getNameIndex($i);
                                     if (strtolower(pathinfo($entry, PATHINFO_EXTENSION)) === 'txt') {
-                                        $tempTxtPath = storage_path('app/tmp_' . uniqid() . '.txt');
-                                        copy('zip://' . $storagePath . '#' . $entry, $tempTxtPath);
+                                        $tempTxtPath = storage_path('app/tmp_'.uniqid().'.txt');
+                                        copy('zip://'.$storagePath.'#'.$entry, $tempTxtPath);
                                         $txtPath = $tempTxtPath;
                                         break;
                                     }
@@ -399,6 +393,7 @@ class StudentsRelationManager extends RelationManager
                                 elseif (preg_match('/^([\d\/\.\x{200F}]+)،\s*(\d{1,2}:\d{2})\s*-\s*([^:]+):\s*(.*)$/u', $line, $matches)) {
                                     // Clean date: remove potential RTL marks for consistent parsing later
                                     $cleanedDate = preg_replace('/[\x{200E}\x{200F}]/u', '', $matches[1]);
+
                                     return [
                                         'date' => trim($cleanedDate), // e.g., "1/5/2025"
                                         'time' => trim($matches[2]), // e.g., "09:17"
@@ -407,6 +402,7 @@ class StudentsRelationManager extends RelationManager
                                         'format' => 'arabic',
                                     ];
                                 }
+
                                 return null; // Line doesn't match known formats or is a continuation line
                             })
                             ->filter(); // Remove nulls from non-matching lines
@@ -419,6 +415,7 @@ class StudentsRelationManager extends RelationManager
                                 ->warning()
                                 ->title('لم يتم العثور على رسائل قابلة للتحليل.')
                                 ->send();
+
                             return;
                         }
 
@@ -438,16 +435,18 @@ class StudentsRelationManager extends RelationManager
                                 if ($format === 'english') {
                                     // Handle US date format (M/D/Y) directly
                                     if (preg_match('/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/', $dateStr, $dateParts)) {
-                                        $month = (int)$dateParts[1];
-                                        $day = (int)$dateParts[2];
-                                        $year = (int)$dateParts[3];
+                                        $month = (int) $dateParts[1];
+                                        $day = (int) $dateParts[2];
+                                        $year = (int) $dateParts[3];
 
-                                        if ($year < 100) $year += 2000;
+                                        if ($year < 100) {
+                                            $year += 2000;
+                                        }
 
                                         try {
                                             return [
                                                 'message' => $msg,
-                                                'datetime' => Carbon::createFromDate($year, $month, $day)->startOfDay()
+                                                'datetime' => Carbon::createFromDate($year, $month, $day)->startOfDay(),
                                             ];
                                         } catch (Exception $e) {
                                             return null;
@@ -456,9 +455,9 @@ class StudentsRelationManager extends RelationManager
                                 } else {
                                     // Handle Arabic/French format (D/M/Y)
                                     if (preg_match('/(\d{1,2})[\/\.](\d{1,2})[\/\.](\d{2,4})/', $dateStr, $dateParts)) {
-                                        $day = (int)$dateParts[1];
-                                        $month = (int)$dateParts[2];
-                                        $year = (int)$dateParts[3];
+                                        $day = (int) $dateParts[1];
+                                        $month = (int) $dateParts[2];
+                                        $year = (int) $dateParts[3];
 
                                         // Check if it's a valid date
                                         if ($month > 12) {
@@ -468,12 +467,14 @@ class StudentsRelationManager extends RelationManager
                                             $month = $temp;
                                         }
 
-                                        if ($year < 100) $year += 2000;
+                                        if ($year < 100) {
+                                            $year += 2000;
+                                        }
 
                                         try {
                                             return [
                                                 'message' => $msg,
-                                                'datetime' => Carbon::createFromDate($year, $month, $day)->startOfDay()
+                                                'datetime' => Carbon::createFromDate($year, $month, $day)->startOfDay(),
                                             ];
                                         } catch (Exception $e) {
                                             return null;
@@ -491,7 +492,7 @@ class StudentsRelationManager extends RelationManager
                             if ($parsedDates->isNotEmpty()) {
                                 $latestChatDate = $parsedDates->first()['datetime'];
                                 // If the latest date in chat is not today, use it for processing
-                                if (!$latestChatDate->isSameDay($todayDate)) {
+                                if (! $latestChatDate->isSameDay($todayDate)) {
                                     $processingDate = $latestChatDate;
                                 }
                                 // Store the original date string from the latest message for filtering
@@ -500,13 +501,13 @@ class StudentsRelationManager extends RelationManager
                                 // If no valid date found, keep processingDate as today
                                 // Try to find today's date string for filtering
                                 $todayDateStr = $todayDate->format('d/m/y'); // Common format
-                                $todayMessage = $parsedMessages->first(fn($msg) => str_contains($msg['date'], $todayDateStr));
+                                $todayMessage = $parsedMessages->first(fn ($msg) => str_contains($msg['date'], $todayDateStr));
                                 if ($todayMessage) {
                                     $processingDateStr = $todayMessage['date'];
                                 } else {
                                     // Attempt another format if the first fails
                                     $todayDateStrAlt = $todayDate->format('d.m.y');
-                                    $todayMessageAlt = $parsedMessages->first(fn($msg) => str_contains($msg['date'], $todayDateStrAlt));
+                                    $todayMessageAlt = $parsedMessages->first(fn ($msg) => str_contains($msg['date'], $todayDateStrAlt));
                                     if ($todayMessageAlt) {
                                         $processingDateStr = $todayMessageAlt['date'];
                                     }
@@ -531,17 +532,21 @@ class StudentsRelationManager extends RelationManager
                                 $dateStr = $msg['date'];
                                 preg_match('/(\d{1,2})[\/\.](\d{1,2})[\/\.](\d{2,4})/', $dateStr, $dateParts);
                                 if (count($dateParts) >= 4) {
-                                    $day = (int)$dateParts[1];
-                                    $month = (int)$dateParts[2];
-                                    $year = (int)$dateParts[3];
-                                    if ($year < 100) $year += 2000;
+                                    $day = (int) $dateParts[1];
+                                    $month = (int) $dateParts[2];
+                                    $year = (int) $dateParts[3];
+                                    if ($year < 100) {
+                                        $year += 2000;
+                                    }
                                     try {
                                         $msgDate = Carbon::createFromDate($year, $month, $day)->startOfDay();
+
                                         return $msgDate->isSameDay($processingDate);
                                     } catch (Exception $e) {
                                         return false;
                                     }
                                 }
+
                                 return false;
                             });
                         }
@@ -556,7 +561,7 @@ class StudentsRelationManager extends RelationManager
                                     '<Médias omis>',
                                     'Médias omis',
                                     '<تم استبعاد الوسائط>',
-                                    'تم استبعاد الوسائط'
+                                    'تم استبعاد الوسائط',
                                 ];
 
                                 foreach ($mediaTexts as $mediaText) {
@@ -564,6 +569,7 @@ class StudentsRelationManager extends RelationManager
                                         return true;
                                     }
                                 }
+
                                 return false;
                             })
                             ->pluck('author')
@@ -582,7 +588,7 @@ class StudentsRelationManager extends RelationManager
                                     'تم استبعاد الوسائط',
                                     'This message was deleted',
                                     'Ce message a été supprimé',
-                                    'تم حذف هذه الرسالة'
+                                    'تم حذف هذه الرسالة',
                                 ];
 
                                 foreach ($mediaTexts as $mediaText) {
@@ -590,7 +596,8 @@ class StudentsRelationManager extends RelationManager
                                         return false;
                                     }
                                 }
-                                return !empty(trim($msg['text']));
+
+                                return ! empty(trim($msg['text']));
                             })
                             ->pluck('author')
                             ->unique()
@@ -622,6 +629,7 @@ class StudentsRelationManager extends RelationManager
                                 ->warning()
                                 ->title("لم يتم العثور على طلاب أرسلوا {$messageType}.")
                                 ->send();
+
                             return;
                         }
 
@@ -629,8 +637,8 @@ class StudentsRelationManager extends RelationManager
                         $ignoredNamesPhones = $this->ownerRecord->ignored_names_phones ?? [];
 
                         // Make sure it's an array
-                        if (!is_array($ignoredNamesPhones)) {
-                            if (is_string($ignoredNamesPhones) && !empty($ignoredNamesPhones)) {
+                        if (! is_array($ignoredNamesPhones)) {
+                            if (is_string($ignoredNamesPhones) && ! empty($ignoredNamesPhones)) {
                                 $ignoredNamesPhones = explode(',', $ignoredNamesPhones);
                             } else {
                                 $ignoredNamesPhones = [];
@@ -646,7 +654,7 @@ class StudentsRelationManager extends RelationManager
                         // Process each submitter
                         foreach ($submitters as $submitterName) {
                             // Skip if the submitter is in the ignored list
-                            if (!empty($ignoredNamesPhones) && in_array($submitterName, $ignoredNamesPhones)) {
+                            if (! empty($ignoredNamesPhones) && in_array($submitterName, $ignoredNamesPhones)) {
                                 continue;
                             }
 
@@ -659,7 +667,7 @@ class StudentsRelationManager extends RelationManager
                             $phoneNumber = null;
                             try {
                                 $potentialNumber = preg_replace('/[^0-9+]/', '', $submitterName);
-                                if (!empty($potentialNumber)) {
+                                if (! empty($potentialNumber)) {
                                     // Try parsing with common country codes or default (assuming Morocco)
                                     $parsedPhone = phone($potentialNumber, 'MA')->formatE164();
                                     if ($parsedPhone) {
@@ -685,17 +693,17 @@ class StudentsRelationManager extends RelationManager
                             });
 
                             // 2. Try phone number match (E.164 format) - if name match failed
-                            if (!$matchedStudent && $phoneNumber) {
+                            if (! $matchedStudent && $phoneNumber) {
                                 $matchedStudent = $students->first(function ($student) use ($phoneNumber) {
                                     try {
                                         $studentPhone = phone($student->phone, 'MA')->formatE164();
+
                                         return $studentPhone === $phoneNumber;
                                     } catch (Exception $e) {
                                         return false;
                                     }
                                 });
                             }
-
 
                             // If we found a match, mark the student as present
                             if ($matchedStudent) {
@@ -723,17 +731,17 @@ class StudentsRelationManager extends RelationManager
                                 }
                             }
 
-                            if (!$found) {
+                            if (! $found) {
                                 $notFoundCount++;
                                 $notFoundNames[] = $submitterName;
                             }
                         }
                         // Register the rest as absent if option is enabled
-                        if (!empty($data['register_rest_absent'])) {
+                        if (! empty($data['register_rest_absent'])) {
                             $absentStudents = $students->whereNotIn('id', $presentStudentIds);
                             foreach ($absentStudents as $student) {
                                 // Skip ignored
-                                if (!empty($ignoredNamesPhones) && (in_array($student->name, $ignoredNamesPhones) || in_array(phone($student->phone, 'MA')->formatE164(), $ignoredNamesPhones))) {
+                                if (! empty($ignoredNamesPhones) && (in_array($student->name, $ignoredNamesPhones) || in_array(phone($student->phone, 'MA')->formatE164(), $ignoredNamesPhones))) {
                                     continue;
                                 }
                                 // Only mark as absent if not already present for the processing date
@@ -766,15 +774,14 @@ class StudentsRelationManager extends RelationManager
                         if ($presentCount > 0) {
                             Notification::make()
                                 ->success()
-                                ->title('تم تسجيل حضور ' . $presentCount . ' طالب بنجاح')
+                                ->title('تم تسجيل حضور '.$presentCount.' طالب بنجاح')
                                 ->seconds(5)
                                 ->send();
                         }
 
                         if ($notFoundCount > 0) {
-                            $message = 'لم يتم العثور على ' . $notFoundCount . ' طالب في المجموعة: ' .
+                            $message = 'لم يتم العثور على '.$notFoundCount.' طالب في المجموعة: '.
                                 implode('، ', $notFoundNames);
-
 
                             Notification::make()
                                 ->warning()
@@ -789,7 +796,7 @@ class StudentsRelationManager extends RelationManager
                     DeleteBulkAction::make(),
                     SendWhatsAppMessageToSelectedStudentsAction::make()
                         ->ownerRecord($this->ownerRecord)
-                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user())),
+                        ->visible(fn () => $this->ownerRecord->managers->contains(auth()->user())),
                     BulkAction::make('send_msg')
                         ->label('إرسال رسالة ')
                         ->icon('heroicon-o-chat-bubble-oval-left')
@@ -803,6 +810,7 @@ class StudentsRelationManager extends RelationManager
                                 })
                                 ->default(function () {
                                     $defaultTemplate = $this->ownerRecord->messageTemplates()->wherePivot('is_default', true)->first();
+
                                     return $defaultTemplate ? $defaultTemplate->id : 'custom';
                                 })
                                 ->reactive(),
@@ -811,9 +819,9 @@ class StudentsRelationManager extends RelationManager
                                 ->default('لم ترسل الواجب المقرر اليوم، لعل المانع خير.')
                                 ->label('الرسالة')
                                 ->required()
-                                ->hidden(fn(Get $get) => $get('template_id') !== 'custom'),
+                                ->hidden(fn (Get $get) => $get('template_id') !== 'custom'),
                         ])
-                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
+                        ->visible(fn () => $this->ownerRecord->managers->contains(auth()->user()))
                         ->action(function (array $data) {
                             $students = $this->selectedTableRecords;
 
@@ -853,7 +861,7 @@ class StudentsRelationManager extends RelationManager
                                 }
                             }
                             Notification::make()
-                                ->title('تم حذف حضور اليوم لـ ' . $deletedCount . ' طالب')
+                                ->title('تم حذف حضور اليوم لـ '.$deletedCount.' طالب')
                                 ->success()
                                 ->send();
                         })
@@ -864,7 +872,7 @@ class StudentsRelationManager extends RelationManager
                         ->color('warning')
                         ->requiresConfirmation()
                         ->modalSubmitActionLabel('تأكيد')
-                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
+                        ->visible(fn () => $this->ownerRecord->managers->contains(auth()->user()))
                         ->action(function (array $data) {
                             $students = $this->selectedTableRecords;
                             foreach ($students as $studentId) {
@@ -901,7 +909,7 @@ class StudentsRelationManager extends RelationManager
                         ->color('info')
                         ->action(function () {
                             $students = collect($this->selectedTableRecords)
-                                ->map(fn($studentId) => Student::find($studentId))
+                                ->map(fn ($studentId) => Student::find($studentId))
                                 ->filter();
 
                             if ($students->isEmpty()) {
@@ -909,20 +917,21 @@ class StudentsRelationManager extends RelationManager
                                     ->warning()
                                     ->title('لم يتم اختيار أي طالب')
                                     ->send();
+
                                 return;
                             }
 
                             $vcfContent = $this->generateVcfContent($students);
-                            $fileName = 'contacts_' . $this->ownerRecord->name . '_' . now()->format('Y-m-d_H-i-s') . '.vcf';
+                            $fileName = 'contacts_'.$this->ownerRecord->name.'_'.now()->format('Y-m-d_H-i-s').'.vcf';
 
                             $this->dispatch('download-vcf', [
                                 'content' => $vcfContent,
-                                'filename' => $fileName
+                                'filename' => $fileName,
                             ]);
 
                             Notification::make()
                                 ->success()
-                                ->title('تم تصدير ' . $students->count() . ' جهة اتصال بنجاح')
+                                ->title('تم تصدير '.$students->count().' جهة اتصال بنجاح')
                                 ->send();
                         })
                         ->deselectRecordsAfterCompletion(),
@@ -938,7 +947,7 @@ class StudentsRelationManager extends RelationManager
                         ])
                         ->action(function (array $data) {
                             $students = collect($this->selectedTableRecords)
-                                ->map(fn($studentId) => Student::find($studentId))
+                                ->map(fn ($studentId) => Student::find($studentId))
                                 ->filter();
 
                             if ($students->isEmpty()) {
@@ -946,6 +955,7 @@ class StudentsRelationManager extends RelationManager
                                     ->warning()
                                     ->title('لم يتم اختيار أي طالب')
                                     ->send();
+
                                 return;
                             }
 
@@ -959,8 +969,9 @@ class StudentsRelationManager extends RelationManager
                                     ->latest('date')
                                     ->first();
 
-                                if (!$lastPresentDay) {
+                                if (! $lastPresentDay) {
                                     $skippedCount++;
+
                                     continue;
                                 }
 
@@ -972,7 +983,7 @@ class StudentsRelationManager extends RelationManager
                                     ->where('disconnection_date', $disconnectionDate)
                                     ->first();
 
-                                if (!$existingDisconnection) {
+                                if (! $existingDisconnection) {
                                     $student->disconnections()->create([
                                         'group_id' => $student->group_id,
                                         'disconnection_date' => $disconnectionDate,
@@ -1016,12 +1027,12 @@ class StudentsRelationManager extends RelationManager
                         Textarea::make('message')
                             ->hint('السلام عليكم وإسم الطالب سيتم إضافته تلقائياً في  الرسالة.')
                             ->reactive()
-                            ->hidden(fn(Get $get) => ! $get('send_msg'))
+                            ->hidden(fn (Get $get) => ! $get('send_msg'))
                             ->default('لم ترسلوا الواجب المقرر اليوم، لعل المانع خير.')
                             ->label('الرسالة')
                             ->required(),
                     ])
-                    ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
+                    ->visible(fn () => $this->ownerRecord->managers->contains(auth()->user()))
                     ->action(function (array $data) {
                         $students = $this->selectedTableRecords;
                         foreach ($students as $studentId) {
@@ -1054,7 +1065,7 @@ class StudentsRelationManager extends RelationManager
                     ->label('حاضرين')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
-                    ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
+                    ->visible(fn () => $this->ownerRecord->managers->contains(auth()->user()))
                     ->deselectRecordsAfterCompletion()
                     ->action(function () {
                         $students = $this->selectedTableRecords;
@@ -1096,13 +1107,13 @@ class StudentsRelationManager extends RelationManager
                             $query->where('status', 'absent')
                                 ->latest()
                                 ->limit(3);
-                        }
+                        },
                     ])
                     ->with([
                         'today_progress' => function ($query) use ($today) {
                             $query->where('date', $today)
                                 ->latest();
-                        }
+                        },
                     ])
                     ->orderByDesc('attendance_count');
             });
@@ -1124,15 +1135,14 @@ class StudentsRelationManager extends RelationManager
         // Handle different Moroccan number formats
         if (strlen($number) === 9 && in_array(substr($number, 0, 1), ['6', '7'])) {
             // If number starts with 6 or 7 and is 9 digits
-            $number = '+212' . $number;
+            $number = '+212'.$number;
         } elseif (strlen($number) === 10 && in_array(substr($number, 0, 2), ['06', '07'])) {
             // If number starts with 06 or 07 and is 10 digits
-            $number = '+212' . substr($number, 1);
+            $number = '+212'.substr($number, 1);
         } elseif (strlen($number) === 12 && substr($number, 0, 3) === '212') {
             // If number already has 212 country code
-            $number = '+' . $number;
+            $number = '+'.$number;
         }
-
 
         // Check if the group has a default message template
         $defaultTemplate = $ownerRecord->messageTemplates()->wherePivot('is_default', true)->first();
@@ -1146,11 +1156,11 @@ class StudentsRelationManager extends RelationManager
             $genderTerms = $record->sex === 'female' ? [
                 'prefix' => 'أختي الطالبة',
                 'pronoun' => 'ك',
-                'verb' => 'تنسي'
+                'verb' => 'تنسي',
             ] : [
                 'prefix' => 'أخي الطالب',
                 'pronoun' => 'ك',
-                'verb' => 'تنس'
+                'verb' => 'تنس',
             ];
             $name = trim($record->name);
             // Message for onsite groups
@@ -1203,6 +1213,7 @@ MSG;
         }
 
         $url = route('whatsapp', ['number' => $number, 'message' => $message, 'student_id' => $record->id]);
+
         // Open in new tab
         return $url;
     }
@@ -1210,7 +1221,7 @@ MSG;
     /**
      * Generate VCF content for selected students
      *
-     * @param Collection $students Collection of students
+     * @param  Collection  $students  Collection of students
      * @return string VCF formatted content
      */
     private function generateVcfContent($students): string
@@ -1220,33 +1231,33 @@ MSG;
         foreach ($students as $student) {
             $vcfContent .= "BEGIN:VCARD\r\n";
             $vcfContent .= "VERSION:3.0\r\n";
-            $vcfContent .= "FN:" . $student->name . "\r\n";
-            $vcfContent .= "N:" . $student->name . ";;;;\r\n";
+            $vcfContent .= 'FN:'.$student->name."\r\n";
+            $vcfContent .= 'N:'.$student->name.";;;;\r\n";
 
             // Format phone number
             $phone = $student->phone;
-            if (!empty($phone)) {
+            if (! empty($phone)) {
                 // Clean and format phone number
                 $phone = preg_replace('/[^0-9+]/', '', $phone);
 
                 // Handle Moroccan phone numbers
                 if (strlen($phone) === 9 && in_array(substr($phone, 0, 1), ['6', '7'])) {
-                    $phone = '+212' . $phone;
+                    $phone = '+212'.$phone;
                 } elseif (strlen($phone) === 10 && in_array(substr($phone, 0, 2), ['06', '07'])) {
-                    $phone = '+212' . substr($phone, 1);
+                    $phone = '+212'.substr($phone, 1);
                 } elseif (strlen($phone) === 12 && substr($phone, 0, 3) === '212') {
-                    $phone = '+' . $phone;
+                    $phone = '+'.$phone;
                 }
 
-                $vcfContent .= "TEL;TYPE=CELL:" . $phone . "\r\n";
+                $vcfContent .= 'TEL;TYPE=CELL:'.$phone."\r\n";
             }
 
             // Add city as organization/note
-            if (!empty($student->city)) {
-                $vcfContent .= "ORG:" . $student->city . "\r\n";
-                $vcfContent .= "NOTE:المدينة: " . $student->city . " - المجموعة: " . $this->ownerRecord->name . "\r\n";
+            if (! empty($student->city)) {
+                $vcfContent .= 'ORG:'.$student->city."\r\n";
+                $vcfContent .= 'NOTE:المدينة: '.$student->city.' - المجموعة: '.$this->ownerRecord->name."\r\n";
             } else {
-                $vcfContent .= "NOTE:المجموعة: " . $this->ownerRecord->name . "\r\n";
+                $vcfContent .= 'NOTE:المجموعة: '.$this->ownerRecord->name."\r\n";
             }
 
             $vcfContent .= "END:VCARD\r\n";
@@ -1258,8 +1269,8 @@ MSG;
     /**
      * Get students sorted by attendance status and remark
      *
-     * @param Group $group The group to get students from
-     * @param string|null $date The date to check attendance for (defaults to today)
+     * @param  Group  $group  The group to get students from
+     * @param  string|null  $date  The date to check attendance for (defaults to today)
      * @return Collection Sorted collection of students
      */
     public static function getSortedStudentsForAttendanceReport(Group $group, ?string $date = null): Collection
@@ -1293,8 +1304,9 @@ MSG;
                 'حسن' => 3,
                 'لا بأس به' => 4,
                 'متوسط' => 5,
-                'ضعيف' => 6
+                'ضعيف' => 6,
             ];
+
             return $remarkScores[$student->attendanceRemark['label']] ?? 7;
         })->values();
 
@@ -1306,13 +1318,13 @@ MSG;
                 'حسن' => 3,
                 'لا بأس به' => 4,
                 'متوسط' => 5,
-                'ضعيف' => 6
+                'ضعيف' => 6,
             ];
+
             return $remarkScores[$student->attendanceRemark['label']] ?? 7;
         })->values();
 
         // Combine the sorted collections
         return $sortedPresent->concat($sortedAbsent);
     }
-
 }

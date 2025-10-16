@@ -5,8 +5,8 @@ namespace App\Filament\Exports;
 use App\Models\Student;
 use Filament\Actions\Exports\ExportColumn;
 use Filament\Actions\Exports\Exporter;
-use Illuminate\Database\Eloquent\Builder;
 use Filament\Actions\Exports\Models\Export;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class ProgressExporter extends Exporter
@@ -24,7 +24,7 @@ class ProgressExporter extends Exporter
                 ->label('المجموعة'),
             ExportColumn::make('sex')
                 ->label('الجنس')
-                ->formatStateUsing(fn($state) => match ($state) {
+                ->formatStateUsing(fn ($state) => match ($state) {
                     'male' => 'ذكر',
                     'female' => 'أنثى',
                 })
@@ -41,9 +41,11 @@ class ProgressExporter extends Exporter
                 ->enabledByDefault(false)
                 ->state(function (Student $record) use ($formattedDate) {
                     $progress = $record->progresses->where('date', $formattedDate)->first();
+
                     return $progress ? ($progress->status === 'memorized' ? 'حاضر' : 'غائب') : 'غير مسجل';
                 });
         }
+
         return $columns;
     }
 
@@ -56,10 +58,10 @@ class ProgressExporter extends Exporter
 
     public static function getCompletedNotificationBody(Export $export): string
     {
-        $body = 'تم تصدير ' . number_format($export->successful_rows) . ' ' . str('صف')->plural($export->successful_rows) . ' بنجاح.';
+        $body = 'تم تصدير '.number_format($export->successful_rows).' '.str('صف')->plural($export->successful_rows).' بنجاح.';
 
         if ($failedRowsCount = $export->getFailedRowsCount()) {
-            $body .= ' فشل تصدير ' . number_format($failedRowsCount) . ' ' . str('صف')->plural($failedRowsCount) . '.';
+            $body .= ' فشل تصدير '.number_format($failedRowsCount).' '.str('صف')->plural($failedRowsCount).'.';
         }
 
         return $body;
@@ -69,7 +71,6 @@ class ProgressExporter extends Exporter
     {
         return 'sync';
     }
-
 
     public function __invoke(Model $record): array
     {

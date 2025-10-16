@@ -2,10 +2,10 @@
 
 namespace App\Jobs;
 
-use Exception;
 use App\Models\WhatsAppMessageHistory;
 use App\Models\WhatsAppSession;
 use App\Services\WhatsAppService;
+use Exception;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -29,7 +29,7 @@ class SendWhatsAppMessageJob implements ShouldQueue
         try {
             $session = WhatsAppSession::find($this->sessionId);
 
-            if (!$session || !$session->isConnected()) {
+            if (! $session || ! $session->isConnected()) {
                 throw new Exception('WhatsApp session not connected');
             }
 

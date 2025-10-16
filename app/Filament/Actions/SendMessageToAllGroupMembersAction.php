@@ -2,24 +2,21 @@
 
 namespace App\Filament\Actions;
 
-use Filament\Actions\Action;
-use Filament\Forms\Components\Select;
-use Filament\Schemas\Components\Utilities\Get;
-use Filament\Forms\Components\Placeholder;
-use Exception;
 use App\Classes\Core;
 use App\Enums\WhatsAppMessageStatus;
-use App\Helpers\PhoneHelper;
 use App\Models\Group;
 use App\Models\GroupMessageTemplate;
-use App\Models\Student;
 use App\Models\WhatsAppMessageHistory;
 use App\Models\WhatsAppSession;
 use App\Services\WhatsAppService;
 use App\Traits\HandlesWhatsAppProgress;
-use Filament\Forms;
+use Exception;
+use Filament\Actions\Action;
+use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Utilities\Get;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -27,6 +24,7 @@ use Illuminate\Support\Facades\Log;
 class SendMessageToAllGroupMembersAction extends Action
 {
     use HandlesWhatsAppProgress;
+
     public static function getDefaultName(): ?string
     {
         return 'send_message_to_all_group_members';
@@ -39,7 +37,7 @@ class SendMessageToAllGroupMembersAction extends Action
         $this->label('رسالة عامة')
             ->icon('heroicon-o-megaphone')
             ->color('primary')
-            ->form(function() {
+            ->form(function () {
                 $fields = [];
                 $isAdmin = auth()->user()->isAdministrator();
 
@@ -72,8 +70,8 @@ class SendMessageToAllGroupMembersAction extends Action
 
                             return $templates->unique()->toArray();
                         })
-                        ->visible(fn(Get $get) => $get('template_source') === 'global_template')
-                        ->required(fn(Get $get) => $get('template_source') === 'global_template');
+                        ->visible(fn (Get $get) => $get('template_source') === 'global_template')
+                        ->required(fn (Get $get) => $get('template_source') === 'global_template');
 
                     $fields[] = Textarea::make('message')
                         ->hint('يمكنك استخدام المتغيرات التالية: {student_name}, {group_name}, {curr_date}, {last_presence}')
@@ -81,7 +79,7 @@ class SendMessageToAllGroupMembersAction extends Action
                         ->label('الرسالة')
                         ->required()
                         ->rows(4)
-                        ->visible(fn(Get $get) => $get('template_source') === 'custom');
+                        ->visible(fn (Get $get) => $get('template_source') === 'custom');
                 }
 
                 // Rest of form fields that are always shown
@@ -90,7 +88,7 @@ class SendMessageToAllGroupMembersAction extends Action
                     ->content(function () {
                         $userGroups = $this->getUserGroups();
                         $groupCount = $userGroups->count();
-                        $totalStudents = $userGroups->sum(fn($group) => $group->students->count());
+                        $totalStudents = $userGroups->sum(fn ($group) => $group->students->count());
 
                         return "سيتم إرسال الرسائل لجميع الطلاب في {$groupCount} مجموعة ({$totalStudents} طالب إجمالي).";
                     });
@@ -125,6 +123,7 @@ class SendMessageToAllGroupMembersAction extends Action
                 ->body('لا تملك صلاحية إدارة أي مجموعة')
                 ->warning()
                 ->send();
+
             return;
         }
 
@@ -155,6 +154,7 @@ class SendMessageToAllGroupMembersAction extends Action
                 ->body('لا يوجد طلاب في المجموعات التي تديرها')
                 ->info()
                 ->send();
+
             return;
         }
 
@@ -175,7 +175,7 @@ class SendMessageToAllGroupMembersAction extends Action
         $isAdmin = auth()->user()->isAdministrator();
 
         // For non-admins, always use group's default template if available
-        if (!$isAdmin) {
+        if (! $isAdmin) {
             $defaultTemplate = $group->messageTemplates()->wherePivot('is_default', true)->first();
             if ($defaultTemplate) {
                 return $defaultTemplate->content;
@@ -185,6 +185,7 @@ class SendMessageToAllGroupMembersAction extends Action
             if ($firstTemplate) {
                 return $firstTemplate->content;
             }
+
             // Fallback to default message
             return 'السلام عليكم ورحمة الله وبركاته\n{student_name}، رسالة عامة من مجموعة {group_name}.\nبارك الله فيكم وزادكم حرصا.';
         }
@@ -202,6 +203,7 @@ class SendMessageToAllGroupMembersAction extends Action
                 if ($firstTemplate) {
                     return $firstTemplate->content;
                 }
+
                 // Fallback to default message
                 return 'السلام عليكم ورحمة الله وبركاته\n{student_name}، رسالة عامة من مجموعة {group_name}.\nبارك الله فيكم وزادكم حرصا.';
 
@@ -210,6 +212,7 @@ class SendMessageToAllGroupMembersAction extends Action
                 if ($template) {
                     return $template->content;
                 }
+
                 return 'السلام عليكم ورحمة الله وبركاته\n{student_name}، رسالة عامة من مجموعة {group_name}.\nبارك الله فيكم وزادكم حرصا.';
 
             case 'custom':
@@ -228,12 +231,13 @@ class SendMessageToAllGroupMembersAction extends Action
         // Get the current user's active session
         $session = WhatsAppSession::getUserSession(auth()->id());
 
-        if (!$session || !$session->isConnected()) {
+        if (! $session || ! $session->isConnected()) {
             Notification::make()
                 ->title('جلسة واتساب غير متصلة')
                 ->body('يرجى التأكد من أن لديك جلسة واتساب متصلة قبل إرسال الرسائل')
                 ->danger()
                 ->send();
+
             return;
         }
 
@@ -257,13 +261,14 @@ class SendMessageToAllGroupMembersAction extends Action
                 $phoneNumber = null;
             }
 
-            if (!$phoneNumber) {
+            if (! $phoneNumber) {
                 Log::warning('Invalid phone number for student in group message', [
                     'student_id' => $student->id,
                     'student_name' => $student->name,
                     'group_name' => $group->name,
                     'phone' => $student->phone,
                 ]);
+
                 continue;
             }
 
@@ -354,6 +359,4 @@ class SendMessageToAllGroupMembersAction extends Action
             ->success()
             ->send();
     }
-
-
 }

@@ -2,70 +2,55 @@
 
 namespace App\Filament\Association\Resources;
 
-use Filament\Schemas\Schema;
-use Filament\Schemas\Components\Section;
-use Filament\Actions\ExportAction;
-use Filament\Actions\ImportAction;
-use Filament\Actions\ActionGroup;
-use Filament\Actions\EditAction;
-use Filament\Tables\Enums\RecordActionsPosition;
-use Filament\Actions\ExportBulkAction;
-use Filament\Actions\BulkAction;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Tables\Filters\SelectFilter;
-use App\Filament\Association\Resources\MemorizerResource\Pages\ListMemorizers;
+use App\Filament\Association\Resources\GroupResource\RelationManagers\MemorizersRelationManager;
 use App\Filament\Association\Resources\MemorizerResource\Pages\CreateMemorizer;
 use App\Filament\Association\Resources\MemorizerResource\Pages\EditMemorizer;
-use App\Classes\Core;
-use App\Enums\Days;
-use App\Filament\Association\Resources\GroupResource\RelationManagers\MemorizersRelationManager;
-use App\Filament\Association\Resources\MemorizerResource\Pages;
+use App\Filament\Association\Resources\MemorizerResource\Pages\ListMemorizers;
 use App\Filament\Association\Resources\MemorizerResource\RelationManagers\PaymentsRelationManager;
 use App\Filament\Association\Resources\MemorizerResource\RelationManagers\ReminderLogsRelationManager;
 use App\Filament\Exports\MemorizerExporter;
 use App\Filament\Imports\MemorizerImporter;
 use App\Models\Memorizer;
-use App\Models\Round;
 use App\Models\User;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
 use Filament\Actions\Action as ActionsAction;
-use Filament\Forms\Components\CheckboxList;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\ExportAction;
+use Filament\Actions\ExportBulkAction;
+use Filament\Actions\ImportAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Forms\Components\ToggleButtons;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Support\Assets\Js;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Support\Enums\FontWeight;
-use Filament\Support\Facades\FilamentAsset;
-use Filament\Tables;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\ToggleColumn;
+use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\HtmlString;
-use Illuminate\Validation\Rules\File;
-use Livewire\Component;
 use Mpdf\Mpdf;
-
-use function GuzzleHttp\default_ca_bundle;
 
 class MemorizerResource extends Resource
 {
     protected static ?string $model = Memorizer::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-user';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-user';
 
     protected static ?string $navigationLabel = 'الطلاب';
 
@@ -96,7 +81,6 @@ class MemorizerResource extends Resource
                             ->hiddenOn(MemorizersRelationManager::class)
                             ->relationship('group', 'name')
                             ->required(),
-
 
                         TextInput::make('city')
                             ->label('المدينة')
@@ -147,7 +131,6 @@ class MemorizerResource extends Resource
                             return 'heroicon-o-exclamation-circle';
                         }
 
-
                         return null;
                     })
                     ->searchable()
@@ -173,7 +156,7 @@ class MemorizerResource extends Resource
                     ->sortable()
                     ->label('المجموعة'),
                 TextColumn::make('phone')
-                    ->searchable(query: fn($query, string $search) => $query->where(function ($query) use ($search) {
+                    ->searchable(query: fn ($query, string $search) => $query->where(function ($query) use ($search) {
                         $query->where('phone', $search)
                             ->orWhereHas('guardian', function ($query) use ($search) {
                                 $query->where('phone', $search);
@@ -188,15 +171,15 @@ class MemorizerResource extends Resource
                     ->sortable(false)
                     ->label('الهاتف')
                     ->html()
-                    ->description(fn($record) => $record->city),
+                    ->description(fn ($record) => $record->city),
                 TextColumn::make('number')
                     ->label('الرقم')
-                    ->searchable(query: fn($query, string $search) => $query->where(function ($query) use ($search) {
+                    ->searchable(query: fn ($query, string $search) => $query->where(function ($query) use ($search) {
                         $query->whereRaw("CONCAT(DATE_FORMAT(memorizers.created_at, '%y%m%d'), LPAD(memorizers.id, 2, '0')) = ?", [$search]);
                     }))
                     ->toggleable()
                     ->sortable(
-                        query: fn($query, string $direction) => $query->orderByRaw("CONCAT(DATE_FORMAT(created_at, '%y%m%d'), LPAD(id, 2, '0')) $direction")
+                        query: fn ($query, string $direction) => $query->orderByRaw("CONCAT(DATE_FORMAT(created_at, '%y%m%d'), LPAD(id, 2, '0')) $direction")
                     )
                     ->copyable()
                     ->copyMessage('تم نسخ الرقم')
@@ -207,18 +190,15 @@ class MemorizerResource extends Resource
                     ->toggleable()
                     ->sortable()
                     ->label('تاريخ الإزدياد')
-                    ->description(fn(Memorizer $record) => match ($record->sex) {
+                    ->description(fn (Memorizer $record) => match ($record->sex) {
                         'male' => 'ذكر',
                         'female' => 'أنثى',
                         default => 'ذكر',
                     }),
 
-
-
             ])
 
             ->headerActions([
-
 
                 ExportAction::make()
                     ->label('تصدير البيانات')
@@ -248,7 +228,7 @@ class MemorizerResource extends Resource
                         );
                         $writer = new Writer($renderer);
                         $svg = $writer->writeString($data);
-                        $qrCode = 'data:image/svg+xml;base64,' . base64_encode($svg);
+                        $qrCode = 'data:image/svg+xml;base64,'.base64_encode($svg);
 
                         // Generate Badge HTML
                         $badgeHtml = view('badges.student', [
@@ -296,9 +276,6 @@ class MemorizerResource extends Resource
 
                         return self::getWhatsAppUrl($record);
                     }, true),
-
-
-
 
             ], RecordActionsPosition::BeforeColumns)
             ->toolbarActions([
@@ -372,7 +349,6 @@ class MemorizerResource extends Resource
                         }
                     }),
 
-
             ])
             ->modifyQueryUsing(function (Builder $query) {
                 $query
@@ -400,25 +376,25 @@ class MemorizerResource extends Resource
     public static function getWhatsAppUrl(Memorizer $record)
     {
         // Determine if we should contact parent or student
-        $isParent = !$record->phone && $record->guardian?->phone;
+        $isParent = ! $record->phone && $record->guardian?->phone;
         $phone = $isParent ? $record->guardian?->phone : $record->phone;
 
         // Return null if no phone number available
-        if (!$phone) {
+        if (! $phone) {
             return null;
         }
 
         // Format phone number
         $phone = preg_replace('/[^0-9]/', '', $phone);
         if (strlen($phone) === 9 && in_array(substr($phone, 0, 1), ['6', '7'])) {
-            $phone = '+212' . $phone;
+            $phone = '+212'.$phone;
         } elseif (strlen($phone) === 10 && in_array(substr($phone, 0, 2), ['06', '07'])) {
-            $phone = '+212' . substr($phone, 1);
+            $phone = '+212'.substr($phone, 1);
         } elseif (strlen($phone) === 12 && substr($phone, 0, 3) === '212') {
-            $phone = '+' . $phone;
+            $phone = '+'.$phone;
         }
 
-        $message = <<<MSG
+        $message = <<<'MSG'
         السلام عليكم ورحمة الله وبركاته 
         معكم إدارة جمعية بن ابي زيد القرواني  (دار القرآن الكريم)
         نذكركم بأداء الواجب الشهري 
@@ -428,7 +404,7 @@ class MemorizerResource extends Resource
         return $phone ? route('memorizer-whatsapp', [
             'number' => $phone,
             'message' => $message,
-            'memorizer_id' => $record->id
+            'memorizer_id' => $record->id,
         ]) : null;
     }
 }

@@ -2,14 +2,13 @@
 
 namespace App\Filament\Actions;
 
-use Filament\Actions\BulkAction;
-use Exception;
 use App\Enums\WhatsAppMessageStatus;
-use App\Helpers\PhoneHelper;
 use App\Models\User;
 use App\Models\WhatsAppMessageHistory;
 use App\Models\WhatsAppSession;
 use App\Services\WhatsAppService;
+use Exception;
+use Filament\Actions\BulkAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Collection;
@@ -57,6 +56,7 @@ class SendMessageToSelectedUsersAction extends BulkAction
                 ->title('لا يوجد مستخدمين محددين')
                 ->warning()
                 ->send();
+
             return;
         }
 
@@ -71,12 +71,13 @@ class SendMessageToSelectedUsersAction extends BulkAction
         // Get the current user's active session
         $session = WhatsAppSession::getUserSession(auth()->id());
 
-        if (!$session || !$session->isConnected()) {
+        if (! $session || ! $session->isConnected()) {
             Notification::make()
                 ->title('جلسة واتساب غير متصلة')
                 ->body('يرجى التأكد من أن لديك جلسة واتساب متصلة قبل إرسال الرسائل')
                 ->danger()
                 ->send();
+
             return;
         }
 
@@ -92,12 +93,13 @@ class SendMessageToSelectedUsersAction extends BulkAction
                 $phoneNumber = null;
             }
 
-            if (!$phoneNumber) {
+            if (! $phoneNumber) {
                 Log::warning('Invalid phone number for user in bulk message', [
                     'user_id' => $user->id,
                     'user_name' => $user->name,
                     'phone' => $user->phone,
                 ]);
+
                 continue;
             }
 
@@ -182,5 +184,4 @@ class SendMessageToSelectedUsersAction extends BulkAction
             ->success()
             ->send();
     }
-
 }

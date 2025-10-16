@@ -2,18 +2,16 @@
 
 namespace App\Filament\Association\Widgets;
 
-use Illuminate\Support\HtmlString;
-use App\Models\Attendance;
 use App\Models\MemoGroup;
 use App\Models\Memorizer;
 use App\Models\Payment;
-use App\Models\Teacher;
 use App\Models\User;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use Filament\Widgets\Concerns\InteractsWithPageFilters;
-use Illuminate\Support\Number;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\HtmlString;
+use Illuminate\Support\Number;
 
 class AssociationStatsOverview extends BaseWidget
 {
@@ -51,7 +49,7 @@ class AssociationStatsOverview extends BaseWidget
                 ->chart([7, 3, 4, 5, 6, $uniqueStudents])
                 ->color('success'),
 
-            Stat::make('الرسوم المحصّلة للفترة من ' . $dateFrom->format('d/m') . ' إلى ' . $dateTo->format('d/m'), Number::format($periodPayments) . ' درهم')
+            Stat::make('الرسوم المحصّلة للفترة من '.$dateFrom->format('d/m').' إلى '.$dateTo->format('d/m'), Number::format($periodPayments).' درهم')
                 ->description(new HtmlString(sprintf(
                     '
                     <div class="flex flex-col gap-1">

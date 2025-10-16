@@ -2,41 +2,37 @@
 
 namespace App\Filament\Resources;
 
-use Filament\Schemas\Schema;
-use Filament\Actions\Action;
-use Filament\Schemas\Components\Utilities\Set;
-use Filament\Schemas\Components\Utilities\Get;
-use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Components\Section;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Placeholder;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Actions\EditAction;
-use Filament\Actions\ActionGroup;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Toggle;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
-use App\Filament\Resources\MessageResource\Pages\ListMessages;
 use App\Filament\Resources\MessageResource\Pages\CreateMessage;
 use App\Filament\Resources\MessageResource\Pages\EditMessage;
-use App\Filament\Resources\MessageResource\Pages;
+use App\Filament\Resources\MessageResource\Pages\ListMessages;
 use App\Models\Group;
 use App\Models\GroupMessageTemplate;
-use App\Models\Message;
-use Filament\Forms;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-use Filament\Infolists\Components\TextEntry;
 
 class MessageResource extends Resource
 {
     protected static ?string $model = GroupMessageTemplate::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-chat-bubble-left-right';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-chat-bubble-left-right';
 
     protected static ?string $navigationLabel = 'قوالب الرسائل';
 
@@ -55,7 +51,7 @@ class MessageResource extends Resource
     {
         $actions = [];
         foreach (GroupMessageTemplate::getVariables() as $variable) {
-            $actions[] = Action::make('add_' . $variable)
+            $actions[] = Action::make('add_'.$variable)
                 ->label(GroupMessageTemplate::getVariableLabels()[$variable])
                 ->action(function (Set $set, Get $get) use ($variable) {
                     $content = $get('content');
@@ -64,6 +60,7 @@ class MessageResource extends Resource
                 })
                 ->color('primary');
         }
+
         return $schema
             ->components([
                 TextInput::make('name')
@@ -87,14 +84,15 @@ class MessageResource extends Resource
                         Placeholder::make('groups_display')
                             ->label('المجموعات المرتبطة')
                             ->content(function ($record) {
-                                if (!$record || !$record->groups()->exists()) {
+                                if (! $record || ! $record->groups()->exists()) {
                                     return 'لا توجد مجموعات مرتبطة';
                                 }
 
                                 $groups = $record->groups()->get();
                                 $groupNames = $groups->map(function ($group) {
                                     $isDefault = $group->pivot->is_default ? ' (افتراضي)' : '';
-                                    return $group->name . $isDefault;
+
+                                    return $group->name.$isDefault;
                                 })->implode('، ');
 
                                 return $groupNames;
@@ -160,12 +158,12 @@ class MessageResource extends Resource
                         ->label('ربط بمجموعات')
                         ->icon('heroicon-o-link')
                         ->color('success')
-                        ->schema(fn(GroupMessageTemplate $record) => [
+                        ->schema(fn (GroupMessageTemplate $record) => [
                             Select::make('groups')
                                 ->label('المجموعات')
                                 ->options(
                                     Group::query()
-                                        ->whereDoesntHave('messageTemplates', fn($q) => $q->where('group_message_templates.id', $record->id))
+                                        ->whereDoesntHave('messageTemplates', fn ($q) => $q->where('group_message_templates.id', $record->id))
                                         ->pluck('name', 'id')
                                         ->toArray()
                                 )
@@ -176,7 +174,7 @@ class MessageResource extends Resource
                             Toggle::make('set_as_default')
                                 ->label('تعيين كقالب افتراضي')
                                 ->default(false)
-                                ->helperText('سيتم تعيين هذا القالب كافتراضي للمجموعات المحددة')
+                                ->helperText('سيتم تعيين هذا القالب كافتراضي للمجموعات المحددة'),
                         ])
                         ->action(function (GroupMessageTemplate $record, array $data) {
                             foreach ($data['groups'] as $groupId) {
@@ -190,12 +188,12 @@ class MessageResource extends Resource
                                         );
                                         // Set this template as default
                                         $group->messageTemplates()->syncWithoutDetaching([
-                                            $record->id => ['is_default' => true]
+                                            $record->id => ['is_default' => true],
                                         ]);
                                     } else {
                                         // Just attach without making it default
                                         $group->messageTemplates()->syncWithoutDetaching([
-                                            $record->id => ['is_default' => false]
+                                            $record->id => ['is_default' => false],
                                         ]);
                                     }
                                 }
@@ -216,8 +214,8 @@ class MessageResource extends Resource
                         ->label('إزالة من مجموعات')
                         ->icon('heroicon-o-minus-circle')
                         ->color('danger')
-                        ->visible(fn(GroupMessageTemplate $record) => $record->groups()->exists())
-                        ->schema(fn(GroupMessageTemplate $record) => [
+                        ->visible(fn (GroupMessageTemplate $record) => $record->groups()->exists())
+                        ->schema(fn (GroupMessageTemplate $record) => [
                             Select::make('groups')
                                 ->label('المجموعات')
                                 ->options($record->groups()->pluck('name', 'id')->toArray())

@@ -3,18 +3,18 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Storage;
 
 class InstallFonts extends Command
 {
     protected $signature = 'fonts:install';
+
     protected $description = 'Install required fonts for PDF generation';
 
     public function handle()
     {
         $fontsPath = storage_path('fonts');
 
-        if (!file_exists($fontsPath)) {
+        if (! file_exists($fontsPath)) {
             mkdir($fontsPath, 0755, true);
         }
 
@@ -24,9 +24,9 @@ class InstallFonts extends Command
         ];
 
         foreach ($fonts as $fontName => $url) {
-            $fontPath = $fontsPath . '/' . $fontName;
+            $fontPath = $fontsPath.'/'.$fontName;
 
-            if (!file_exists($fontPath)) {
+            if (! file_exists($fontPath)) {
                 $this->info("Downloading {$fontName}...");
                 $fontContent = file_get_contents($url);
                 file_put_contents($fontPath, $fontContent);

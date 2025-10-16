@@ -3,14 +3,15 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Association\Resources\GroupResource;
+use App\Filament\Pages\CustomLogin;
+use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
-use Filament\Widgets;
+use Filament\View\PanelsRenderHook;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -18,9 +19,6 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
-use App\Filament\Pages\CustomLogin;
-use Filament\Enums\ThemeMode;
-use Filament\View\PanelsRenderHook;
 
 class TeacherPanelProvider extends PanelProvider
 {
@@ -42,7 +40,7 @@ class TeacherPanelProvider extends PanelProvider
             ->viteTheme('resources/css/filament/association/theme.css')
             ->defaultThemeMode(ThemeMode::Light)
             ->databaseNotifications()
-            ->databaseNotificationsPolling("10s")
+            ->databaseNotificationsPolling('10s')
             ->brandName('مدرسة إبن أبي زيد القيرواني')
             ->brandLogo(asset('logo.jpg'))
             ->brandLogoHeight('3.5rem')
@@ -70,8 +68,8 @@ class TeacherPanelProvider extends PanelProvider
             ->renderHook(
                 PanelsRenderHook::BODY_START,
 
-                fn() => view('components.attendance-export-scripts')
+                fn () => view('components.attendance-export-scripts')
             )
-            ->renderHook(PanelsRenderHook::BODY_START, fn() => view('components.vcf-download-scripts'));
+            ->renderHook(PanelsRenderHook::BODY_START, fn () => view('components.vcf-download-scripts'));
     }
 }

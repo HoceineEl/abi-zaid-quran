@@ -2,17 +2,15 @@
 
 namespace App\Filament\Association\Resources\TeacherResource\RelationManagers;
 
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\IconColumn;
-use App\Models\ReminderLog;
 use App\Models\User;
 use Carbon\Carbon;
-use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Tables;
-use Filament\Tables\Table;
-use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Filters\Filter;
 use Filament\Forms\Components\DatePicker;
+use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
 class ReminderLogsRelationManager extends RelationManager
@@ -29,8 +27,9 @@ class ReminderLogsRelationManager extends RelationManager
     {
         /** @var User $teacher */
         $teacher = $this->ownerRecord;
+
         return $table
-            ->query(fn() => $teacher->reminderLogs())
+            ->query(fn () => $teacher->reminderLogs())
             ->columns([
                 TextColumn::make('memorizer.name')
                     ->label('اسم الطالب(ة)')
@@ -39,7 +38,7 @@ class ReminderLogsRelationManager extends RelationManager
 
                 TextColumn::make('type')
                     ->label('النوع')
-                    ->formatStateUsing(fn(string $state): string => match ($state) {
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
                         'payment' => 'تذكير بالدفع',
                         'absence' => 'تذكير بالغياب',
                         'trouble' => 'تذكير بالشغب',
@@ -47,7 +46,7 @@ class ReminderLogsRelationManager extends RelationManager
                         'late' => 'تذكير بالتأخر',
                         default => $state,
                     })
-                    ->icon(fn(string $state): string => match ($state) {
+                    ->icon(fn (string $state): string => match ($state) {
                         'payment' => 'tabler-credit-card',
                         'absence' => 'tabler-user-off',
                         'trouble' => 'tabler-alert-triangle',
@@ -55,7 +54,7 @@ class ReminderLogsRelationManager extends RelationManager
                         'late' => 'tabler-clock',
                         default => 'tabler-message',
                     })
-                    ->color(fn(string $state): string => match ($state) {
+                    ->color(fn (string $state): string => match ($state) {
                         'payment' => 'success',
                         'absence' => 'danger',
                         'trouble' => 'warning',
@@ -107,14 +106,14 @@ class ReminderLogsRelationManager extends RelationManager
                             ->label('تاريخ'),
 
                     ])
-                    ->indicateUsing(fn($state) => $state['created_at'] ? Carbon::parse($state['created_at'])->translatedFormat('d M Y') : null)
+                    ->indicateUsing(fn ($state) => $state['created_at'] ? Carbon::parse($state['created_at'])->translatedFormat('d M Y') : null)
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
                             ->when(
                                 $data['created_at'],
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', $date),
                             );
-                    })
+                    }),
             ])
             ->recordActions([
                 //

@@ -2,16 +2,21 @@
 
 namespace App\Providers\Filament;
 
-use Filament\Pages\Dashboard;
+use App\Filament\Pages\CustomLogin;
+use App\Filament\Pages\SubtitleCleaner;
+use App\Filament\Widgets\GroupProgressChart;
+use App\Filament\Widgets\QuranProgramStatsOverview;
+use App\Filament\Widgets\StudentProgressTimeline;
+use App\Filament\Widgets\UserActivityStats;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Pages;
+use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
-use Filament\Widgets;
+use Filament\View\PanelsRenderHook;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -19,13 +24,6 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
-use App\Filament\Widgets\QuranProgramStatsOverview;
-use App\Filament\Widgets\UserActivityStats;
-use App\Filament\Widgets\GroupProgressChart;
-use App\Filament\Widgets\StudentProgressTimeline;
-use Filament\View\PanelsRenderHook;
-use App\Filament\Pages\SubtitleCleaner;
-use App\Filament\Pages\CustomLogin;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -80,7 +78,7 @@ class AdminPanelProvider extends PanelProvider
                 Authenticate::class,
             ])
             ->viteTheme('resources/css/filament/association/theme.css')
-            ->renderHook(PanelsRenderHook::BODY_START, fn() => view('components.table-export-scripts'))
-            ->renderHook(PanelsRenderHook::BODY_START, fn() => view('components.vcf-download-scripts'));
+            ->renderHook(PanelsRenderHook::BODY_START, fn () => view('components.table-export-scripts'))
+            ->renderHook(PanelsRenderHook::BODY_START, fn () => view('components.vcf-download-scripts'));
     }
 }

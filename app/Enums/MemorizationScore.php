@@ -3,13 +3,13 @@
 namespace App\Enums;
 
 use Filament\Support\Contracts\HasColor;
-use Filament\Support\Contracts\HasLabel;
 use Filament\Support\Contracts\HasIcon;
+use Filament\Support\Contracts\HasLabel;
 
-enum MemorizationScore: string implements HasColor, HasLabel, HasIcon
+enum MemorizationScore: string implements HasColor, HasIcon, HasLabel
 {
     case EXCELLENT = 'excellent';
-    case GOOD = 'good'; 
+    case GOOD = 'good';
     case VERY_GOOD = 'very_good';
     case FAIR = 'fair';
     case ACCEPTABLE = 'acceptable';
@@ -34,7 +34,7 @@ enum MemorizationScore: string implements HasColor, HasLabel, HasIcon
             self::EXCELLENT => 'ممتاز',
             self::GOOD => 'جيد',
             self::VERY_GOOD => 'حسن',
-            self::FAIR => 'مستحسن', 
+            self::FAIR => 'مستحسن',
             self::ACCEPTABLE => 'لا بأس به',
             self::POOR => 'لم يحفظ',
             self::NOT_MEMORIZED => 'لم يستظهر',

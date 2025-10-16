@@ -2,33 +2,28 @@
 
 namespace App\Filament\Association\Resources\GroupResource\RelationManagers;
 
-use Filament\Actions\Action;
-use Filament\Support\Enums\Size;
-use Filament\Schemas\Components\Section;
-use Filament\Forms\Components\DatePicker;
-use Filament\Tables\Enums\RecordActionsPosition;
-use Filament\Actions\BulkAction;
+use App\Enums\MemorizationScore;
 use App\Enums\Troubles;
+use App\Filament\Association\Resources\GroupResource;
 use App\Models\Attendance;
 use App\Models\Memorizer;
-use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Tables;
-use Filament\Tables\Table;
-use Filament\Support\Enums\FontWeight;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Notifications\Notification;
-use Illuminate\Database\Eloquent\Model;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\MarkdownEditor;
-use Filament\Forms\Components\CheckboxList;
-use App\Enums\MemorizationScore;
-use App\Filament\Association\Resources\GroupResource;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\ToggleButtons;
 use App\Models\User;
+use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\ToggleButtons;
+use Filament\Notifications\Notification;
+use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Components\Section;
 use Filament\Support\Colors\Color;
-use Filament\Tables\Actions\ActionGroup;
+use Filament\Support\Enums\FontWeight;
+use Filament\Support\Enums\Size;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\RecordActionsPosition;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
 class AttendanceTeacherRelationManager extends RelationManager
@@ -39,8 +34,7 @@ class AttendanceTeacherRelationManager extends RelationManager
 
     protected static ?string $title = 'تسجيل الحضور والغياب';
 
-    protected static string | \BackedEnum | null $icon = 'heroicon-o-user-group';
-
+    protected static string|\BackedEnum|null $icon = 'heroicon-o-user-group';
 
     protected function canView(Model $record): bool
     {
@@ -64,7 +58,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                             return 'heroicon-o-check-circle';
                         }
 
-                        if ($attendance && !$attendance->check_in_time) {
+                        if ($attendance && ! $attendance->check_in_time) {
                             return 'heroicon-o-x-circle';
                         }
 
@@ -79,7 +73,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                             return 'success';
                         }
 
-                        if ($attendance && !$attendance->check_in_time) {
+                        if ($attendance && ! $attendance->check_in_time) {
                             return 'danger';
                         }
 
@@ -171,13 +165,13 @@ class AttendanceTeacherRelationManager extends RelationManager
                             ->send();
 
                         // Only proceed with WhatsApp message if enabled
-                        if (!$data['send_message']) {
+                        if (! $data['send_message']) {
                             return;
                         }
 
                         // Get phone number, checking both student and guardian
                         $phone = $record->phone ?? $record->guardian?->phone;
-                        if (!$phone) {
+                        if (! $phone) {
                             return;
                         }
 
@@ -196,7 +190,6 @@ class AttendanceTeacherRelationManager extends RelationManager
                             'message' => Str::of($originalMessage)->limit(50),
                         ]);
 
-
                         return redirect()->away($whatsappUrl);
                     }),
 
@@ -206,7 +199,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                     ->icon('heroicon-o-trash')
                     ->color('gray')
                     ->hidden(function (Memorizer $record) {
-                        return !$record->attendances()
+                        return ! $record->attendances()
                             ->whereDate('date', now()->toDateString())
                             ->exists();
                     })
@@ -246,7 +239,6 @@ class AttendanceTeacherRelationManager extends RelationManager
                                         $attendance = $record->attendances()
                                             ->whereDate('date', now()->toDateString())
                                             ->first();
-
 
                                         return $attendance?->score ?? MemorizationScore::GOOD;
                                     }),
@@ -293,7 +285,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                                     ->rows(3),
                             ]),
                     ])
-                    ->visible(fn(Memorizer $record) => $record->attendances()
+                    ->visible(fn (Memorizer $record) => $record->attendances()
                         ->whereDate('date', now()->toDateString())
                         ->where('check_in_time', '!=', null)
                         ->exists())
@@ -303,7 +295,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                             ->first();
 
                         if ($attendance) {
-                            $notes =  $data['behavioral_issues'];
+                            $notes = $data['behavioral_issues'];
 
                             $attendance->update([
                                 'notes' => $notes,
@@ -311,21 +303,20 @@ class AttendanceTeacherRelationManager extends RelationManager
                                 'custom_note' => $data['custom_note'],
                             ]);
 
-
                             if ($data['behavioral_issues'] != null) {
                                 $associationAdmins = User::where('email', 'LIKE', '%@association.com')->get();
                                 $troublesLabels = '';
                                 foreach ($data['behavioral_issues'] as $trouble) {
-                                    $troublesLabels .= Troubles::tryFrom($trouble)->getLabel() . ', ';
+                                    $troublesLabels .= Troubles::tryFrom($trouble)->getLabel().', ';
                                 }
                                 Notification::make()
                                     ->title("مشكلة سلوكية للطالب {$record->name}")
-                                    ->body("قام الطالب {$record->name} في مجموعة {$this->ownerRecord->name} بـ " . $troublesLabels . " بتاريخ " . now()->format('Y-m-d'))
+                                    ->body("قام الطالب {$record->name} في مجموعة {$this->ownerRecord->name} بـ ".$troublesLabels.' بتاريخ '.now()->format('Y-m-d'))
                                     ->warning()
                                     ->actions([
                                         Action::make('view_attendance')
                                             ->label('عرض الحضور')
-                                            ->url(fn() => GroupResource::getUrl('view', ['record' => $this->ownerRecord, 'activeRelationManager' => '0'], panel: 'association'))
+                                            ->url(fn () => GroupResource::getUrl('view', ['record' => $this->ownerRecord, 'activeRelationManager' => '0'], panel: 'association')),
                                     ])
                                     ->sendToDatabase($associationAdmins);
                             }
@@ -347,7 +338,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                             ->required(),
 
                     ])
-                    ->fillForm(fn(Memorizer $record): array => [
+                    ->fillForm(fn (Memorizer $record): array => [
                         'birth_date' => $record->birth_date,
                     ])
                     ->action(function (Memorizer $record, array $data): void {
@@ -359,7 +350,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                             ->title('تم تحديث معلومات الطالب بنجاح')
                             ->success()
                             ->send();
-                    })
+                    }),
 
             ], RecordActionsPosition::BeforeColumns)
             ->headerActions([
@@ -385,9 +376,9 @@ class AttendanceTeacherRelationManager extends RelationManager
 
                         $this->dispatch('export-table', [
                             'html' => $html,
-                            'groupName' => $this->ownerRecord->name
+                            'groupName' => $this->ownerRecord->name,
                         ]);
-                    })
+                    }),
             ])
             ->toolbarActions([
                 BulkAction::make('mark_attendance_bulk')
@@ -450,10 +441,10 @@ class AttendanceTeacherRelationManager extends RelationManager
                         Textarea::make('message')
                             ->label('نص الرسالة')
                             ->default(
-                                "السلام عليكم ورحمة الله وبركاته\n" .
-                                    "نود إعلامكم أن [الطالب/الطالبة] [اسم الطالب] [لم يحضر/لم تحضر] اليوم إلى حلقة التحفيظ.\n" .
-                                    "نرجوا إخبارنا في حال وجود أي ظرف.\n\n" .
-                                    "جزاكم الله خيراً"
+                                "السلام عليكم ورحمة الله وبركاته\n".
+                                    "نود إعلامكم أن [الطالب/الطالبة] [اسم الطالب] [لم يحضر/لم تحضر] اليوم إلى حلقة التحفيظ.\n".
+                                    "نرجوا إخبارنا في حال وجود أي ظرف.\n\n".
+                                    'جزاكم الله خيراً'
                             )
                             ->required()
                             ->rows(5),
@@ -464,7 +455,7 @@ class AttendanceTeacherRelationManager extends RelationManager
 
                         foreach ($records as $record) {
                             $phone = $record->phone ?? $record->guardian?->phone;
-                            if (!$phone) {
+                            if (! $phone) {
                                 continue;
                             }
 
@@ -476,7 +467,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                                 ['[الطالب/الطالبة]', '[لم يحضر/لم تحضر]'],
                                 [
                                     $record->sex === 'male' ? 'الطالب' : 'الطالبة',
-                                    $record->sex === 'male' ? 'لم يحضر' : 'لم تحضر'
+                                    $record->sex === 'male' ? 'لم يحضر' : 'لم تحضر',
                                 ],
                                 $personalizedMessage
                             );
@@ -490,7 +481,7 @@ class AttendanceTeacherRelationManager extends RelationManager
 
                         return response()->json([
                             'urls' => $urls,
-                            'script' => "urls.forEach(url => window.open(url, '_blank'));"
+                            'script' => "urls.forEach(url => window.open(url, '_blank'));",
                         ]);
                     }),
             ])
@@ -499,13 +490,13 @@ class AttendanceTeacherRelationManager extends RelationManager
 
     public static function sendNotificationAction(): Action
     {
-        return      Action::make('send_whatsapp')
+        return Action::make('send_whatsapp')
             ->tooltip('إرسال رسالة واتساب')
             ->label('')
             ->icon('tabler-message-circle')
             ->color('success')
             ->hidden(function (Memorizer $record) {
-                return !$record->phone;
+                return ! $record->phone;
             })
             ->schema([
                 ToggleButtons::make('message_type')
@@ -514,26 +505,26 @@ class AttendanceTeacherRelationManager extends RelationManager
                         'absence' => 'رسالة غياب',
                         'trouble' => 'رسالة شغب',
                         'no_memorization' => 'رسالة عدم الحفظ',
-                        'late' => 'رسالة تأخر'
+                        'late' => 'رسالة تأخر',
                     ])
                     ->colors([
                         'absence' => 'danger',
                         'trouble' => 'warning',
                         'no_memorization' => 'info',
-                        'late' => Color::Orange
+                        'late' => Color::Orange,
                     ])
                     ->icons([
                         'absence' => 'heroicon-o-x-circle',
                         'trouble' => 'heroicon-o-exclamation-circle',
                         'no_memorization' => 'heroicon-o-exclamation-circle',
-                        'late' => 'heroicon-o-clock'
+                        'late' => 'heroicon-o-clock',
                     ])
                     ->default(function (Memorizer $record) {
                         $attendance = $record->attendances()
                             ->whereDate('date', now()->toDateString())
                             ->first();
 
-                        if (!$attendance) {
+                        if (! $attendance) {
                             return 'absence';
                         }
 
@@ -543,6 +534,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                             if (in_array(Troubles::TARDY->value, $notes)) {
                                 return 'late';
                             }
+
                             return 'trouble';
                         }
 
@@ -574,13 +566,13 @@ class AttendanceTeacherRelationManager extends RelationManager
             ])
             ->action(function (Memorizer $record, array $data) {
                 $phone = $record->phone;
-                if (!$phone) {
+                if (! $phone) {
                     return;
                 }
                 $phone = preg_replace('/[^0-9]/', '', $phone);
                 $originalMessage = $data['message'];
                 $message = urlencode($originalMessage);
-                $whatsappUrl = route('memorizer-' . $data['message_type'] . '-whatsapp', [$phone, $message, $record->id]);
+                $whatsappUrl = route('memorizer-'.$data['message_type'].'-whatsapp', [$phone, $message, $record->id]);
 
                 return redirect($whatsappUrl);
             });

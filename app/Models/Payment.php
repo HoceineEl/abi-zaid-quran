@@ -10,7 +10,6 @@ class Payment extends Model
 {
     use HasFactory;
 
-
     protected $casts = [
         'payment_date' => 'date',
     ];

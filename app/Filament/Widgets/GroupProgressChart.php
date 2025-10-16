@@ -3,7 +3,6 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Group;
-use App\Models\Progress;
 use Carbon\Carbon;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Facades\DB;
@@ -11,19 +10,22 @@ use Illuminate\Support\Facades\DB;
 class GroupProgressChart extends ChartWidget
 {
     protected ?string $heading = 'إحصائيات المجموعات اليومية';
+
     protected ?string $maxHeight = '400px';
+
     protected ?string $pollingInterval = '30s';
+
     protected static ?int $sort = 1;
-    protected int | string | array $columnSpan = 'full';
 
-
+    protected int|string|array $columnSpan = 'full';
 
     protected function getFilters(): ?array
     {
         $dates = collect(range(0, 29))->mapWithKeys(function ($daysAgo) {
             $date = now()->subDays($daysAgo);
+
             return [
-                $date->format('Y-m-d') => $date->format('d/m/Y')
+                $date->format('Y-m-d') => $date->format('d/m/Y'),
             ];
         })->toArray();
 
@@ -39,7 +41,7 @@ class GroupProgressChart extends ChartWidget
                 'groups.name',
                 DB::raw('COUNT(DISTINCT CASE WHEN progress.status = "memorized" THEN progress.student_id END) as memorized_count'),
                 DB::raw('COUNT(DISTINCT CASE WHEN progress.status = "absent" THEN progress.student_id END) as absent_count'),
-                DB::raw('COUNT(DISTINCT students.id) as total_students')
+                DB::raw('COUNT(DISTINCT students.id) as total_students'),
             ])
             ->leftJoin('students', 'groups.id', '=', 'students.group_id')
             ->leftJoin('progress', function ($join) use ($selectedDate) {
@@ -48,7 +50,7 @@ class GroupProgressChart extends ChartWidget
             });
 
         // Filter by managed groups if not admin
-        if (!auth()->user()->isAdministrator()) {
+        if (! auth()->user()->isAdministrator()) {
             $query->whereHas('managers', function ($q) {
                 $q->where('manager_id', auth()->id());
             });

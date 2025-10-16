@@ -12,7 +12,7 @@ class PaymentSeeder extends Seeder
     public function run(): void
     {
         $memorizers = Memorizer::where('exempt', false)->get();
-        $months = collect(range(0, 2))->map(fn($monthsAgo) => Carbon::now()->subMonths($monthsAgo));
+        $months = collect(range(0, 2))->map(fn ($monthsAgo) => Carbon::now()->subMonths($monthsAgo));
 
         foreach ($memorizers as $memorizer) {
             foreach ($months as $month) {
@@ -23,7 +23,7 @@ class PaymentSeeder extends Seeder
                         'amount' => rand(100, 500),
                         'payment_date' => $month->copy()->addDays(rand(1, 28)),
                         'payment_method' => ['cash', 'card', 'transfer'][rand(0, 2)],
-                        'notes' => 'Monthly payment for ' . $month->format('F Y'),
+                        'notes' => 'Monthly payment for '.$month->format('F Y'),
                     ]);
                 }
             }

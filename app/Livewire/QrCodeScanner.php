@@ -67,7 +67,7 @@ class QrCodeScanner extends Component
 
             Notification::make('attendance_notification')
                 ->title($this->message)
-                ->body(fn() => $this->memorizer->name)
+                ->body(fn () => $this->memorizer->name)
                 ->success()
                 ->send();
         }

@@ -2,21 +2,22 @@
 
 namespace App\Exports;
 
-use PhpOffice\PhpSpreadsheet\Style\Fill;
-use Illuminate\Support\Collection;
 use App\Models\Group;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
-use Maatwebsite\Excel\Concerns\WithEvents;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
 
-class DailyAttendanceSummaryExport implements FromCollection, WithHeadings, ShouldAutoSize, WithTitle, WithEvents
+class DailyAttendanceSummaryExport implements FromCollection, ShouldAutoSize, WithEvents, WithHeadings, WithTitle
 {
     protected $date;
+
     protected $userId;
 
     public function __construct(string $date, $userId = null)
@@ -67,7 +68,7 @@ class DailyAttendanceSummaryExport implements FromCollection, WithHeadings, Shou
                 $selectedDate = Carbon::parse($this->date)->locale('ar')->translatedFormat('l, j F Y');
                 $sheet->insertNewRowBefore(1, 1);
                 $sheet->mergeCells('A1:C1');
-                $sheet->setCellValue('A1', 'تقرير الحضور ليوم: ' . $selectedDate);
+                $sheet->setCellValue('A1', 'تقرير الحضور ليوم: '.$selectedDate);
 
                 // Style the heading
                 $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
@@ -81,8 +82,8 @@ class DailyAttendanceSummaryExport implements FromCollection, WithHeadings, Shou
                 }
                 // Color the data rows
                 foreach ($sheet->getRowIterator(3) as $row) {
-                    $presentCell = 'B' . $row->getRowIndex();
-                    $absentCell = 'C' . $row->getRowIndex();
+                    $presentCell = 'B'.$row->getRowIndex();
+                    $absentCell = 'C'.$row->getRowIndex();
 
                     // Color for present
                     $sheet->getStyle($presentCell)->getFill()

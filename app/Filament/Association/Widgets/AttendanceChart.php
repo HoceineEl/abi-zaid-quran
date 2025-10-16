@@ -12,7 +12,9 @@ class AttendanceChart extends ChartWidget
     use InteractsWithPageFilters;
 
     protected ?string $heading = 'سجل الحضور والغياب';
+
     protected ?string $maxHeight = '300px';
+
     protected ?string $pollingInterval = '30s';
 
     protected function getData(): array
@@ -41,7 +43,7 @@ class AttendanceChart extends ChartWidget
                     'backgroundColor' => '#EF4444',
                 ],
             ],
-            'labels' => $data->map(fn($item) => Carbon::parse($item->date)->format('d/m')),
+            'labels' => $data->map(fn ($item) => Carbon::parse($item->date)->format('d/m')),
         ];
     }
 

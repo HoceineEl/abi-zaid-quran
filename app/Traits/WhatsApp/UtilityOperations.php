@@ -2,12 +2,12 @@
 
 namespace App\Traits\WhatsApp;
 
-use Exception;
 use App\Models\WhatsAppSession;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
+use Exception;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -24,7 +24,7 @@ trait UtilityOperations
             Log::info('Refresh QR: Got session status', [
                 'session_id' => $sessionId,
                 'status' => $status['status'] ?? 'unknown',
-                'has_qr' => !empty($status['qr']),
+                'has_qr' => ! empty($status['qr']),
                 'raw_qr_preview' => substr($status['qr'] ?? '', 0, 50),
             ]);
 
@@ -40,7 +40,7 @@ trait UtilityOperations
                     for ($i = 0; $i < 5; $i++) {
                         sleep(2);
                         $status = $this->getSessionStatus($sessionId);
-                        if (!empty($status['qr'])) {
+                        if (! empty($status['qr'])) {
                             Log::info('QR code appeared after waiting', [
                                 'session_id' => $sessionId,
                                 'wait_cycles' => $i + 1,
@@ -51,7 +51,7 @@ trait UtilityOperations
                 }
 
                 if (empty($status['qr'])) {
-                    throw new Exception("No QR code available for session {$sessionId}. Status: " . ($status['status'] ?? 'unknown'));
+                    throw new Exception("No QR code available for session {$sessionId}. Status: ".($status['status'] ?? 'unknown'));
                 }
             }
 
@@ -74,7 +74,7 @@ trait UtilityOperations
 
             Log::info('WhatsApp QR code refreshed successfully', [
                 'session_id' => $sessionId,
-                'has_qr_code' => !empty($qrCode),
+                'has_qr_code' => ! empty($qrCode),
             ]);
 
             return $status;
@@ -121,7 +121,7 @@ trait UtilityOperations
             // Convert SVG to base64 data URL
             $base64 = base64_encode($qrCodeSvg);
 
-            return 'data:image/svg+xml;base64,' . $base64;
+            return 'data:image/svg+xml;base64,'.$base64;
         } catch (Exception $e) {
             Log::error('Failed to generate QR code image', [
                 'qr_text' => $qrText,
@@ -143,7 +143,7 @@ trait UtilityOperations
                 return $response->json();
             }
 
-            throw new Exception("HTTP {$response->status()}: " . $response->body());
+            throw new Exception("HTTP {$response->status()}: ".$response->body());
         } catch (Exception $e) {
             Log::error('Failed to get WhatsApp API info', [
                 'error' => $e->getMessage(),
@@ -164,7 +164,7 @@ trait UtilityOperations
                 return $response->json();
             }
 
-            throw new Exception("HTTP {$response->status()}: " . $response->body());
+            throw new Exception("HTTP {$response->status()}: ".$response->body());
         } catch (Exception $e) {
             Log::error('Failed to test WhatsApp authentication', [
                 'error' => $e->getMessage(),
@@ -187,7 +187,7 @@ trait UtilityOperations
                 return $response->json();
             }
 
-            throw new Exception("HTTP {$response->status()}: " . $response->body());
+            throw new Exception("HTTP {$response->status()}: ".$response->body());
         } catch (Exception $e) {
             Log::error('Failed to check WhatsApp number', [
                 'number' => $number,
@@ -223,7 +223,7 @@ trait UtilityOperations
                 return $groups;
             }
 
-            throw new Exception("HTTP {$response->status()}: " . $response->body());
+            throw new Exception("HTTP {$response->status()}: ".$response->body());
         } catch (Exception $e) {
             Log::error('Failed to get WhatsApp session groups', [
                 'session_id' => $sessionId,
@@ -258,7 +258,7 @@ trait UtilityOperations
                 return $data['group'] ?? $data;
             }
 
-            throw new Exception("HTTP {$response->status()}: " . $response->body());
+            throw new Exception("HTTP {$response->status()}: ".$response->body());
         } catch (Exception $e) {
             Log::error('Failed to get WhatsApp group details', [
                 'session_id' => $sessionId,
@@ -295,7 +295,7 @@ trait UtilityOperations
                 return $data;
             }
 
-            throw new Exception("HTTP {$response->status()}: " . $response->body());
+            throw new Exception("HTTP {$response->status()}: ".$response->body());
         } catch (Exception $e) {
             Log::error('Failed to get WhatsApp group participants', [
                 'session_id' => $sessionId,
@@ -333,7 +333,7 @@ trait UtilityOperations
                 return $data;
             }
 
-            throw new Exception("HTTP {$response->status()}: " . $response->body());
+            throw new Exception("HTTP {$response->status()}: ".$response->body());
         } catch (Exception $e) {
             Log::error('Failed to generate WhatsApp group invite link', [
                 'session_id' => $sessionId,
@@ -369,7 +369,7 @@ trait UtilityOperations
                 return $data['metadata'] ?? $data;
             }
 
-            throw new Exception("HTTP {$response->status()}: " . $response->body());
+            throw new Exception("HTTP {$response->status()}: ".$response->body());
         } catch (Exception $e) {
             Log::error('Failed to get WhatsApp group metadata', [
                 'session_id' => $sessionId,
@@ -411,7 +411,7 @@ trait UtilityOperations
                 return $data;
             }
 
-            throw new Exception("HTTP {$response->status()}: " . $response->body());
+            throw new Exception("HTTP {$response->status()}: ".$response->body());
         } catch (Exception $e) {
             Log::error('Failed to create WhatsApp group', [
                 'session_id' => $sessionId,
@@ -452,7 +452,7 @@ trait UtilityOperations
                 return $data;
             }
 
-            throw new Exception("HTTP {$response->status()}: " . $response->body());
+            throw new Exception("HTTP {$response->status()}: ".$response->body());
         } catch (Exception $e) {
             Log::error('Failed to add participants to WhatsApp group', [
                 'session_id' => $sessionId,
@@ -493,7 +493,7 @@ trait UtilityOperations
                 return $data;
             }
 
-            throw new Exception("HTTP {$response->status()}: " . $response->body());
+            throw new Exception("HTTP {$response->status()}: ".$response->body());
         } catch (Exception $e) {
             Log::error('Failed to promote participants in WhatsApp group', [
                 'session_id' => $sessionId,

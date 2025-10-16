@@ -2,9 +2,8 @@
 
 namespace App\Filament\Resources\MessageResource\Pages;
 
-use Filament\Actions\DeleteAction;
 use App\Filament\Resources\MessageResource;
-use Filament\Actions;
+use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 
 class EditMessage extends EditRecord

@@ -2,18 +2,17 @@
 
 namespace App\Filament\Resources\WhatsAppSessionResource\Pages;
 
-use Throwable;
-use Exception;
-use Filament\Forms\Components\TextInput;
-use Log;
 use App\Enums\WhatsAppConnectionStatus;
 use App\Filament\Resources\WhatsAppSessionResource;
 use App\Models\WhatsAppSession;
 use App\Services\WhatsAppService;
+use Exception;
 use Filament\Actions\Action;
-use Filament\Forms;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
+use Log;
+use Throwable;
 
 class ListWhatsAppSessions extends ListRecords
 {
@@ -87,7 +86,6 @@ class ListWhatsAppSessions extends ListRecords
 
     protected function shouldSkipPolling(WhatsAppSession $record): bool
     {
-
 
         // Skip polling for stable states if checked recently (within last minute)
         if (in_array($record->status, [

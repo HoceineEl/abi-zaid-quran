@@ -2,16 +2,15 @@
 
 namespace App\Filament\Resources;
 
-use Filament\Schemas\Schema;
-use Filament\Actions\EditAction;
-use Filament\Actions\DeleteBulkAction;
 use App\Filament\Resources\ProgressResource\Pages\CreateProgress;
 use App\Filament\Resources\ProgressResource\Pages\EditProgress;
 use App\Filament\Resources\ProgressResource\Pages\ListProgress;
 use App\Helpers\ProgressFormHelper;
 use App\Models\Progress;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Schema;
 use Filament\Tables\Columns\SelectColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
@@ -22,7 +21,7 @@ class ProgressResource extends Resource
 {
     protected static ?string $model = Progress::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-chart-bar';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-chart-bar';
 
     protected static ?string $navigationLabel = 'التقدم اليومي';
 

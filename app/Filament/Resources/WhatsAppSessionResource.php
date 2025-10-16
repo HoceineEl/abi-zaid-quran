@@ -2,32 +2,30 @@
 
 namespace App\Filament\Resources;
 
-use Filament\Actions\ActionGroup;
-use Filament\Tables\Enums\RecordActionsPosition;
-use Filament\Actions\Action;
-use Exception;
-use Log;
-use Filament\Forms\Components\TextInput;
-use App\Filament\Resources\WhatsAppSessionResource\Pages\ListWhatsAppSessions;
 use App\Classes\BaseResource;
 use App\Enums\WhatsAppConnectionStatus;
 use App\Filament\Resources\WhatsAppSessionResource\Actions\SendMessageAction;
-use App\Filament\Resources\WhatsAppSessionResource\Pages;
+use App\Filament\Resources\WhatsAppSessionResource\Pages\ListWhatsAppSessions;
 use App\Models\WhatsAppSession;
 use App\Services\WhatsAppService;
+use Exception;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
-use Filament\Tables;
 use Filament\Tables\Columns\ViewColumn;
+use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Cache;
+use Log;
 
 class WhatsAppSessionResource extends BaseResource
 {
     protected static ?string $model = WhatsAppSession::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-chat-bubble-left-right';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-chat-bubble-left-right';
 
-    protected static string | \UnitEnum | null $navigationGroup = 'التواصل';
+    protected static string|\UnitEnum|null $navigationGroup = 'التواصل';
 
     protected static ?int $navigationSort = 10;
 

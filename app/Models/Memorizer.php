@@ -5,8 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 
@@ -32,7 +32,7 @@ class Memorizer extends Model
     protected $appends = [
         'number',
         'has_payment_this_month',
-        'has_reminder_this_month'
+        'has_reminder_this_month',
     ];
 
     protected $with = ['payments', 'reminderLogs'];
@@ -42,6 +42,7 @@ class Memorizer extends Model
         return Attribute::make(
             get: function () {
                 $date = $this->created_at ?? now();
+
                 return sprintf(
                     '%s%s%s%02d',
                     $date->format('y'),
@@ -66,7 +67,7 @@ class Memorizer extends Model
     public function hasPaymentThisMonth(): Attribute
     {
         return Attribute::make(
-            get: fn() => $this->payments->where('payment_date', '>=', now()->startOfMonth())
+            get: fn () => $this->payments->where('payment_date', '>=', now()->startOfMonth())
                 ->where('payment_date', '<=', now()->endOfMonth())
                 ->isNotEmpty() || $this->exempt,
         );
@@ -75,7 +76,7 @@ class Memorizer extends Model
     public function hasReminderThisMonth(): Attribute
     {
         return Attribute::make(
-            get: fn() => $this->reminderLogs->where('created_at', '>=', now()->startOfMonth())
+            get: fn () => $this->reminderLogs->where('created_at', '>=', now()->startOfMonth())
                 ->where('created_at', '<=', now()->endOfMonth())
                 ->isNotEmpty(),
         );
@@ -94,14 +95,14 @@ class Memorizer extends Model
     public function presentToday(): Attribute
     {
         return Attribute::make(
-            get: fn() => $this->attendances()->whereDate('date', now()->toDateString())->whereNotNull('check_in_time')->exists(),
+            get: fn () => $this->attendances()->whereDate('date', now()->toDateString())->whereNotNull('check_in_time')->exists(),
         );
     }
 
     public function absentToday(): Attribute
     {
         return Attribute::make(
-            get: fn() => $this->attendances()->whereDate('date', now()->toDateString())->whereNull('check_in_time')->exists(),
+            get: fn () => $this->attendances()->whereDate('date', now()->toDateString())->whereNull('check_in_time')->exists(),
         );
     }
 
@@ -118,7 +119,7 @@ class Memorizer extends Model
     public function sex(): Attribute
     {
         return Attribute::make(
-            get: fn() => $this->group?->teacher?->sex ?? 'male',
+            get: fn () => $this->group?->teacher?->sex ?? 'male',
         );
     }
 
@@ -129,36 +130,37 @@ class Memorizer extends Model
 
     public function getMessageToSend(string $messageType): string
     {
-        $studentPrefix = $this->sex === 'male' ? "الطالب" : "الطالبة";
+        $studentPrefix = $this->sex === 'male' ? 'الطالب' : 'الطالبة';
         $arabicDate = now()->translatedFormat('l j F Y');
+
         return match ($messageType) {
-            'absence' => "السلام عليكم ورحمه الله وبركاته،\n" .
-                "تخبركم إدارة جمعية بن ابي زيد القيرواني أن {$studentPrefix}: {$this->name} قد تغيب عن حصة اليوم.\n" .
-                "لذلك المرجو منكم تبرير هذا الغياب\n" .
-                "كما نخبركم أنه عملا بالقانون الداخلي للجمعية فإن أربعة غيابات بدون مبرر في الشهر تعرض ابنكم/ ابنتكم للفصل.\n\n" .
-                "اسم {$studentPrefix}: {$this->name}\n" .
+            'absence' => "السلام عليكم ورحمه الله وبركاته،\n".
+                "تخبركم إدارة جمعية بن ابي زيد القيرواني أن {$studentPrefix}: {$this->name} قد تغيب عن حصة اليوم.\n".
+                "لذلك المرجو منكم تبرير هذا الغياب\n".
+                "كما نخبركم أنه عملا بالقانون الداخلي للجمعية فإن أربعة غيابات بدون مبرر في الشهر تعرض ابنكم/ ابنتكم للفصل.\n\n".
+                "اسم {$studentPrefix}: {$this->name}\n".
                 "التاريخ: {$arabicDate}",
 
-            'trouble' => "السلام عليكم ورحمه الله وبركاته،\n" .
-                "تخبركم إدارة جمعية بن ابي زيد القيرواني أن ابنكم قد سجلت عليه حاله شغب في الحلقة اليوم.\n" .
-                "وكما لا يخفى عليكم فان الشغب يؤثر سلبا على حلقة القرآن.\n" .
-                "لذلك و عملا بالقانون الداخلي للجمعية فإن كل طالب توصل بثلاثة إنذارات بالشغب يعرض نفسه للفصل من الجمعية في المرة الرابعة.\n\n" .
-                "اسم {$studentPrefix}: {$this->name}\n" .
+            'trouble' => "السلام عليكم ورحمه الله وبركاته،\n".
+                "تخبركم إدارة جمعية بن ابي زيد القيرواني أن ابنكم قد سجلت عليه حاله شغب في الحلقة اليوم.\n".
+                "وكما لا يخفى عليكم فان الشغب يؤثر سلبا على حلقة القرآن.\n".
+                "لذلك و عملا بالقانون الداخلي للجمعية فإن كل طالب توصل بثلاثة إنذارات بالشغب يعرض نفسه للفصل من الجمعية في المرة الرابعة.\n\n".
+                "اسم {$studentPrefix}: {$this->name}\n".
                 "التاريخ: {$arabicDate}",
 
-            'no_memorization' => "السلام عليكم ورحمه الله وبركاته،\n" .
-                "تخبركم إداره جمعيه بن ابي زيد القرواني أن ابنكم قد سجلت عليه تكرار عدم الحفظ\n" .
-                "وكما لا يخفى عليكم فإن تكرار عدم الحفظ يؤثر سلبا على مردودية الطالب في الحلقة.\n" .
-                "لذلك نهيب بكم مراقبة دفتر التواصل الخاص بابنكم و الحرص على برمجة أوقات للحفظ في البيت.\n" .
-                "لذلك و عملا بالقانون الداخلي للجمعية فإن تكرار عدم الحفظ يعرض الطالب للفصل من الجمعية.\n\n" .
-                "اسم {$studentPrefix}: {$this->name}\n" .
+            'no_memorization' => "السلام عليكم ورحمه الله وبركاته،\n".
+                "تخبركم إداره جمعيه بن ابي زيد القرواني أن ابنكم قد سجلت عليه تكرار عدم الحفظ\n".
+                "وكما لا يخفى عليكم فإن تكرار عدم الحفظ يؤثر سلبا على مردودية الطالب في الحلقة.\n".
+                "لذلك نهيب بكم مراقبة دفتر التواصل الخاص بابنكم و الحرص على برمجة أوقات للحفظ في البيت.\n".
+                "لذلك و عملا بالقانون الداخلي للجمعية فإن تكرار عدم الحفظ يعرض الطالب للفصل من الجمعية.\n\n".
+                "اسم {$studentPrefix}: {$this->name}\n".
                 "التاريخ: {$arabicDate}",
 
-            'late' => "السلام عليكم ورحمه الله وبركاته،\n" .
-                "تخبركم إدارة جمعية بن ابي زيد القيرواني أن {$studentPrefix}: {$this->name} قد تأخر عن حصة اليوم.\n" .
-                "نرجو منكم الحرص على الحضور في الوقت المحدد حيث أن التأخر المتكرر يؤثر سلبا على سير الحصة.\n" .
-                "كما نذكركم أن التأخر المتكرر قد يعرض {$studentPrefix} للإجراءات التأديبية وفقا للقانون الداخلي للجمعية.\n\n" .
-                "اسم {$studentPrefix}: {$this->name}\n" .
+            'late' => "السلام عليكم ورحمه الله وبركاته،\n".
+                "تخبركم إدارة جمعية بن ابي زيد القيرواني أن {$studentPrefix}: {$this->name} قد تأخر عن حصة اليوم.\n".
+                "نرجو منكم الحرص على الحضور في الوقت المحدد حيث أن التأخر المتكرر يؤثر سلبا على سير الحصة.\n".
+                "كما نذكركم أن التأخر المتكرر قد يعرض {$studentPrefix} للإجراءات التأديبية وفقا للقانون الداخلي للجمعية.\n\n".
+                "اسم {$studentPrefix}: {$this->name}\n".
                 "التاريخ: {$arabicDate}",
 
             default => ''
@@ -173,14 +175,14 @@ class Memorizer extends Model
     protected function displayPhone(): Attribute
     {
         return Attribute::make(
-            get: fn() => $this->phone ?: $this->guardian?->phone,
+            get: fn () => $this->phone ?: $this->guardian?->phone,
         );
     }
 
     public function todayScore(): Attribute
     {
         return Attribute::make(
-            get: fn() => $this->attendances()->whereDate('date', now()->toDateString())->first()?->score,
+            get: fn () => $this->attendances()->whereDate('date', now()->toDateString())->first()?->score,
         );
     }
 
@@ -192,7 +194,7 @@ class Memorizer extends Model
     public function attendancesWithTroubles(): Attribute
     {
         return Attribute::make(
-            get: fn() => $this->attendances()->where(function ($query) {
+            get: fn () => $this->attendances()->where(function ($query) {
                 $query->where('notes', '!=', null)
                     ->orWhere('notes', '!=', [])
                     ->orWhere('custom_note', '!=', null);
@@ -219,6 +221,7 @@ class Memorizer extends Model
                         $troubles = array_merge($troubles, $attendance->notes);
                     }
                 }
+
                 return array_unique($troubles);
             }
         );

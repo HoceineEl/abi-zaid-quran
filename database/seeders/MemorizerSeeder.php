@@ -17,7 +17,7 @@ class MemorizerSeeder extends Seeder
                 ->count(rand(5, 15))
                 ->create([
                     'memo_group_id' => $group->id,
-                    'exempt' => (bool)rand(0, 5), // 20% chance of being exempt
+                    'exempt' => (bool) rand(0, 5), // 20% chance of being exempt
                 ]);
         }
     }

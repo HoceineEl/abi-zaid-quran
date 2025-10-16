@@ -2,17 +2,13 @@
 
 namespace App\Filament\Resources\GroupResource\Pages;
 
-use Filament\Actions\CreateAction;
-use Filament\Schemas\Components\Tabs\Tab;
 use App\Filament\Resources\GroupResource;
 use App\Models\Group;
-use App\Models\Student;
 use Carbon\Carbon;
-use Filament\Actions;
+use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
-use Filament\Support\Enums\ActionSize;
+use Filament\Schemas\Components\Tabs\Tab;
 use Illuminate\Database\Eloquent\Builder;
-use Filament\Notifications\Notification;
 
 class ListGroups extends ListRecords
 {
@@ -62,7 +58,7 @@ class ListGroups extends ListRecords
                     // Get the current IDs in the query
                     $groupIds = $query->pluck('id')->toArray();
 
-                    if (!empty($groupIds)) {
+                    if (! empty($groupIds)) {
                         // Get groups with students and attendance data
                         $groups = Group::with(['students' => function ($query) {
                             $query->withCount(['progresses as attendance_count' => function ($q) {
@@ -74,6 +70,7 @@ class ListGroups extends ListRecords
                         // Filter for groups with 100% attendance
                         $filteredIds = $groups->filter(function ($group) {
                             $attendance = $this->calculateGroupAttendance($group);
+
                             return $attendance === 100;
                         })->pluck('id')->toArray();
 
@@ -87,6 +84,7 @@ class ListGroups extends ListRecords
                 ->badge(function () {
                     return $this->getGroupsWithAttendance()->filter(function ($group) {
                         $attendance = $this->calculateGroupAttendance($group);
+
                         return $attendance >= 90 && $attendance < 100;
                     })->count();
                 })
@@ -95,7 +93,7 @@ class ListGroups extends ListRecords
                     // Get the current IDs in the query
                     $groupIds = $query->pluck('id')->toArray();
 
-                    if (!empty($groupIds)) {
+                    if (! empty($groupIds)) {
                         // Get groups with students and attendance data
                         $groups = Group::with(['students' => function ($query) {
                             $query->withCount(['progresses as attendance_count' => function ($q) {
@@ -107,6 +105,7 @@ class ListGroups extends ListRecords
                         // Filter for groups with 90-99% attendance
                         $filteredIds = $groups->filter(function ($group) {
                             $attendance = $this->calculateGroupAttendance($group);
+
                             return $attendance >= 90 && $attendance < 100;
                         })->pluck('id')->toArray();
 
@@ -120,6 +119,7 @@ class ListGroups extends ListRecords
                 ->badge(function () {
                     return $this->getGroupsWithAttendance()->filter(function ($group) {
                         $attendance = $this->calculateGroupAttendance($group);
+
                         return $attendance >= 70 && $attendance < 90;
                     })->count();
                 })
@@ -128,7 +128,7 @@ class ListGroups extends ListRecords
                     // Get the current IDs in the query
                     $groupIds = $query->pluck('id')->toArray();
 
-                    if (!empty($groupIds)) {
+                    if (! empty($groupIds)) {
                         // Get groups with students and attendance data
                         $groups = Group::with(['students' => function ($query) {
                             $query->withCount(['progresses as attendance_count' => function ($q) {
@@ -140,6 +140,7 @@ class ListGroups extends ListRecords
                         // Filter for groups with 70-89% attendance
                         $filteredIds = $groups->filter(function ($group) {
                             $attendance = $this->calculateGroupAttendance($group);
+
                             return $attendance >= 70 && $attendance < 90;
                         })->pluck('id')->toArray();
 
@@ -160,7 +161,7 @@ class ListGroups extends ListRecords
                     // Get the current IDs in the query
                     $groupIds = $query->pluck('id')->toArray();
 
-                    if (!empty($groupIds)) {
+                    if (! empty($groupIds)) {
                         // Get groups with students and attendance data
                         $groups = Group::with(['students' => function ($query) {
                             $query->withCount(['progresses as attendance_count' => function ($q) {
@@ -172,6 +173,7 @@ class ListGroups extends ListRecords
                         // Filter for groups with less than 70% attendance
                         $filteredIds = $groups->filter(function ($group) {
                             $attendance = $this->calculateGroupAttendance($group);
+
                             return $attendance < 70;
                         })->pluck('id')->toArray();
 
@@ -198,6 +200,7 @@ class ListGroups extends ListRecords
             }
 
             $presentStudents = $students->where('attendance_count', '>', 0)->count();
+
             return round(($presentStudents / $totalStudents) * 100);
         }
 
@@ -216,9 +219,9 @@ class ListGroups extends ListRecords
         }
 
         $presentStudents = $students->where('attendance_count', '>', 0)->count();
+
         return round(($presentStudents / $totalStudents) * 100);
     }
-
 
     protected function getTableRecordsPerPageSelectOptions(): array
     {

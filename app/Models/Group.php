@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\MessageSubmissionType;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,12 +11,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Builder;
 
 class Group extends Model
 {
     use HasFactory, SoftDeletes;
-
 
     protected $casts = [
         'is_onsite' => 'boolean',
@@ -40,15 +39,13 @@ class Group extends Model
     protected static function booted(): void
     {
         static::addGlobalScope('userGroups', function (Builder $query) {
-            if (auth()->check() && !auth()->user()->isAdministrator()) {
+            if (auth()->check() && ! auth()->user()->isAdministrator()) {
                 $query->whereHas('managers', function ($q) {
                     $q->where('users.id', auth()->id());
                 });
             }
         });
     }
-
-
 
     public function students(): HasMany
     {
@@ -69,8 +66,6 @@ class Group extends Model
     {
         return $this->belongsTo(Message::class);
     }
-
-
 
     public function messageTemplates(): BelongsToMany
     {
@@ -108,7 +103,7 @@ class Group extends Model
     {
         $type = $this->type === 'two_lines' ? 'سطرين' : 'نصف صفحة';
 
-        return $this->name . ' - ' . $type;
+        return $this->name.' - '.$type;
     }
 
     public static function getDailyAttendanceSummary(string $date, $userId = null)

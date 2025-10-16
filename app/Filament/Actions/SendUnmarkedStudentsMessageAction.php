@@ -2,10 +2,6 @@
 
 namespace App\Filament\Actions;
 
-use Filament\Actions\Action;
-use Filament\Forms\Components\Select;
-use Filament\Schemas\Components\Utilities\Get;
-use Exception;
 use App\Classes\Core;
 use App\Enums\WhatsAppMessageStatus;
 use App\Models\GroupMessageTemplate;
@@ -14,15 +10,19 @@ use App\Models\WhatsAppMessageHistory;
 use App\Models\WhatsAppSession;
 use App\Services\WhatsAppService;
 use App\Traits\HandlesWhatsAppProgress;
-use Filament\Forms;
+use Exception;
+use Filament\Actions\Action;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Utilities\Get;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
 
 class SendUnmarkedStudentsMessageAction extends Action
 {
     use HandlesWhatsAppProgress;
+
     public static function getDefaultName(): ?string
     {
         return 'send_unmarked_students_message';
@@ -35,7 +35,7 @@ class SendUnmarkedStudentsMessageAction extends Action
         $this->label('إرسال رسالة تذكير للبقية')
             ->icon('heroicon-o-chat-bubble-oval-left')
             ->color('warning')
-            ->form(function() {
+            ->form(function () {
                 $fields = [];
                 $isAdmin = auth()->user()->isAdministrator();
                 $ownerRecord = $this->getLivewire()->ownerRecord ?? $this->getRecord();
@@ -54,6 +54,7 @@ class SendUnmarkedStudentsMessageAction extends Action
                                 return $ownerRecord->messageTemplates()->pluck('group_message_templates.name', 'group_message_templates.id')
                                     ->prepend('رسالة مخصصة', 'custom');
                             }
+
                             return ['custom' => 'رسالة مخصصة'];
                         })
                         ->default(function () use ($defaultTemplate) {
@@ -68,7 +69,7 @@ class SendUnmarkedStudentsMessageAction extends Action
                     ->helperText('هل تريد تسجيل الطلاب كغائبين بعذر؟');
 
                 // Show message field for admins when custom is selected, or always for non-admins without default template
-                $showMessageField = $isAdmin || !$defaultTemplate;
+                $showMessageField = $isAdmin || ! $defaultTemplate;
 
                 if ($showMessageField) {
                     $defaultMessage = $defaultTemplate ? $defaultTemplate->content : 'السلام عليكم ورحمة الله وبركاته، {student_name} لم ترسل الواجب المقرر اليوم، لعل المانع خير.';
@@ -79,7 +80,7 @@ class SendUnmarkedStudentsMessageAction extends Action
                         ->label('الرسالة')
                         ->required()
                         ->rows(4)
-                        ->hidden(fn(Get $get) => $isAdmin && $get('template_id') !== 'custom');
+                        ->hidden(fn (Get $get) => $isAdmin && $get('template_id') !== 'custom');
                 }
 
                 return $fields;
@@ -106,6 +107,7 @@ class SendUnmarkedStudentsMessageAction extends Action
                 ->body('جميع الطلاب لديهم سجلات حضور لهذا التاريخ')
                 ->info()
                 ->send();
+
             return;
         }
 
@@ -117,7 +119,7 @@ class SendUnmarkedStudentsMessageAction extends Action
         $messageTemplate = $this->getMessageTemplate($data, $ownerRecord);
 
         // Only send messages if it's today's date and NOT marked with reason
-        if ($selectedDate === now()->format('Y-m-d') && !$withReason) {
+        if ($selectedDate === now()->format('Y-m-d') && ! $withReason) {
             $this->sendViaWhatsAppWeb($unmarkedStudents, $messageTemplate, $data, $ownerRecord);
         } else {
             $message = $withReason
@@ -137,7 +139,7 @@ class SendUnmarkedStudentsMessageAction extends Action
      */
     protected function getUnmarkedStudents($ownerRecord, string $selectedDate): Collection
     {
-        if (!$ownerRecord || !method_exists($ownerRecord, 'students')) {
+        if (! $ownerRecord || ! method_exists($ownerRecord, 'students')) {
             return collect();
         }
 
@@ -186,6 +188,7 @@ class SendUnmarkedStudentsMessageAction extends Action
         if (method_exists($livewire, 'getTableFilters') && isset($livewire->tableFilters['date']['value'])) {
             return $livewire->tableFilters['date']['value'];
         }
+
         return now()->format('Y-m-d');
     }
 
@@ -197,7 +200,7 @@ class SendUnmarkedStudentsMessageAction extends Action
         $isAdmin = auth()->user()->isAdministrator();
 
         // For non-admins, always use default template if available
-        if (!$isAdmin && $ownerRecord && method_exists($ownerRecord, 'messageTemplates')) {
+        if (! $isAdmin && $ownerRecord && method_exists($ownerRecord, 'messageTemplates')) {
             $defaultTemplate = $ownerRecord->messageTemplates()->wherePivot('is_default', true)->first();
             if ($defaultTemplate) {
                 return $defaultTemplate->content;
@@ -227,12 +230,13 @@ class SendUnmarkedStudentsMessageAction extends Action
         // Get the current user's active session
         $session = WhatsAppSession::getUserSession(auth()->id());
 
-        if (!$session || !$session->isConnected()) {
+        if (! $session || ! $session->isConnected()) {
             Notification::make()
                 ->title('جلسة واتساب غير متصلة')
                 ->body('يرجى التأكد من أن لديك جلسة واتساب متصلة قبل إرسال الرسائل')
                 ->danger()
                 ->send();
+
             return;
         }
 
@@ -249,12 +253,13 @@ class SendUnmarkedStudentsMessageAction extends Action
                 $phoneNumber = null;
             }
 
-            if (!$phoneNumber) {
+            if (! $phoneNumber) {
                 Log::warning('Invalid phone number for student', [
                     'student_id' => $student->id,
                     'student_name' => $student->name,
                     'phone' => $student->phone,
                 ]);
+
                 continue;
             }
 
@@ -353,10 +358,10 @@ class SendUnmarkedStudentsMessageAction extends Action
         // Handle different Moroccan number formats
         if (strlen($number) === 9 && in_array(substr($number, 0, 1), ['6', '7'])) {
             // If number starts with 6 or 7 and is 9 digits
-            return '212' . $number;
+            return '212'.$number;
         } elseif (strlen($number) === 10 && in_array(substr($number, 0, 2), ['06', '07'])) {
             // If number starts with 06 or 07 and is 10 digits
-            return '212' . substr($number, 1);
+            return '212'.substr($number, 1);
         } elseif (strlen($number) === 12 && substr($number, 0, 3) === '212') {
             // If number already has 212 country code
             return $number;

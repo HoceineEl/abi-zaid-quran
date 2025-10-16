@@ -2,14 +2,13 @@
 
 namespace App\Filament\Resources\WhatsAppSessionResource\Actions;
 
-use Filament\Actions\Action;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
-use Exception;
 use App\Models\WhatsAppMessageHistory;
 use App\Models\WhatsAppSession;
 use App\Services\WhatsAppService;
-use Filament\Forms;
+use Exception;
+use Filament\Actions\Action;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 
 class SendMessageAction extends Action
@@ -44,7 +43,7 @@ class SendMessageAction extends Action
             ])
             ->action(function (WhatsAppSession $record, array $data) {
                 try {
-                    if (!$record->isConnected()) {
+                    if (! $record->isConnected()) {
                         throw new Exception('جلسة واتساب غير متصلة');
                     }
 

@@ -2,11 +2,10 @@
 
 namespace App\Filament\Association\Widgets;
 
-use Exception;
 use App\Models\Attendance;
 use App\Models\Memorizer;
 use App\Models\Payment;
-use Filament\Forms\Components\DatePicker;
+use Exception;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Carbon;
@@ -30,7 +29,8 @@ class DetailedStatsOverview extends BaseWidget
                 $this->getExemptStudentsStat(),
             ];
         } catch (Exception $e) {
-            Log::error('Error generating detailed stats: ' . $e->getMessage());
+            Log::error('Error generating detailed stats: '.$e->getMessage());
+
             return $this->getFallbackStats();
         }
     }
@@ -59,7 +59,7 @@ class DetailedStatsOverview extends BaseWidget
         $totalPayments = Payment::whereBetween('created_at', [$startDate, $endDate])
             ->sum('amount');
 
-        return Stat::make('إجمالي الرسوم المحصّلة للسنة', number_format($totalPayments) . ' درهم')
+        return Stat::make('إجمالي الرسوم المحصّلة للسنة', number_format($totalPayments).' درهم')
             ->description('مجموع الرسوم المحصّلة خلال السنة الحالية')
             ->descriptionIcon('heroicon-m-banknotes')
             ->color('warning');
@@ -72,7 +72,7 @@ class DetailedStatsOverview extends BaseWidget
             ->first()
             ->avg_amount ?? 0;
 
-        return Stat::make('متوسط الرسوم السنوي للطالب', number_format($avgPayment, 1) . ' درهم')
+        return Stat::make('متوسط الرسوم السنوي للطالب', number_format($avgPayment, 1).' درهم')
             ->description('معدل الرسوم المدفوعة للطالب خلال السنة الحالية')
             ->descriptionIcon('heroicon-m-currency-dollar')
             ->color('info');
@@ -84,7 +84,7 @@ class DetailedStatsOverview extends BaseWidget
         $exemptStudents = Memorizer::where('exempt', true)->count();
         $exemptPercentage = $totalStudents > 0 ? round(($exemptStudents / $totalStudents) * 100, 1) : 0;
 
-        return Stat::make('نسبة الإعفاء من الرسوم', $exemptPercentage . '%')
+        return Stat::make('نسبة الإعفاء من الرسوم', $exemptPercentage.'%')
             ->description(sprintf('عدد المعفيين: %d طالباً من إجمالي %d', $exemptStudents, $totalStudents))
             ->descriptionIcon('heroicon-m-shield-check')
             ->color('primary');
@@ -112,7 +112,8 @@ class DetailedStatsOverview extends BaseWidget
                 ->pluck('daily_count')
                 ->toArray();
         } catch (Exception $e) {
-            Log::error('Error getting attendance trend: ' . $e->getMessage());
+            Log::error('Error getting attendance trend: '.$e->getMessage());
+
             return [];
         }
     }

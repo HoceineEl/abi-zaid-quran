@@ -16,9 +16,9 @@ enum Days: string implements HasLabel
 
     public function getLabel(): ?string
     {
-        return match($this) {
+        return match ($this) {
             self::MONDAY => 'الإثنين',
-            self::TUESDAY => 'الثلاثاء', 
+            self::TUESDAY => 'الثلاثاء',
             self::WEDNESDAY => 'الأربعاء',
             self::THURSDAY => 'الخميس',
             self::FRIDAY => 'الجمعة',
@@ -31,7 +31,7 @@ enum Days: string implements HasLabel
     {
         return array_combine(
             array_column(self::cases(), 'value'),
-            array_map(fn($case) => $case->getLabel(), self::cases())
+            array_map(fn ($case) => $case->getLabel(), self::cases())
         );
     }
 }

@@ -3,17 +3,17 @@
 namespace App\Filament\Association\Widgets;
 
 use App\Models\MemoGroup;
-use App\Models\Memorizer;
 use Filament\Widgets\ChartWidget;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
-use Illuminate\Support\Facades\DB;
 
 class GroupsStatsChart extends ChartWidget
 {
     use InteractsWithPageFilters;
 
     protected ?string $heading = 'إحصائيات الحلقات القرآنية';
+
     protected ?string $maxHeight = '300px';
+
     protected ?string $pollingInterval = '30s';
 
     public ?string $filter = 'all';

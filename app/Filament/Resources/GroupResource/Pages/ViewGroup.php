@@ -2,14 +2,14 @@
 
 namespace App\Filament\Resources\GroupResource\Pages;
 
-use Filament\Forms\Components\Textarea;
-use Filament\Schemas\Schema;
-use Filament\Schemas\Components\Section;
-use App\Filament\Resources\GroupResource;
-use Filament\Resources\Pages\ViewRecord;
-use Filament\Actions\Action;
 use App\Classes\Core;
+use App\Filament\Resources\GroupResource;
+use Filament\Actions\Action;
+use Filament\Forms\Components\Textarea;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Resources\Pages\ViewRecord;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 
 class ViewGroup extends ViewRecord
 {
@@ -19,9 +19,9 @@ class ViewGroup extends ViewRecord
     {
         return [
             Action::make('edit')
-                ->url(fn() => $this->getResource()::getUrl('edit', ['record' => $this->record]))
+                ->url(fn () => $this->getResource()::getUrl('edit', ['record' => $this->record]))
                 ->icon('heroicon-o-pencil')
-                ->visible(fn() => Core::canChange())
+                ->visible(fn () => Core::canChange())
                 ->label('تعديل'),
 
             Action::make('send_whatsapp_group')
@@ -35,7 +35,7 @@ class ViewGroup extends ViewRecord
             Action::make('remind_manager')
                 ->label('تذكير المشرفين')
                 ->icon('heroicon-o-bell')
-                ->visible(fn() => auth()->user()->isAdministrator())
+                ->visible(fn () => auth()->user()->isAdministrator())
                 ->schema([
                     Textarea::make('message')
                         ->label('الرسالة')
@@ -52,8 +52,7 @@ class ViewGroup extends ViewRecord
         ];
     }
 
-
-    public  function infolist(Schema $schema): Schema
+    public function infolist(Schema $schema): Schema
     {
         return $infolist
             ->schema([
@@ -77,7 +76,7 @@ class ViewGroup extends ViewRecord
                             ->dateTime('Y-m-d H:i:s'),
                         TextEntry::make('students_count')
                             ->label('عدد الطلاب')
-                            ->state(fn($record) => $record->students()->count()),
+                            ->state(fn ($record) => $record->students()->count()),
                         TextEntry::make('managers.name')
                             ->label('المشرفون')
                             ->bulleted(),

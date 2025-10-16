@@ -14,8 +14,7 @@ class MemoGroupSeeder extends Seeder
 
         foreach ($teachers as $teacher) {
             MemoGroup::factory()
-                ->count(rand(1, 3))
-            ;
+                ->count(rand(1, 3));
         }
     }
 }

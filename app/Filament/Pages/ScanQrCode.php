@@ -2,14 +2,14 @@
 
 namespace App\Filament\Pages;
 
-use Filament\Support\Enums\Width;
 use Filament\Facades\Filament;
 use Filament\Pages\Page;
+use Filament\Support\Enums\Width;
 use Illuminate\Contracts\Support\Htmlable;
 
 class ScanQrCode extends Page
 {
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-qr-code';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-qr-code';
 
     protected string $view = 'filament.pages.scan-qr-code';
 
@@ -22,10 +22,12 @@ class ScanQrCode extends Page
     {
         return 'مسح رمز QR للطلاب';
     }
+
     public static function shouldRegisterNavigation(): bool
     {
         return Filament::getCurrentOrDefaultPanel()->getId() === 'association';
     }
+
     public function getHeading(): string
     {
         return 'مسح رمز QR للطلاب';

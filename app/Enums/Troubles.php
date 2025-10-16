@@ -3,11 +3,11 @@
 namespace App\Enums;
 
 use Filament\Support\Colors\Color;
-use Filament\Support\Contracts\HasLabel;
-use Filament\Support\Contracts\HasIcon;
 use Filament\Support\Contracts\HasColor;
+use Filament\Support\Contracts\HasIcon;
+use Filament\Support\Contracts\HasLabel;
 
-enum Troubles: string implements HasLabel, HasIcon, HasColor
+enum Troubles: string implements HasColor, HasIcon, HasLabel
 {
     case INATTENTIVE = 'inattentive';
     case CHATTY = 'chatty';

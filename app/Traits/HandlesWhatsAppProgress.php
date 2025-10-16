@@ -2,17 +2,16 @@
 
 namespace App\Traits;
 
-use Illuminate\Support\Collection;
 use App\Models\Student;
+use Illuminate\Support\Collection;
 
 trait HandlesWhatsAppProgress
 {
     /**
      * Create or update progress record when WhatsApp message is sent
      *
-     * @param Student $student The student to create/update progress for
-     * @param string|null $date Optional date, defaults to today
-     * @return void
+     * @param  Student  $student  The student to create/update progress for
+     * @param  string|null  $date  Optional date, defaults to today
      */
     protected function createWhatsAppProgressRecord(Student $student, ?string $date = null): void
     {
@@ -21,7 +20,7 @@ trait HandlesWhatsAppProgress
         // Check if progress already exists for this date
         $existingProgress = $student->progresses()->where('date', $date)->first();
 
-        if (!$existingProgress) {
+        if (! $existingProgress) {
             // Create new progress record
             $student->progresses()->create([
                 'created_by' => auth()->id(),
@@ -45,9 +44,8 @@ trait HandlesWhatsAppProgress
     /**
      * Mark multiple students with WhatsApp progress records
      *
-     * @param Collection $students Collection of students
-     * @param string|null $date Optional date, defaults to today
-     * @return void
+     * @param  Collection  $students  Collection of students
+     * @param  string|null  $date  Optional date, defaults to today
      */
     protected function createWhatsAppProgressRecords($students, ?string $date = null): void
     {

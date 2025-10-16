@@ -15,8 +15,6 @@ class ReminderLog extends Model
         'is_parent',
     ];
 
- 
-
     protected static function boot()
     {
         parent::boot();

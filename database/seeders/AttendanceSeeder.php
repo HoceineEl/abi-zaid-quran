@@ -12,7 +12,7 @@ class AttendanceSeeder extends Seeder
     public function run(): void
     {
         $memorizers = Memorizer::all();
-        $dates = collect(range(0, 30))->map(fn($daysAgo) => Carbon::now()->subDays($daysAgo));
+        $dates = collect(range(0, 30))->map(fn ($daysAgo) => Carbon::now()->subDays($daysAgo));
 
         foreach ($memorizers as $memorizer) {
             foreach ($dates as $date) {

@@ -2,9 +2,8 @@
 
 namespace App\Filament\Association\Resources\TeacherResource\Pages;
 
-use Filament\Actions\DeleteAction;
 use App\Filament\Association\Resources\TeacherResource;
-use Filament\Actions;
+use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 
 class EditTeacher extends EditRecord

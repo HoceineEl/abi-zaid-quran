@@ -2,9 +2,8 @@
 
 namespace App\Filament\Resources\ProgressResource\Pages;
 
-use Filament\Actions\DeleteAction;
 use App\Filament\Resources\ProgressResource;
-use Filament\Actions;
+use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 
 class EditProgress extends EditRecord

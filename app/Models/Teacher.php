@@ -10,7 +10,6 @@ class Teacher extends Model
 {
     use HasFactory;
 
-
     public function memorizers(): HasMany
     {
         return $this->hasMany(Memorizer::class);

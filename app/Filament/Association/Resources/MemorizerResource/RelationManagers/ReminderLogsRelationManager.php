@@ -2,10 +2,9 @@
 
 namespace App\Filament\Association\Resources\MemorizerResource\RelationManagers;
 
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Tables;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
 class ReminderLogsRelationManager extends RelationManager
@@ -24,7 +23,7 @@ class ReminderLogsRelationManager extends RelationManager
             ->columns([
                 TextColumn::make('type')
                     ->label('النوع')
-                    ->formatStateUsing(fn(string $state): string => match ($state) {
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
                         'payment' => 'تذكير بالدفع',
                         'absence' => 'تذكير بالغياب',
                         'trouble' => 'تذكير بالشغب',
@@ -32,7 +31,7 @@ class ReminderLogsRelationManager extends RelationManager
                         'late' => 'تذكير بالتأخر',
                         default => $state,
                     })
-                    ->icon(fn(string $state): string => match ($state) {
+                    ->icon(fn (string $state): string => match ($state) {
                         'payment' => 'heroicon-o-credit-card',
                         'absence' => 'heroicon-o-user-group',
                         'trouble' => 'heroicon-o-user-group',
@@ -40,7 +39,7 @@ class ReminderLogsRelationManager extends RelationManager
                         'late' => 'heroicon-o-user-group',
                         default => 'heroicon-o-user-group',
                     })
-                    ->color(fn(string $state): string => match ($state) {
+                    ->color(fn (string $state): string => match ($state) {
                         'payment' => 'success',
                         'absence' => 'danger',
                         'trouble' => 'warning',
