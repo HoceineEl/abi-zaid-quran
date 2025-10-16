@@ -2,6 +2,7 @@
 
 namespace App\Classes;
 
+use App\Models\GroupMessageTemplate;
 use App\Models\Group;
 use App\Models\Message;
 use App\Models\Student;
@@ -141,7 +142,7 @@ class Core
 
         // Get variable values from the GroupMessageTemplate model
         if ($group) {
-            $replacements = \App\Models\GroupMessageTemplate::getVariableValues($student, $group);
+            $replacements = GroupMessageTemplate::getVariableValues($student, $group);
         } else {
             // Only replace student_name and curr_date if no group is provided
             $replacements = [

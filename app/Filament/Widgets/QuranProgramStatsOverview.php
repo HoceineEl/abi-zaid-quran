@@ -11,7 +11,7 @@ use Illuminate\Support\Number;
 
 class QuranProgramStatsOverview extends BaseWidget
 {
-    protected static ?string $pollingInterval = null;
+    protected ?string $pollingInterval = null;
 
     protected function getStats(): array
     {

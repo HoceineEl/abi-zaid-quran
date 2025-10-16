@@ -2,9 +2,10 @@
 
 namespace App\Filament\Association\Resources\GroupResource\Pages;
 
+use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Actions\CreateAction;
 use App\Filament\Association\Resources\GroupResource;
 use Filament\Actions;
-use Filament\Resources\Components\Tab;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -29,7 +30,7 @@ class ListGroups extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make()
+            CreateAction::make()
                 ->hidden(fn() => auth()->user()->isTeacher()),
         ];
     }

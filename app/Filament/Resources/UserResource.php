@@ -2,6 +2,14 @@
 
 namespace App\Filament\Resources;
 
+use Filament\Schemas\Schema;
+use Filament\Actions\EditAction;
+use Filament\Actions\ActionGroup;
+use Filament\Schemas\Components\Section;
+use Filament\Actions\DeleteBulkAction;
+use App\Filament\Resources\UserResource\Pages\ListUsers;
+use App\Filament\Resources\UserResource\Pages\CreateUser;
+use App\Filament\Resources\UserResource\Pages\EditUser;
 use App\Classes\Core;
 use App\Filament\Actions\SendMessageToSelectedUsersAction;
 use App\Filament\Resources\UserResource\Pages;
@@ -14,26 +22,22 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\ToggleButtons;
-use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
-use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\ActionGroup;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
-use Filament\Infolists\Components\Section;
 use Filament\Infolists\Components\TextEntry;
 
 class UserResource extends Resource
 {
     protected static ?string $model = User::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-user-group';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-user-group';
 
     protected static ?string $navigationLabel = 'المستخدمين';
 
@@ -43,18 +47,18 @@ class UserResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'name';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('name')
+        return $schema
+            ->components([
+                TextInput::make('name')
                     ->label('الاسم')
                     ->required(),
-                Forms\Components\TextInput::make('email')
+                TextInput::make('email')
                     ->label('البريد الإلكتروني')
                     ->email()
                     ->required(),
-                Forms\Components\Select::make('role')
+                Select::make('role')
                     ->label('الدور')
                     ->options([
                         'admin' => 'مشرف',
@@ -67,7 +71,7 @@ class UserResource extends Resource
                     ->password()
                     ->revealable()
                     ->required(),
-                Forms\Components\TextInput::make('phone')
+                TextInput::make('phone')
                     ->label('رقم الهاتف')
                     ->required(),
             ]);
@@ -131,16 +135,16 @@ class UserResource extends Resource
             ->headerActions([
 
             ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
+            ->recordActions([
+                EditAction::make(),
                 ActionGroup::make([
-                    Action::make('view_groups')
+                    \Filament\Actions\Action::make('view_groups')
                         ->label('عرض المجموعات')
                         ->icon('heroicon-o-academic-cap')
                         ->color('info')
                         ->modalHeading('المجموعات المرفقة')
                         ->modalWidth('xl')
-                        ->infolist([
+                        ->schema([
                             Section::make('المجموعات المرفقة')
                                 ->schema([
                                     TextEntry::make('managedGroups.name')
@@ -152,11 +156,11 @@ class UserResource extends Resource
                                 ])
                                 ->columns(1),
                         ]),
-                    Action::make('attach_group')
+                    \Filament\Actions\Action::make('attach_group')
                         ->label('إرفاق مجموعة')
                         ->icon('heroicon-o-plus-circle')
                         ->color('success')
-                        ->form(fn(User $record) => [
+                        ->schema(fn(User $record) => [
                             Select::make('group_ids')
                                 ->label('المجموعات')
                                 ->multiple()
@@ -177,12 +181,12 @@ class UserResource extends Resource
                                 ->icon('heroicon-o-check-circle')
                                 ->send();
                         }),
-                    Action::make('detach_group')
+                    \Filament\Actions\Action::make('detach_group')
                         ->label('إزالة مجموعة')
                         ->icon('heroicon-o-minus-circle')
                         ->color('danger')
                         ->visible(fn(User $record) => $record->managedGroups()->exists())
-                        ->form(fn(User $record) => [
+                        ->schema(fn(User $record) => [
                             Select::make('group_ids')
                                 ->label('المجموعات')
                                 ->multiple()
@@ -202,9 +206,9 @@ class UserResource extends Resource
                     ->label('المجموعات')
                     ->icon('heroicon-o-academic-cap'),
             ])
-            ->bulkActions([
+            ->toolbarActions([
                 SendMessageToSelectedUsersAction::make(),
-                Tables\Actions\DeleteBulkAction::make(),
+                DeleteBulkAction::make(),
             ]);
     }
 
@@ -224,9 +228,9 @@ class UserResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListUsers::route('/'),
-            'create' => Pages\CreateUser::route('/create'),
-            'edit' => Pages\EditUser::route('/{record}/edit'),
+            'index' => ListUsers::route('/'),
+            'create' => CreateUser::route('/create'),
+            'edit' => EditUser::route('/{record}/edit'),
         ];
     }
 

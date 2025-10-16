@@ -2,6 +2,7 @@
 
 namespace App\Traits\WhatsApp;
 
+use Exception;
 use App\Models\WhatsAppSession;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
@@ -50,7 +51,7 @@ trait UtilityOperations
                 }
 
                 if (empty($status['qr'])) {
-                    throw new \Exception("No QR code available for session {$sessionId}. Status: " . ($status['status'] ?? 'unknown'));
+                    throw new Exception("No QR code available for session {$sessionId}. Status: " . ($status['status'] ?? 'unknown'));
                 }
             }
 
@@ -77,7 +78,7 @@ trait UtilityOperations
             ]);
 
             return $status;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to refresh WhatsApp QR code', [
                 'session_id' => $session->id,
                 'error' => $e->getMessage(),
@@ -101,7 +102,7 @@ trait UtilityOperations
         try {
             // Generate QR code from the text data
             return $this->generateQrCodeImage($qrData);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return null;
         }
     }
@@ -121,7 +122,7 @@ trait UtilityOperations
             $base64 = base64_encode($qrCodeSvg);
 
             return 'data:image/svg+xml;base64,' . $base64;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to generate QR code image', [
                 'qr_text' => $qrText,
                 'error' => $e->getMessage(),
@@ -142,8 +143,8 @@ trait UtilityOperations
                 return $response->json();
             }
 
-            throw new \Exception("HTTP {$response->status()}: " . $response->body());
-        } catch (\Exception $e) {
+            throw new Exception("HTTP {$response->status()}: " . $response->body());
+        } catch (Exception $e) {
             Log::error('Failed to get WhatsApp API info', [
                 'error' => $e->getMessage(),
             ]);
@@ -163,8 +164,8 @@ trait UtilityOperations
                 return $response->json();
             }
 
-            throw new \Exception("HTTP {$response->status()}: " . $response->body());
-        } catch (\Exception $e) {
+            throw new Exception("HTTP {$response->status()}: " . $response->body());
+        } catch (Exception $e) {
             Log::error('Failed to test WhatsApp authentication', [
                 'error' => $e->getMessage(),
             ]);
@@ -186,8 +187,8 @@ trait UtilityOperations
                 return $response->json();
             }
 
-            throw new \Exception("HTTP {$response->status()}: " . $response->body());
-        } catch (\Exception $e) {
+            throw new Exception("HTTP {$response->status()}: " . $response->body());
+        } catch (Exception $e) {
             Log::error('Failed to check WhatsApp number', [
                 'number' => $number,
                 'error' => $e->getMessage(),
@@ -203,7 +204,7 @@ trait UtilityOperations
             $token = $this->getSessionToken($sessionId);
 
             if (! $token) {
-                throw new \Exception("No valid token found for session {$sessionId}");
+                throw new Exception("No valid token found for session {$sessionId}");
             }
 
             $response = Http::withHeaders([
@@ -222,8 +223,8 @@ trait UtilityOperations
                 return $groups;
             }
 
-            throw new \Exception("HTTP {$response->status()}: " . $response->body());
-        } catch (\Exception $e) {
+            throw new Exception("HTTP {$response->status()}: " . $response->body());
+        } catch (Exception $e) {
             Log::error('Failed to get WhatsApp session groups', [
                 'session_id' => $sessionId,
                 'error' => $e->getMessage(),
@@ -239,7 +240,7 @@ trait UtilityOperations
             $token = $this->getSessionToken($sessionId);
 
             if (! $token) {
-                throw new \Exception("No valid token found for session {$sessionId}");
+                throw new Exception("No valid token found for session {$sessionId}");
             }
 
             $response = Http::withHeaders([
@@ -257,8 +258,8 @@ trait UtilityOperations
                 return $data['group'] ?? $data;
             }
 
-            throw new \Exception("HTTP {$response->status()}: " . $response->body());
-        } catch (\Exception $e) {
+            throw new Exception("HTTP {$response->status()}: " . $response->body());
+        } catch (Exception $e) {
             Log::error('Failed to get WhatsApp group details', [
                 'session_id' => $sessionId,
                 'group_id' => $groupId,
@@ -275,7 +276,7 @@ trait UtilityOperations
             $token = $this->getSessionToken($sessionId);
 
             if (! $token) {
-                throw new \Exception("No valid token found for session {$sessionId}");
+                throw new Exception("No valid token found for session {$sessionId}");
             }
 
             $response = Http::withHeaders([
@@ -294,8 +295,8 @@ trait UtilityOperations
                 return $data;
             }
 
-            throw new \Exception("HTTP {$response->status()}: " . $response->body());
-        } catch (\Exception $e) {
+            throw new Exception("HTTP {$response->status()}: " . $response->body());
+        } catch (Exception $e) {
             Log::error('Failed to get WhatsApp group participants', [
                 'session_id' => $sessionId,
                 'group_id' => $groupId,
@@ -312,7 +313,7 @@ trait UtilityOperations
             $token = $this->getSessionToken($sessionId);
 
             if (! $token) {
-                throw new \Exception("No valid token found for session {$sessionId}");
+                throw new Exception("No valid token found for session {$sessionId}");
             }
 
             $response = Http::withHeaders([
@@ -332,8 +333,8 @@ trait UtilityOperations
                 return $data;
             }
 
-            throw new \Exception("HTTP {$response->status()}: " . $response->body());
-        } catch (\Exception $e) {
+            throw new Exception("HTTP {$response->status()}: " . $response->body());
+        } catch (Exception $e) {
             Log::error('Failed to generate WhatsApp group invite link', [
                 'session_id' => $sessionId,
                 'group_id' => $groupId,
@@ -350,7 +351,7 @@ trait UtilityOperations
             $token = $this->getSessionToken($sessionId);
 
             if (! $token) {
-                throw new \Exception("No valid token found for session {$sessionId}");
+                throw new Exception("No valid token found for session {$sessionId}");
             }
 
             $response = Http::withHeaders([
@@ -368,8 +369,8 @@ trait UtilityOperations
                 return $data['metadata'] ?? $data;
             }
 
-            throw new \Exception("HTTP {$response->status()}: " . $response->body());
-        } catch (\Exception $e) {
+            throw new Exception("HTTP {$response->status()}: " . $response->body());
+        } catch (Exception $e) {
             Log::error('Failed to get WhatsApp group metadata', [
                 'session_id' => $sessionId,
                 'group_id' => $groupId,
@@ -386,7 +387,7 @@ trait UtilityOperations
             $token = $this->getSessionToken($sessionId);
 
             if (! $token) {
-                throw new \Exception("No valid token found for session {$sessionId}");
+                throw new Exception("No valid token found for session {$sessionId}");
             }
 
             $response = Http::withHeaders([
@@ -410,8 +411,8 @@ trait UtilityOperations
                 return $data;
             }
 
-            throw new \Exception("HTTP {$response->status()}: " . $response->body());
-        } catch (\Exception $e) {
+            throw new Exception("HTTP {$response->status()}: " . $response->body());
+        } catch (Exception $e) {
             Log::error('Failed to create WhatsApp group', [
                 'session_id' => $sessionId,
                 'group_name' => $name,
@@ -428,7 +429,7 @@ trait UtilityOperations
             $token = $this->getSessionToken($sessionId);
 
             if (! $token) {
-                throw new \Exception("No valid token found for session {$sessionId}");
+                throw new Exception("No valid token found for session {$sessionId}");
             }
 
             $response = Http::withHeaders([
@@ -451,8 +452,8 @@ trait UtilityOperations
                 return $data;
             }
 
-            throw new \Exception("HTTP {$response->status()}: " . $response->body());
-        } catch (\Exception $e) {
+            throw new Exception("HTTP {$response->status()}: " . $response->body());
+        } catch (Exception $e) {
             Log::error('Failed to add participants to WhatsApp group', [
                 'session_id' => $sessionId,
                 'group_id' => $groupId,
@@ -470,7 +471,7 @@ trait UtilityOperations
             $token = $this->getSessionToken($sessionId);
 
             if (! $token) {
-                throw new \Exception("No valid token found for session {$sessionId}");
+                throw new Exception("No valid token found for session {$sessionId}");
             }
 
             $response = Http::withHeaders([
@@ -492,8 +493,8 @@ trait UtilityOperations
                 return $data;
             }
 
-            throw new \Exception("HTTP {$response->status()}: " . $response->body());
-        } catch (\Exception $e) {
+            throw new Exception("HTTP {$response->status()}: " . $response->body());
+        } catch (Exception $e) {
             Log::error('Failed to promote participants in WhatsApp group', [
                 'session_id' => $sessionId,
                 'group_id' => $groupId,

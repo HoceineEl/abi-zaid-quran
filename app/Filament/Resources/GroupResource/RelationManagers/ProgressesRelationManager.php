@@ -2,30 +2,37 @@
 
 namespace App\Filament\Resources\GroupResource\RelationManagers;
 
+use Filament\Schemas\Schema;
+use DatePeriod;
+use DateTime;
+use DateInterval;
+use Filament\Support\Enums\IconSize;
+use Filament\Actions\ExportAction;
+use Filament\Actions\Action;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\ExportBulkAction;
+use Filament\Actions\BulkAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Tables\Enums\RecordActionsPosition;
+use Filament\Actions\CreateAction;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Grid;
 use App\Classes\Core;
 use App\Filament\Exports\ProgressExporter;
 use App\Helpers\ProgressFormHelper;
 use App\Models\Student;
 use App\Models\StudentDisconnection;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\ToggleButtons;
-use Filament\Forms\Form;
-use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Support\Colors\Color;
 use Filament\Tables;
-use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\ExportAction;
-use Filament\Tables\Actions\ExportBulkAction;
 use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Columns\IconColumn\IconColumnSize;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Enums\ActionsPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -49,9 +56,9 @@ class ProgressesRelationManager extends RelationManager
 
     public $dateTo;
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form->schema(
+        return $schema->components(
             ProgressFormHelper::getProgressFormSchema(group: $this->ownerRecord)
         );
     }
@@ -75,10 +82,10 @@ class ProgressesRelationManager extends RelationManager
             });
         // dd($statusPerDay);
         // Prepare columns for each date within the range
-        $dateRange = new \DatePeriod(
-            new \DateTime($dateFrom),
-            new \DateInterval('P1D'),
-            (new \DateTime($dateTo))->modify('+1 day')
+        $dateRange = new DatePeriod(
+            new DateTime($dateFrom),
+            new DateInterval('P1D'),
+            (new DateTime($dateTo))->modify('+1 day')
         );
 
         $statusColumns = collect();
@@ -111,7 +118,7 @@ class ProgressesRelationManager extends RelationManager
                             default => 'muted'
                         };
                     })
-                    ->size(IconColumnSize::Large)
+                    ->size(IconSize::Large)
                     ->default('unknown')
                     ->icon(function ($state) {
                         return match ($state) {
@@ -166,10 +173,10 @@ class ProgressesRelationManager extends RelationManager
                         $dateTo = $this->dateTo ?? now()->format('Y-m-d');
 
                         // Get date range
-                        $dateRange = new \DatePeriod(
-                            new \DateTime($dateFrom),
-                            new \DateInterval('P1D'),
-                            (new \DateTime($dateTo))->modify('+1 day')
+                        $dateRange = new DatePeriod(
+                            new DateTime($dateFrom),
+                            new DateInterval('P1D'),
+                            (new DateTime($dateTo))->modify('+1 day')
                         );
 
                         // Calculate status per day for each student
@@ -208,7 +215,7 @@ class ProgressesRelationManager extends RelationManager
             ])
             ->filters([
                 Filter::make('date')
-                    ->form([
+                    ->schema([
                         DatePicker::make('date_from')
                             ->label('من تاريخ')
                             ->reactive()
@@ -222,7 +229,7 @@ class ProgressesRelationManager extends RelationManager
                     ]),
                 Filter::make('present_number')
                     ->label('فلتر التقدم حسب عدد أيام الحضور')
-                    ->form([
+                    ->schema([
                         TextInput::make('number')
                             ->label('عدد أيام الحضور')
                             ->numeric()
@@ -242,7 +249,7 @@ class ProgressesRelationManager extends RelationManager
                     }),
                 Filter::make('absent_number')
                     ->label('فلتر التقدم حسب عدد أيام الغياب')
-                    ->form([
+                    ->schema([
                         TextInput::make('number')
                             ->label('عدد أيام الغياب')
                             ->numeric()
@@ -262,13 +269,13 @@ class ProgressesRelationManager extends RelationManager
 
             ])
 
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
+            ->toolbarActions([
+                BulkActionGroup::make([
                     ExportBulkAction::make()
                         ->label('تصدير')
                         ->exporter(ProgressExporter::class)
                         ->icon('heroicon-o-arrow-down-tray'),
-                    Tables\Actions\BulkAction::make('add_to_disconnection')
+                    BulkAction::make('add_to_disconnection')
                         ->label('إضافة إلى قائمة الانقطاع')
                         ->icon('heroicon-o-user-minus')
                         ->color('danger')
@@ -307,11 +314,11 @@ class ProgressesRelationManager extends RelationManager
                                     ->send();
                             }
                         }),
-                    Tables\Actions\DeleteBulkAction::make(),
+                    DeleteBulkAction::make(),
                 ]),
             ])
-            ->actions([
-                Tables\Actions\Action::make('send_whatsapp_msg')
+            ->recordActions([
+                Action::make('send_whatsapp_msg')
                     ->color('success')
                     ->iconButton()
                     ->icon('heroicon-o-chat-bubble-oval-left')
@@ -321,7 +328,7 @@ class ProgressesRelationManager extends RelationManager
                     }, true),
 
             ])
-            ->actionsPosition(ActionsPosition::BeforeColumns);
+            ->recordActionsPosition(RecordActionsPosition::BeforeColumns);
     }
 
     public function isReadOnly(): bool
@@ -352,7 +359,7 @@ class ProgressesRelationManager extends RelationManager
     public function headerActions(): array
     {
         return [
-            Tables\Actions\CreateAction::make(),
+            CreateAction::make(),
             Action::make('make_others_as_absent')
                 ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
                 ->label('تسجيل البقية كغائبين اليوم')
@@ -384,7 +391,7 @@ class ProgressesRelationManager extends RelationManager
                 ->label('تسجيل تقدم جماعي')
                 ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
                 ->color(Color::Teal)
-                ->form(function (Get $get) {
+                ->schema(function (Get $get) {
                     $students = $this->ownerRecord->students->filter(function ($student) {
                         return $student->progresses->where('date', now()->format('Y-m-d'))->count() == 0;
                     })->pluck('name', 'id');

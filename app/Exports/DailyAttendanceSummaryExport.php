@@ -2,6 +2,8 @@
 
 namespace App\Exports;
 
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use Illuminate\Support\Collection;
 use App\Models\Group;
 use Carbon\Carbon;
 use Maatwebsite\Excel\Concerns\FromCollection;
@@ -24,7 +26,7 @@ class DailyAttendanceSummaryExport implements FromCollection, WithHeadings, Shou
     }
 
     /**
-     * @return \Illuminate\Support\Collection
+     * @return Collection
      */
     public function collection()
     {
@@ -84,13 +86,13 @@ class DailyAttendanceSummaryExport implements FromCollection, WithHeadings, Shou
 
                     // Color for present
                     $sheet->getStyle($presentCell)->getFill()
-                        ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                        ->setFillType(Fill::FILL_SOLID)
                         ->getStartColor()->setARGB('C6EFCE');
                     $sheet->getStyle($presentCell)->getFont()->getColor()->setARGB('006100');
 
                     // Color for absent
                     $sheet->getStyle($absentCell)->getFill()
-                        ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                        ->setFillType(Fill::FILL_SOLID)
                         ->getStartColor()->setARGB('FFC7CE');
                     $sheet->getStyle($absentCell)->getFont()->getColor()->setARGB('9C0006');
                 }

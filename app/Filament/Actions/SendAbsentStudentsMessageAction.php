@@ -2,6 +2,10 @@
 
 namespace App\Filament\Actions;
 
+use Filament\Actions\Action;
+use Filament\Forms\Components\Select;
+use Filament\Schemas\Components\Utilities\Get;
+use Exception;
 use App\Classes\Core;
 use App\Enums\WhatsAppMessageStatus;
 use App\Helpers\PhoneHelper;
@@ -13,9 +17,7 @@ use App\Services\WhatsAppService;
 use App\Traits\HandlesWhatsAppProgress;
 use Filament\Forms;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Get;
 use Filament\Notifications\Notification;
-use Filament\Tables\Actions\Action;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
 
@@ -46,7 +48,7 @@ class SendAbsentStudentsMessageAction extends Action
 
                 // Only show template selection for admins
                 if ($isAdmin) {
-                    $fields[] = Forms\Components\Select::make('template_id')
+                    $fields[] = Select::make('template_id')
                         ->label('اختر قالب الرسالة')
                         ->options(function () use ($ownerRecord) {
                             if ($ownerRecord && method_exists($ownerRecord, 'messageTemplates')) {
@@ -199,7 +201,7 @@ class SendAbsentStudentsMessageAction extends Action
                 // Clean phone number using phone helper (remove + sign)
                 try {
                     $phoneNumber = str_replace('+', '', phone($student->phone, 'MA')->formatE164());
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                     $phoneNumber = null;
                 }
 
@@ -258,7 +260,7 @@ class SendAbsentStudentsMessageAction extends Action
                     $messagesQueued++;
                     $messageIndex++;
 
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                     // Update message history as failed if it was created
                     if (isset($messageHistory)) {
                         $messageHistory->update([

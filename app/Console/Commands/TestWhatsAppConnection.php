@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use Exception;
 use App\Services\WhatsAppService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
@@ -41,7 +42,7 @@ class TestWhatsAppConnection extends Command
                 $this->warn("API health check returned status: {$response->status()}");
                 $this->line('Response: ' . $response->body());
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->error('✗ API health check failed: ' . $e->getMessage());
         }
 
@@ -67,7 +68,7 @@ class TestWhatsAppConnection extends Command
                 $this->error("✗ Sessions endpoint failed with status: {$response->status()}");
                 $this->line('Response: ' . $response->body());
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->error('✗ Sessions endpoint failed: ' . $e->getMessage());
         }
 
@@ -79,14 +80,14 @@ class TestWhatsAppConnection extends Command
             // Try to get a test session status (this will fail but we want to see the error)
             try {
                 $service->getSessionStatus('test-session-123');
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 if (str_contains($e->getMessage(), 'not found')) {
                     $this->info('✓ WhatsAppService is working (test session not found as expected)');
                 } else {
                     $this->warn('WhatsAppService error: ' . $e->getMessage());
                 }
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->error('✗ WhatsAppService failed: ' . $e->getMessage());
         }
 

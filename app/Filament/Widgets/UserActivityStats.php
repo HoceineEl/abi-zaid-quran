@@ -10,7 +10,7 @@ use Illuminate\Support\Number;
 
 class UserActivityStats extends BaseWidget
 {
-    protected static ?string $pollingInterval = '30s';
+    protected ?string $pollingInterval = '30s';
 
     protected function getStats(): array
     {

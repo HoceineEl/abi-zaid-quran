@@ -2,6 +2,7 @@
 
 namespace App\Filament\Association\Resources\GroupResource\Pages;
 
+use Filament\Actions\EditAction;
 use App\Filament\Association\Resources\GroupResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ViewRecord;
@@ -13,7 +14,7 @@ class ViewGroup extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\EditAction::make()
+            EditAction::make()
                 ->hidden(fn() => auth()->user()->isTeacher()),
         ];
     }

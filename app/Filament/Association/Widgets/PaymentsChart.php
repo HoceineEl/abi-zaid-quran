@@ -11,13 +11,13 @@ class PaymentsChart extends ChartWidget
 {
     use InteractsWithPageFilters;
 
-    protected static ?string $heading = 'تحليل الرسوم المحصّلة';
-    protected static ?string $maxHeight = '300px';
+    protected ?string $heading = 'تحليل الرسوم المحصّلة';
+    protected ?string $maxHeight = '300px';
 
     protected function getData(): array
     {
-        $dateFrom = $this->filters['date_from'] ?? now()->startOfYear();
-        $dateTo = $this->filters['date_to'] ?? now();
+        $dateFrom = $this->pageFilters['date_from'] ?? now()->startOfYear();
+        $dateTo = $this->pageFilters['date_to'] ?? now();
 
         $payments = Payment::whereBetween('created_at', [$dateFrom, $dateTo])
             ->selectRaw('DATE(created_at) as date, SUM(amount) as total')

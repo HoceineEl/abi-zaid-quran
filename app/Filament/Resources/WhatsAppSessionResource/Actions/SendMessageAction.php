@@ -2,12 +2,15 @@
 
 namespace App\Filament\Resources\WhatsAppSessionResource\Actions;
 
+use Filament\Actions\Action;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Textarea;
+use Exception;
 use App\Models\WhatsAppMessageHistory;
 use App\Models\WhatsAppSession;
 use App\Services\WhatsAppService;
 use Filament\Forms;
 use Filament\Notifications\Notification;
-use Filament\Tables\Actions\Action;
 
 class SendMessageAction extends Action
 {
@@ -25,14 +28,14 @@ class SendMessageAction extends Action
             ->color('success')
             ->visible(fn (WhatsAppSession $record) => $record->isConnected())
             ->form([
-                Forms\Components\TextInput::make('recipient')
+                TextInput::make('recipient')
                     ->label('رقم هاتف المستقبل')
                     ->placeholder('966501234567')
                     ->required()
                     ->regex('/^[0-9]+$/')
                     ->helperText('أدخل رقم الهاتف مع رمز البلد (مثال: 966501234567)'),
 
-                Forms\Components\Textarea::make('message')
+                Textarea::make('message')
                     ->label('الرسالة')
                     ->placeholder('اكتب رسالتك هنا...')
                     ->required()
@@ -42,7 +45,7 @@ class SendMessageAction extends Action
             ->action(function (WhatsAppSession $record, array $data) {
                 try {
                     if (!$record->isConnected()) {
-                        throw new \Exception('جلسة واتساب غير متصلة');
+                        throw new Exception('جلسة واتساب غير متصلة');
                     }
 
                     // Create message history record as queued
@@ -72,7 +75,7 @@ class SendMessageAction extends Action
                                 'sent_at' => now(),
                             ]);
 
-                        } catch (\Exception $e) {
+                        } catch (Exception $e) {
                             // Update message history as failed
                             $messageHistory->update([
                                 'status' => 'failed',
@@ -86,7 +89,7 @@ class SendMessageAction extends Action
                         ->body("سيتم إرسال الرسالة إلى {$data['recipient']} قريباً")
                         ->success()
                         ->send();
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                     Notification::make()
                         ->title('فشل في جدولة الرسالة')
                         ->body($e->getMessage())

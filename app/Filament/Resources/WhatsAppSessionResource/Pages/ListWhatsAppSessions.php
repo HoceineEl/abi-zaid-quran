@@ -2,6 +2,10 @@
 
 namespace App\Filament\Resources\WhatsAppSessionResource\Pages;
 
+use Throwable;
+use Exception;
+use Filament\Forms\Components\TextInput;
+use Log;
 use App\Enums\WhatsAppConnectionStatus;
 use App\Filament\Resources\WhatsAppSessionResource;
 use App\Models\WhatsAppSession;
@@ -48,7 +52,7 @@ class ListWhatsAppSessions extends ListRecords
                 $record->markAsConnected($result);
 
                 // Send notification for successful connection
-                \Filament\Notifications\Notification::make()
+                Notification::make()
                     ->title('تم الاتصال بنجاح! 🎉')
                     ->body('جلسة واتساب متصلة وجاهزة للاستخدام')
                     ->success()
@@ -75,7 +79,7 @@ class ListWhatsAppSessions extends ListRecords
             if ($previous !== $record->status) {
                 $this->refreshTable();
             }
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             // Handle persistent connection errors
             $this->handlePollingError($record, $e);
         }
@@ -106,7 +110,7 @@ class ListWhatsAppSessions extends ListRecords
         cache()->put("poll_count_{$record->id}", $pollCount, now()->addHours(1));
     }
 
-    protected function handlePollingError(WhatsAppSession $record, \Throwable $e): void
+    protected function handlePollingError(WhatsAppSession $record, Throwable $e): void
     {
         $errorCount = cache()->get("error_count_{$record->id}", 0) + 1;
         cache()->put("error_count_{$record->id}", $errorCount, now()->addHours(1));
@@ -119,7 +123,7 @@ class ListWhatsAppSessions extends ListRecords
             ]);
 
             // Send error notification
-            \Filament\Notifications\Notification::make()
+            Notification::make()
                 ->title('فقدان الاتصال')
                 ->body('تم فقدان الاتصال مع خادم واتساب. يرجى إعادة تشغيل الجلسة.')
                 ->warning()
@@ -201,7 +205,7 @@ class ListWhatsAppSessions extends ListRecords
 
             // Refresh the table to show updated status
             $this->refreshTable();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             try {
                 // If getting status failed, try to start a new session
                 $whatsappService = app(WhatsAppService::class);
@@ -215,7 +219,7 @@ class ListWhatsAppSessions extends ListRecords
 
                 // Refresh the table to show updated status
                 $this->refreshTable();
-            } catch (\Exception $ex) {
+            } catch (Exception $ex) {
                 $record->markAsDisconnected();
 
                 Notification::make()
@@ -235,8 +239,8 @@ class ListWhatsAppSessions extends ListRecords
                 ->icon('heroicon-o-plus')
                 ->color('success')
                 ->hidden(fn () => $this->hasActiveSession())
-                ->form([
-                    Forms\Components\TextInput::make('name')
+                ->schema([
+                    TextInput::make('name')
                         ->label('اسم الجلسة')
                         ->maxLength(255)
                         ->required()
@@ -262,7 +266,7 @@ class ListWhatsAppSessions extends ListRecords
                             ->body('يرجى مسح رمز QR')
                             ->success()
                             ->send();
-                    } catch (\Exception $e) {
+                    } catch (Exception $e) {
                         $record->markAsDisconnected();
 
                         Notification::make()
@@ -298,7 +302,7 @@ class ListWhatsAppSessions extends ListRecords
             try {
                 $whatsappService = app(WhatsAppService::class);
                 $whatsappService->logout($session);
-            } catch (\Exception) {
+            } catch (Exception) {
                 // Silent fail - no logging
             }
 
@@ -327,8 +331,8 @@ class ListWhatsAppSessions extends ListRecords
                     ->info()
                     ->send();
             }
-        } catch (\Exception $e) {
-            \Log::warning('Failed to cleanup existing sessions', [
+        } catch (Exception $e) {
+            Log::warning('Failed to cleanup existing sessions', [
                 'user_id' => auth()->id(),
                 'error' => $e->getMessage(),
             ]);

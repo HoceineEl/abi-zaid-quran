@@ -2,6 +2,17 @@
 
 namespace App\Filament\Association\Resources;
 
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
+use Filament\Actions\Action;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use App\Filament\Association\Resources\GroupResource\Pages\ListGroups;
+use App\Filament\Association\Resources\GroupResource\Pages\ViewGroup;
+use App\Filament\Association\Resources\GroupResource\Pages\CreateGroup;
+use App\Filament\Association\Resources\GroupResource\Pages\EditGroup;
 use App\Enums\Days;
 use App\Filament\Association\Resources\GroupResource\Pages;
 use App\Filament\Association\Resources\GroupResource\RelationManagers\AttendancesRelationManager;
@@ -14,13 +25,10 @@ use App\Exports\GroupStudentsPaymentExport;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\ToggleButtons;
-use Filament\Forms\Form;
 use Filament\Infolists\Components\TextEntry;
-use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Tables\Actions\Action;
 use Illuminate\Database\Eloquent\Builder;
 use App\Models\User;
 use Maatwebsite\Excel\Facades\Excel;
@@ -29,7 +37,7 @@ class GroupResource extends Resource
 {
     protected static ?string $model = MemoGroup::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-user-group';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-user-group';
 
     protected static ?string $navigationLabel = 'المجموعات';
 
@@ -37,10 +45,10 @@ class GroupResource extends Resource
 
     protected static ?string $pluralModelLabel = 'المجموعات';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
+        return $schema
+            ->components([
                 TextInput::make('name')
                     ->label('الإسم')
                     ->required(),
@@ -62,10 +70,10 @@ class GroupResource extends Resource
             ]);
     }
 
-    public static function infolist(Infolist $infolist): Infolist
+    public static function infolist(Schema $schema): Schema
     {
-        return $infolist
-            ->schema([
+        return $schema
+            ->components([
                 TextEntry::make('name')
                     ->label('الإسم'),
                 TextEntry::make('teacher.name')
@@ -79,7 +87,7 @@ class GroupResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name')
+                TextColumn::make('name')
                     ->searchable(query: function ($query, string $search) {
                         return $query->where(function ($query) use ($search) {
                             $query->where('name', 'like', '%' . $search . '%')
@@ -91,16 +99,16 @@ class GroupResource extends Resource
                     ->badge()
                     ->label('الإسم')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('teacher.name')
+                TextColumn::make('teacher.name')
                     ->searchable()
                     ->label('المدرس')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('arabic_days')
+                TextColumn::make('arabic_days')
                     ->searchable(false)
                     ->label('الأيام')
                     ->sortable(false),
 
-                Tables\Columns\TextColumn::make('memorizers_count')
+                TextColumn::make('memorizers_count')
                     ->searchable(false)
                     ->getStateUsing(fn($record) => $record->memorizers_count)
                     ->label('عدد الطلاب')
@@ -109,16 +117,16 @@ class GroupResource extends Resource
             ->filters([
                 //
             ])
-            ->actions([
-                Tables\Actions\EditAction::make()
+            ->recordActions([
+                EditAction::make()
                     ->hidden(fn() => auth()->user()->isTeacher()),
-                Tables\Actions\ViewAction::make(),
+                ViewAction::make(),
                 Action::make('export_students_payment')
                     ->label('تصدير Excel')
                     ->icon('heroicon-o-document-arrow-down')
                     ->color('success')
                     ->hidden(fn() => auth()->user()->isTeacher())
-                    ->form([
+                    ->schema([
                         Select::make('selected_month')
                             ->label('الشهر المختار')
                             ->options([
@@ -148,9 +156,9 @@ class GroupResource extends Resource
                     }),
             ])
             ->recordUrl(fn($record) => GroupResource::getUrl('view', ['record' => $record->id]))
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make()
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make()
                         ->hidden(fn() => auth()->user()->isTeacher()),
                 ]),
             ]);
@@ -188,15 +196,15 @@ class GroupResource extends Resource
     {
         if (auth()->check() && auth()->user()->isTeacher()) {
             return [
-                'index' => Pages\ListGroups::route('/'),
-                'view' => Pages\ViewGroup::route('/{record}'),
+                'index' => ListGroups::route('/'),
+                'view' => ViewGroup::route('/{record}'),
             ];
         }
         return [
-            'index' => Pages\ListGroups::route('/'),
-            'create' => Pages\CreateGroup::route('/create'),
-            'edit' => Pages\EditGroup::route('/{record}/edit'),
-            'view' => Pages\ViewGroup::route('/{record}'),
+            'index' => ListGroups::route('/'),
+            'create' => CreateGroup::route('/create'),
+            'edit' => EditGroup::route('/{record}/edit'),
+            'view' => ViewGroup::route('/{record}'),
         ];
     }
 }

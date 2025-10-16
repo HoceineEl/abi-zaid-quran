@@ -2,6 +2,7 @@
 
 namespace App\Filament\Association\Resources\MemorizerResource\Pages;
 
+use Filament\Actions\DeleteAction;
 use App\Filament\Association\Resources\MemorizerResource;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
@@ -13,7 +14,7 @@ class EditMemorizer extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            DeleteAction::make(),
         ];
     }
 }

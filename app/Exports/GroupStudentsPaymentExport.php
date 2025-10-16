@@ -2,6 +2,8 @@
 
 namespace App\Exports;
 
+use Exception;
+use PhpOffice\PhpSpreadsheet\Style\Border;
 use App\Models\MemoGroup;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -69,7 +71,7 @@ class GroupStudentsPaymentExport implements FromCollection, WithHeadings, Should
                 // Format phone number using Laravel's phone helper if available
                 try {
                     $formattedPhone = $phoneNumber !== 'غير محدد' ? phone($phoneNumber, 'MA')->formatNational() : 'غير محدد';
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                     $formattedPhone = $phoneNumber; // fallback to original number if formatting fails
                 }
 
@@ -202,11 +204,11 @@ class GroupStudentsPaymentExport implements FromCollection, WithHeadings, Should
                 // Add borders to all cells
                 $highestRow = $sheet->getHighestRow();
                 $sheet->getStyle("A1:H{$highestRow}")->getBorders()->getAllBorders()
-                    ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+                    ->setBorderStyle(Border::BORDER_THIN);
 
                 // Add special border for homework parent header
                 $sheet->getStyle('F4:G4')->getBorders()->getAllBorders()
-                    ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_MEDIUM);
+                    ->setBorderStyle(Border::BORDER_MEDIUM);
 
                 // Auto-adjust column widths
                 foreach (range('A', 'H') as $column) {

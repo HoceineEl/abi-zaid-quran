@@ -2,11 +2,17 @@
 
 namespace App\Filament\Association\Resources;
 
+use Filament\Schemas\Schema;
+use Filament\Schemas\Components\Section;
+use Filament\Actions\EditAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use App\Filament\Association\Resources\GuardianResource\Pages\ListGuardians;
+use App\Filament\Association\Resources\GuardianResource\Pages\CreateGuardian;
+use App\Filament\Association\Resources\GuardianResource\Pages\EditGuardian;
 use App\Filament\Association\Resources\GuardianResource\Pages;
 use App\Models\Guardian;
-use Filament\Forms\Components\Section;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
@@ -17,7 +23,7 @@ class GuardianResource extends Resource
 {
     protected static ?string $model = Guardian::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-users';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-users';
     protected static bool $shouldRegisterNavigation = false;
 
     protected static ?string $navigationLabel = 'أولياء الأمور';
@@ -26,10 +32,10 @@ class GuardianResource extends Resource
 
     protected static ?string $pluralModelLabel = 'أولياء الأمور';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
+        return $schema
+            ->components([
                 Section::make()
                     ->schema([
                         TextInput::make('name')
@@ -75,12 +81,12 @@ class GuardianResource extends Resource
             ->filters([
                 //
             ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
+            ->recordActions([
+                EditAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }
@@ -95,9 +101,9 @@ class GuardianResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListGuardians::route('/'),
-            'create' => Pages\CreateGuardian::route('/create'),
-            'edit' => Pages\EditGuardian::route('/{record}/edit'),
+            'index' => ListGuardians::route('/'),
+            'create' => CreateGuardian::route('/create'),
+            'edit' => EditGuardian::route('/{record}/edit'),
         ];
     }
 }

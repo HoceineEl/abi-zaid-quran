@@ -2,11 +2,16 @@
 
 namespace App\Filament\Association\Resources\GroupResource\RelationManagers;
 
+use Filament\Schemas\Schema;
+use DatePeriod;
+use DateTime;
+use DateInterval;
+use Filament\Actions\Action;
+use Filament\Support\Enums\Size;
 use App\Enums\MemorizationScore;
 use App\Enums\Troubles;
 use App\Models\Attendance;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Support\Enums\IconSize;
 use Filament\Tables\Columns\IconColumn;
@@ -16,9 +21,7 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Filament\Tables\Actions\Action;
 use Filament\Support\Colors\Color;
-use Filament\Support\Enums\ActionSize;
 
 class AttendancesScoreRelationManager extends RelationManager
 {
@@ -27,7 +30,7 @@ class AttendancesScoreRelationManager extends RelationManager
     protected static ?string $navigationLabel = 'الحضور والتقييم';
     protected static ?string $modelLabel = 'حضور وتقييم';
     protected static ?string $pluralModelLabel = 'الحضور والتقييم';
-    protected static ?string $icon = 'heroicon-o-clipboard-document-check';
+    protected static string | \BackedEnum | null $icon = 'heroicon-o-clipboard-document-check';
 
     public $dateFrom;
     public $dateTo;
@@ -37,9 +40,9 @@ class AttendancesScoreRelationManager extends RelationManager
         return !auth()->user()->isTeacher();
     }
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form->schema([]);
+        return $schema->components([]);
     }
 
     public function table(Table $table): Table
@@ -47,10 +50,10 @@ class AttendancesScoreRelationManager extends RelationManager
         $this->dateFrom = $this->dateFrom ?? now()->subDays(2)->format('Y-m-d');
         $this->dateTo = $this->dateTo ?? now()->format('Y-m-d');
 
-        $dateRange = new \DatePeriod(
-            new \DateTime($this->dateFrom),
-            new \DateInterval('P1D'),
-            (new \DateTime($this->dateTo))->modify('+1 day')
+        $dateRange = new DatePeriod(
+            new DateTime($this->dateFrom),
+            new DateInterval('P1D'),
+            (new DateTime($this->dateTo))->modify('+1 day')
         );
 
         $attendanceColumns = collect();
@@ -163,7 +166,7 @@ class AttendancesScoreRelationManager extends RelationManager
             ->filters([
                 Filter::make('date')
                     ->columnSpanFull()
-                    ->form([
+                    ->schema([
                         DatePicker::make('date_from')
                             ->label('من تاريخ')
                             ->reactive()
@@ -192,7 +195,7 @@ class AttendancesScoreRelationManager extends RelationManager
                 Action::make('export_table')
                     ->label('إرسال التقرير اليومي')
                     ->icon('heroicon-o-share')
-                    ->size(ActionSize::Small)
+                    ->size(Size::Small)
                     ->color('success')
                     ->action(function () {
                         $date = now()->format('Y-m-d');
@@ -212,8 +215,8 @@ class AttendancesScoreRelationManager extends RelationManager
                         ]);
                     })
             ])
-            ->actions([])
-            ->bulkActions([]);
+            ->recordActions([])
+            ->toolbarActions([]);
     }
 
     public function isReadOnly(): bool

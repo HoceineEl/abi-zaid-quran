@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Enums\Days;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -18,7 +19,7 @@ class MemoGroup extends Model
         'days' => 'array'
     ];
 
-    public function memorizers(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function memorizers(): HasMany
     {
         return $this->hasMany(Memorizer::class);
     }

@@ -2,6 +2,26 @@
 
 namespace App\Filament\Resources\GroupResource\RelationManagers;
 
+use Filament\Schemas\Schema;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Select;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\EditAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\ViewAction;
+use Filament\Actions\Action;
+use Filament\Tables\Enums\RecordActionsPosition;
+use Filament\Support\Enums\Size;
+use Filament\Forms\Components\CheckboxList;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Actions\CreateAction;
+use Filament\Forms\Components\FileUpload;
+use ZipArchive;
+use Exception;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\BulkAction;
+use Illuminate\Support\Collection;
 use App\Classes\Core;
 use App\Enums\MessageSubmissionType;
 use App\Enums\MessageResponseStatus;
@@ -20,20 +40,11 @@ use Filament\Forms;
 use Filament\Forms\Components\Tabs;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
-use Filament\Forms\Form;
-use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
-use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\ActionGroup as ActionsActionGroup;
-use Filament\Tables\Actions\BulkAction;
-use Filament\Tables\Actions\BulkActionGroup;
-use Filament\Tables\Actions\CreateAction as ActionsCreateAction;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Enums\ActionsPosition;
 use Filament\Tables\Table;
-use Filament\Support\Enums\ActionSize;
 use Filament\Tables\Columns\IconColumn;
 use Propaganistas\LaravelPhone\PhoneNumber;
 
@@ -53,25 +64,25 @@ class StudentsRelationManager extends RelationManager
 
     protected static ?string $pluralModelLabel = 'طلاب';
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('name')
+        return $schema
+            ->components([
+                TextInput::make('name')
                     ->label('الاسم')
                     ->required(),
-                Forms\Components\TextInput::make('phone')
+                TextInput::make('phone')
                     ->label('رقم الهاتف')
                     ->default('06')
                     ->required(),
-                Forms\Components\Select::make('sex')
+                Select::make('sex')
                     ->label('الجنس')
                     ->options([
                         'male' => 'ذكر',
                         'female' => 'أنثى',
                     ])
                     ->default('male'),
-                Forms\Components\TextInput::make('city')
+                TextInput::make('city')
                     ->label('المدينة')
                     ->required(),
             ]);
@@ -154,14 +165,14 @@ class StudentsRelationManager extends RelationManager
 
             ->reorderable('order_no', true)
             ->defaultSort('order_no')
-            ->actions(
+            ->recordActions(
                 [
-                    ActionsActionGroup::make([
-                        Tables\Actions\EditAction::make(),
-                        Tables\Actions\DeleteAction::make(),
-                        Tables\Actions\ViewAction::make(),
+                    ActionGroup::make([
+                        EditAction::make(),
+                        DeleteAction::make(),
+                        ViewAction::make(),
                     ]),
-                    Tables\Actions\Action::make('send_whatsapp_msg')
+                    Action::make('send_whatsapp_msg')
                         ->color('success')
                         ->iconButton()
                         ->icon('heroicon-o-chat-bubble-oval-left')
@@ -170,7 +181,7 @@ class StudentsRelationManager extends RelationManager
                             return self::getWhatsAppUrl($record, $this->ownerRecord);
                         }, true),
                 ],
-                ActionsPosition::BeforeColumns
+                RecordActionsPosition::BeforeColumns
             )
             ->paginated(false)
             ->headerActions([
@@ -179,9 +190,9 @@ class StudentsRelationManager extends RelationManager
                     ->color('danger')
                     ->icon('heroicon-o-exclamation-circle')
                     ->modalSubmitActionLabel('تأكيد')
-                    ->size(ActionSize::ExtraSmall)
+                    ->size(Size::ExtraSmall)
                     ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
-                    ->form([
+                    ->schema([
                         Toggle::make('with_reason')
                             ->label('غياب بعذر')
                             ->reactive()
@@ -218,7 +229,7 @@ class StudentsRelationManager extends RelationManager
                             ->success()
                             ->send();
                     }),
-                ActionsActionGroup::make([
+                ActionGroup::make([
                     SendReminderToUnmarkedStudentsAction::make()
                         ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user())),
                     SendAbsentStudentsMessageAction::make()
@@ -228,13 +239,13 @@ class StudentsRelationManager extends RelationManager
                         ->icon('heroicon-o-document-duplicate')
                         ->color('primary')
                         ->visible(fn() => auth()->user()->isAdministrator())
-                        ->form([
-                            Forms\Components\Select::make('source_group_id')
+                        ->schema([
+                            Select::make('source_group_id')
                                 ->label('المجموعة المصدر')
-                                ->options(fn() => \App\Models\Group::where('id', '!=', $this->ownerRecord->id)->pluck('name', 'id'))
+                                ->options(fn() => Group::where('id', '!=', $this->ownerRecord->id)->pluck('name', 'id'))
                                 ->required()
                                 ->reactive(),
-                            Forms\Components\CheckboxList::make('student_ids')
+                            CheckboxList::make('student_ids')
                                 ->label('الطلاب')
                                 ->reactive()
                                 ->options(function (Get $get) {
@@ -245,7 +256,7 @@ class StudentsRelationManager extends RelationManager
 
                                     $currentGroupPhones = $this->ownerRecord->students()->pluck('phone');
 
-                                    return \App\Models\Student::without(['progresses', 'group', 'progresses.page', 'group.managers'])
+                                    return Student::without(['progresses', 'group', 'progresses.page', 'group.managers'])
                                         ->where('group_id', $groupId)
                                         ->whereNotIn('phone', $currentGroupPhones)
                                         ->pluck('name', 'id');
@@ -254,7 +265,7 @@ class StudentsRelationManager extends RelationManager
                                 ->bulkToggleable(),
                         ])
                         ->action(function (array $data) {
-                            $studentsToCreate = \App\Models\Student::without(['progresses', 'group', 'progresses.page', 'group.managers'])
+                            $studentsToCreate = Student::without(['progresses', 'group', 'progresses.page', 'group.managers'])
                                 ->whereIn('id', $data['student_ids'])
                                 ->get();
 
@@ -279,7 +290,7 @@ class StudentsRelationManager extends RelationManager
                                 ->success()
                                 ->send();
                         }),
-                    ActionsCreateAction::make()
+                    CreateAction::make()
                         ->label('إضافة طالب')
                         ->icon('heroicon-o-plus-circle')
                         ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
@@ -290,7 +301,7 @@ class StudentsRelationManager extends RelationManager
                 Action::make('export_table')
                     ->label('تصدير كشف الحضور')
                     ->icon('heroicon-o-share')
-                    ->size(ActionSize::Small)
+                    ->size(Size::Small)
                     ->color('success')
                     ->action(function () {
                         $students = self::getSortedStudentsForAttendanceReport($this->ownerRecord);
@@ -318,16 +329,16 @@ class StudentsRelationManager extends RelationManager
                 Action::make('import_whatsapp_attendance')
                     ->label('التحضير بسجل الواتساب')
                     ->icon('heroicon-o-chat-bubble-left-right')
-                    ->size(ActionSize::Small)
+                    ->size(Size::Small)
                     ->color('primary')
                     ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user()))
-                    ->form([
-                        Forms\Components\FileUpload::make('chat_file')
+                    ->schema([
+                        FileUpload::make('chat_file')
                             ->label('ملف محادثة واتساب')
                             ->disk('local')
                             ->directory('uploads')
                             ->required(),
-                        Forms\Components\Toggle::make('register_rest_absent')
+                        Toggle::make('register_rest_absent')
                             ->label('تسجيل البقية كغائبين اليوم')
                             ->default(false),
                     ])
@@ -348,7 +359,7 @@ class StudentsRelationManager extends RelationManager
                         $tempTxtPath = null;
 
                         if ($isZip) {
-                            $zip = new \ZipArchive();
+                            $zip = new ZipArchive();
                             if ($zip->open($storagePath) === true) {
                                 for ($i = 0; $i < $zip->numFiles; $i++) {
                                     $entry = $zip->getNameIndex($i);
@@ -413,7 +424,7 @@ class StudentsRelationManager extends RelationManager
 
                         // Get the latest date in the chat and determine processing date
                         $latestChatDate = null;
-                        $todayDate = \Carbon\Carbon::now()->startOfDay();
+                        $todayDate = Carbon::now()->startOfDay();
                         $processingDate = $todayDate; // Default to today
                         $processingDateStr = null;
 
@@ -436,9 +447,9 @@ class StudentsRelationManager extends RelationManager
                                         try {
                                             return [
                                                 'message' => $msg,
-                                                'datetime' => \Carbon\Carbon::createFromDate($year, $month, $day)->startOfDay()
+                                                'datetime' => Carbon::createFromDate($year, $month, $day)->startOfDay()
                                             ];
-                                        } catch (\Exception $e) {
+                                        } catch (Exception $e) {
                                             return null;
                                         }
                                     }
@@ -462,9 +473,9 @@ class StudentsRelationManager extends RelationManager
                                         try {
                                             return [
                                                 'message' => $msg,
-                                                'datetime' => \Carbon\Carbon::createFromDate($year, $month, $day)->startOfDay()
+                                                'datetime' => Carbon::createFromDate($year, $month, $day)->startOfDay()
                                             ];
-                                        } catch (\Exception $e) {
+                                        } catch (Exception $e) {
                                             return null;
                                         }
                                     }
@@ -501,7 +512,7 @@ class StudentsRelationManager extends RelationManager
                                     }
                                 }
                             }
-                        } catch (\Exception $e) {
+                        } catch (Exception $e) {
                             // Keep processingDate as today on error
                         }
 
@@ -525,9 +536,9 @@ class StudentsRelationManager extends RelationManager
                                     $year = (int)$dateParts[3];
                                     if ($year < 100) $year += 2000;
                                     try {
-                                        $msgDate = \Carbon\Carbon::createFromDate($year, $month, $day)->startOfDay();
+                                        $msgDate = Carbon::createFromDate($year, $month, $day)->startOfDay();
                                         return $msgDate->isSameDay($processingDate);
-                                    } catch (\Exception $e) {
+                                    } catch (Exception $e) {
                                         return false;
                                     }
                                 }
@@ -655,7 +666,7 @@ class StudentsRelationManager extends RelationManager
                                         $phoneNumber = $parsedPhone;
                                     }
                                 }
-                            } catch (\Exception $e) {
+                            } catch (Exception $e) {
                                 // Ignore if parsing fails
                             }
 
@@ -679,7 +690,7 @@ class StudentsRelationManager extends RelationManager
                                     try {
                                         $studentPhone = phone($student->phone, 'MA')->formatE164();
                                         return $studentPhone === $phoneNumber;
-                                    } catch (\Exception $e) {
+                                    } catch (Exception $e) {
                                         return false;
                                     }
                                 });
@@ -773,9 +784,9 @@ class StudentsRelationManager extends RelationManager
                         }
                     }),
             ])
-            ->bulkActions([
+            ->toolbarActions([
                 BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    DeleteBulkAction::make(),
                     SendWhatsAppMessageToSelectedStudentsAction::make()
                         ->ownerRecord($this->ownerRecord)
                         ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user())),
@@ -784,7 +795,7 @@ class StudentsRelationManager extends RelationManager
                         ->icon('heroicon-o-chat-bubble-oval-left')
                         ->color('warning')
                         ->form([
-                            Forms\Components\Select::make('template_id')
+                            Select::make('template_id')
                                 ->label('اختر قالب الرسالة')
                                 ->options(function () {
                                     return $this->ownerRecord->messageTemplates()->pluck('name', 'id')
@@ -836,12 +847,12 @@ class StudentsRelationManager extends RelationManager
                             $today = now()->format('Y-m-d');
                             $deletedCount = 0;
                             foreach ($students as $studentId) {
-                                $student = \App\Models\Student::find($studentId);
+                                $student = Student::find($studentId);
                                 if ($student) {
                                     $deletedCount += $student->progresses()->where('date', $today)->delete();
                                 }
                             }
-                            \Filament\Notifications\Notification::make()
+                            Notification::make()
                                 ->title('تم حذف حضور اليوم لـ ' . $deletedCount . ' طالب')
                                 ->success()
                                 ->send();
@@ -920,7 +931,7 @@ class StudentsRelationManager extends RelationManager
                         ->icon('heroicon-o-exclamation-triangle')
                         ->color('danger')
                         ->form([
-                            Forms\Components\Textarea::make('notes')
+                            Textarea::make('notes')
                                 ->label('ملاحظات')
                                 ->rows(3)
                                 ->placeholder('سبب الانقطاع أو ملاحظات إضافية...'),
@@ -954,7 +965,7 @@ class StudentsRelationManager extends RelationManager
                                 }
 
                                 // Calculate disconnection date as the day after the last present day
-                                $disconnectionDate = \Carbon\Carbon::parse($lastPresentDay->date)->addDay()->format('Y-m-d');
+                                $disconnectionDate = Carbon::parse($lastPresentDay->date)->addDay()->format('Y-m-d');
 
                                 // Check if student already has a disconnection record for this date
                                 $existingDisconnection = $student->disconnections()
@@ -1039,7 +1050,7 @@ class StudentsRelationManager extends RelationManager
                             }
                         }
                     })->deselectRecordsAfterCompletion(),
-                Tables\Actions\BulkAction::make('set_prgress')
+                BulkAction::make('set_prgress')
                     ->label('حاضرين')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
@@ -1199,7 +1210,7 @@ MSG;
     /**
      * Generate VCF content for selected students
      *
-     * @param \Illuminate\Support\Collection $students Collection of students
+     * @param Collection $students Collection of students
      * @return string VCF formatted content
      */
     private function generateVcfContent($students): string
@@ -1247,11 +1258,11 @@ MSG;
     /**
      * Get students sorted by attendance status and remark
      *
-     * @param \App\Models\Group $group The group to get students from
+     * @param Group $group The group to get students from
      * @param string|null $date The date to check attendance for (defaults to today)
-     * @return \Illuminate\Support\Collection Sorted collection of students
+     * @return Collection Sorted collection of students
      */
-    public static function getSortedStudentsForAttendanceReport(Group $group, ?string $date = null): \Illuminate\Support\Collection
+    public static function getSortedStudentsForAttendanceReport(Group $group, ?string $date = null): Collection
     {
         $date = $date ?? now()->format('Y-m-d');
 

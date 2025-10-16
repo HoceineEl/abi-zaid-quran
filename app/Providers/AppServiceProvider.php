@@ -3,7 +3,6 @@
 namespace App\Providers;
 
 use Filament\Actions\Action;
-use Filament\Actions\MountableAction;
 use Filament\Pages\Page;
 use Filament\Support\Enums\Alignment;
 use Filament\Support\Facades\FilamentView;
@@ -36,7 +35,7 @@ class AppServiceProvider extends ServiceProvider
 
 
         Page::formActionsAlignment(Alignment::Right);
-        MountableAction::configureUsing(function (MountableAction $action) {
+        Action::configureUsing(function (Action $action) {
             $action->modalFooterActionsAlignment(Alignment::Right)
                 ->modalSubmitActionLabel(__('حفظ'))
             ;

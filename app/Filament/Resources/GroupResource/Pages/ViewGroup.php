@@ -2,13 +2,14 @@
 
 namespace App\Filament\Resources\GroupResource\Pages;
 
+use Filament\Forms\Components\Textarea;
+use Filament\Schemas\Schema;
+use Filament\Schemas\Components\Section;
 use App\Filament\Resources\GroupResource;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Actions\Action;
 use App\Classes\Core;
-use Filament\Infolists\Components\Section;
 use Filament\Infolists\Components\TextEntry;
-use Filament\Infolists\Infolist;
 
 class ViewGroup extends ViewRecord
 {
@@ -35,8 +36,8 @@ class ViewGroup extends ViewRecord
                 ->label('تذكير المشرفين')
                 ->icon('heroicon-o-bell')
                 ->visible(fn() => auth()->user()->isAdministrator())
-                ->form([
-                    \Filament\Forms\Components\Textarea::make('message')
+                ->schema([
+                    Textarea::make('message')
                         ->label('الرسالة')
                         ->default('من فضلكم قوموا بتسجيل الحضور للطلاب اليوم.')
                         ->rows(10)
@@ -52,7 +53,7 @@ class ViewGroup extends ViewRecord
     }
 
 
-    public  function infolist(Infolist $infolist): Infolist
+    public  function infolist(Schema $schema): Schema
     {
         return $infolist
             ->schema([

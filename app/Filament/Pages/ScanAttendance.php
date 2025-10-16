@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use Filament\Facades\Filament;
 use App\Models\Attendance;
 use App\Models\Memorizer;
 use Filament\Notifications\Notification;
@@ -10,9 +11,9 @@ use Illuminate\Contracts\Support\Htmlable;
 
 class ScanAttendance extends Page
 {
-    protected static ?string $navigationIcon = 'heroicon-o-camera';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-camera';
 
-    protected static string $view = 'filament.association.pages.scan-attendance';
+    protected string $view = 'filament.association.pages.scan-attendance';
 
     public $scannedMemorizerId = '';
 
@@ -31,7 +32,7 @@ class ScanAttendance extends Page
     }
     public static function shouldRegisterNavigation(): bool
     {
-        return \Filament\Facades\Filament::getCurrentPanel()->getId() === 'association';
+        return Filament::getCurrentOrDefaultPanel()->getId() === 'association';
     }
     public function processScannedData(): void
     {

@@ -2,29 +2,41 @@
 
 namespace App\Filament\Resources;
 
+use Filament\Schemas\Schema;
+use Filament\Actions\Action;
+use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Section;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Placeholder;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Actions\EditAction;
+use Filament\Actions\ActionGroup;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Toggle;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use App\Filament\Resources\MessageResource\Pages\ListMessages;
+use App\Filament\Resources\MessageResource\Pages\CreateMessage;
+use App\Filament\Resources\MessageResource\Pages\EditMessage;
 use App\Filament\Resources\MessageResource\Pages;
 use App\Models\Group;
 use App\Models\GroupMessageTemplate;
 use App\Models\Message;
 use Filament\Forms;
-use Filament\Forms\Components\Actions\Action;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Form;
-use Filament\Forms\Get;
-use Filament\Forms\Set;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Tables\Actions\ActionGroup;
-use Filament\Infolists\Components\Section as InfolistSection;
 use Filament\Infolists\Components\TextEntry;
 
 class MessageResource extends Resource
 {
     protected static ?string $model = GroupMessageTemplate::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-chat-bubble-left-right';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-chat-bubble-left-right';
 
     protected static ?string $navigationLabel = 'قوالب الرسائل';
 
@@ -39,7 +51,7 @@ class MessageResource extends Resource
         return auth()->user()->isAdministrator();
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
         $actions = [];
         foreach (GroupMessageTemplate::getVariables() as $variable) {
@@ -52,16 +64,16 @@ class MessageResource extends Resource
                 })
                 ->color('primary');
         }
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('name')
+        return $schema
+            ->components([
+                TextInput::make('name')
                     ->label('اسم القالب')
                     ->required()
                     ->maxLength(255),
                 Section::make('the_content')
                     ->headerActions($actions)
                     ->schema([
-                        Forms\Components\Textarea::make('content')
+                        Textarea::make('content')
                             ->label('محتوى الرسالة')
                             ->required()
                             ->rows(10)
@@ -72,7 +84,7 @@ class MessageResource extends Resource
                     ->label('المجموعات المرتبطة')
                     ->description('المجموعات التي تم ربط هذا القالب بها')
                     ->schema([
-                        Forms\Components\Placeholder::make('groups_display')
+                        Placeholder::make('groups_display')
                             ->label('المجموعات المرتبطة')
                             ->content(function ($record) {
                                 if (!$record || !$record->groups()->exists()) {
@@ -98,13 +110,13 @@ class MessageResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name')
+                TextColumn::make('name')
                     ->label('اسم القالب')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('content')
+                TextColumn::make('content')
                     ->label('محتوى الرسالة')
                     ->limit(50),
-                Tables\Columns\TextColumn::make('groups.name')
+                TextColumn::make('groups.name')
                     ->label('المجموعات المرتبطة')
                     ->badge()
                     ->color('primary')
@@ -112,28 +124,28 @@ class MessageResource extends Resource
                     ->limitList(3)
                     ->expandableLimitedList()
                     ->default('لا يوجد'),
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->label('تاريخ الإنشاء')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
+                TextColumn::make('updated_at')
                     ->label('تاريخ التحديث')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
+            ->recordActions([
+                EditAction::make(),
                 ActionGroup::make([
-                    Tables\Actions\Action::make('view_groups')
+                    Action::make('view_groups')
                         ->label('عرض المجموعات المرتبطة')
                         ->icon('heroicon-o-eye')
                         ->color('info')
                         ->modalHeading('المجموعات المرتبطة')
                         ->modalWidth('xl')
-                        ->infolist([
-                            InfolistSection::make('المجموعات المرتبطة')
+                        ->schema([
+                            Section::make('المجموعات المرتبطة')
                                 ->schema([
                                     TextEntry::make('groups.name')
                                         ->label('المجموعات')
@@ -144,12 +156,12 @@ class MessageResource extends Resource
                                 ])
                                 ->columns(1),
                         ]),
-                    Tables\Actions\Action::make('attach_to_group')
+                    Action::make('attach_to_group')
                         ->label('ربط بمجموعات')
                         ->icon('heroicon-o-link')
                         ->color('success')
-                        ->form(fn(GroupMessageTemplate $record) => [
-                            Forms\Components\Select::make('groups')
+                        ->schema(fn(GroupMessageTemplate $record) => [
+                            Select::make('groups')
                                 ->label('المجموعات')
                                 ->options(
                                     Group::query()
@@ -161,7 +173,7 @@ class MessageResource extends Resource
                                 ->searchable()
                                 ->required()
                                 ->helperText('اختر المجموعات التي تريد ربط هذا القالب بها'),
-                            Forms\Components\Toggle::make('set_as_default')
+                            Toggle::make('set_as_default')
                                 ->label('تعيين كقالب افتراضي')
                                 ->default(false)
                                 ->helperText('سيتم تعيين هذا القالب كافتراضي للمجموعات المحددة')
@@ -200,13 +212,13 @@ class MessageResource extends Resource
                                 ->success()
                                 ->send();
                         }),
-                    Tables\Actions\Action::make('detach_from_group')
+                    Action::make('detach_from_group')
                         ->label('إزالة من مجموعات')
                         ->icon('heroicon-o-minus-circle')
                         ->color('danger')
                         ->visible(fn(GroupMessageTemplate $record) => $record->groups()->exists())
-                        ->form(fn(GroupMessageTemplate $record) => [
-                            Forms\Components\Select::make('groups')
+                        ->schema(fn(GroupMessageTemplate $record) => [
+                            Select::make('groups')
                                 ->label('المجموعات')
                                 ->options($record->groups()->pluck('name', 'id')->toArray())
                                 ->multiple()
@@ -227,11 +239,11 @@ class MessageResource extends Resource
                 ])
                     ->label('إدارة المجموعات')
                     ->icon('heroicon-o-user-group'),
-                Tables\Actions\DeleteAction::make(),
+                DeleteAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }
@@ -246,9 +258,9 @@ class MessageResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListMessages::route('/'),
-            'create' => Pages\CreateMessage::route('/create'),
-            'edit' => Pages\EditMessage::route('/{record}/edit'),
+            'index' => ListMessages::route('/'),
+            'create' => CreateMessage::route('/create'),
+            'edit' => EditMessage::route('/{record}/edit'),
         ];
     }
 }

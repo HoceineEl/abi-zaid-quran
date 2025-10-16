@@ -2,6 +2,7 @@
 
 namespace App\Traits\WhatsApp;
 
+use Exception;
 use App\Enums\WhatsAppConnectionStatus;
 use App\Models\WhatsAppSession;
 use Illuminate\Support\Facades\Cache;
@@ -29,8 +30,8 @@ trait SessionManagement
                 return $data;
             }
 
-            throw new \Exception("HTTP {$response->status()}: " . $response->body());
-        } catch (\Exception $e) {
+            throw new Exception("HTTP {$response->status()}: " . $response->body());
+        } catch (Exception $e) {
             Log::error('Failed to create WhatsApp session', [
                 'session_id' => $sessionId,
                 'error' => $e->getMessage(),
@@ -49,8 +50,8 @@ trait SessionManagement
                 return $response->json();
             }
 
-            throw new \Exception("HTTP {$response->status()}: " . $response->body());
-        } catch (\Exception $e) {
+            throw new Exception("HTTP {$response->status()}: " . $response->body());
+        } catch (Exception $e) {
             Log::error('Failed to get all WhatsApp sessions', [
                 'error' => $e->getMessage(),
             ]);
@@ -71,7 +72,7 @@ trait SessionManagement
                 $session = collect($sessions)->firstWhere('sessionId', $formattedSessionId);
 
                 if (! $session) {
-                    throw new \Exception("Session {$sessionId} not found");
+                    throw new Exception("Session {$sessionId} not found");
                 }
 
                 // Update cached token if it exists in the response
@@ -92,8 +93,8 @@ trait SessionManagement
                 return $session;
             }
 
-            throw new \Exception("HTTP {$response->status()}: " . $response->body());
-        } catch (\Exception $e) {
+            throw new Exception("HTTP {$response->status()}: " . $response->body());
+        } catch (Exception $e) {
             Log::error('Failed to get WhatsApp session status', [
                 'session_id' => $sessionId,
                 'error' => $e->getMessage(),
@@ -119,7 +120,7 @@ trait SessionManagement
 
                 sleep(2);
                 $attempts++;
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 Log::error('Error checking connection status', [
                     'session_id' => $sessionId,
                     'attempt' => $attempts,
@@ -129,7 +130,7 @@ trait SessionManagement
             }
         }
 
-        throw new \Exception("Session {$sessionId} failed to connect after {$maxAttempts} attempts");
+        throw new Exception("Session {$sessionId} failed to connect after {$maxAttempts} attempts");
     }
 
     public function startSession(WhatsAppSession $session): array
@@ -150,7 +151,7 @@ trait SessionManagement
 
                 // Use existing session instead of creating new one
                 $result = $existingStatus;
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 Log::info('Session not found on API, creating new one', [
                     'session_id' => $sessionId,
                     'error' => $e->getMessage(),
@@ -179,7 +180,7 @@ trait SessionManagement
                     if (!empty($result['qr']) || $result['status'] === 'CONNECTED') {
                         break;
                     }
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                     Log::warning('Failed to get session status during wait', [
                         'session_id' => $sessionId,
                         'attempt' => $attempts,
@@ -221,7 +222,7 @@ trait SessionManagement
             ]);
 
             return $finalStatus;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to start WhatsApp session', [
                 'session_id' => $session->id,
                 'error' => $e->getMessage(),
@@ -247,7 +248,7 @@ trait SessionManagement
                     if ($token) {
                         Cache::put("whatsapp_token_{$sessionId}", $token, now()->addHours(24));
                     }
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                     Log::warning('Could not get session token from API', ['session_id' => $sessionId]);
                 }
             }
@@ -282,7 +283,7 @@ trait SessionManagement
             Cache::forget("whatsapp_token_{$sessionId}");
 
             return ['status' => 'success', 'message' => 'Session marked as disconnected'];
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to delete WhatsApp session', [
                 'session_id' => $sessionId,
                 'error' => $e->getMessage(),
@@ -306,7 +307,7 @@ trait SessionManagement
             Log::info('WhatsApp session logged out successfully', ['session_id' => $sessionId]);
 
             return $result;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to logout WhatsApp session', [
                 'session_id' => $session->id,
                 'error' => $e->getMessage(),
@@ -353,7 +354,7 @@ trait SessionManagement
 
                 return $token;
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::warning('Could not refresh token from API', [
                 'session_id' => $sessionId,
                 'error' => $e->getMessage(),

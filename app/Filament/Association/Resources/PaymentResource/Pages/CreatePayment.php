@@ -8,7 +8,6 @@ use App\Models\Payment;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
 use Filament\Notifications\Notification;
-use Filament\Notifications\Actions\Action;
 use App\Traits\GoToIndex;
 use Illuminate\Support\Collection;
 use Filament\Actions\Action as FilamentAction;
@@ -56,7 +55,7 @@ class CreatePayment extends CreateRecord
             ->success()
             ->persistent()
             ->actions([
-                Action::make('print_receipt')
+                FilamentAction::make('print_receipt')
                     ->label('طباعة الإيصال')
                     ->icon('heroicon-o-printer')
                     ->button()

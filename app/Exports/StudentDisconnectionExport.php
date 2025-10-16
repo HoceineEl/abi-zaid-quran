@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use PhpOffice\PhpSpreadsheet\Style\Border;
 use App\Enums\DisconnectionStatus;
 use App\Enums\MessageResponseStatus;
 use App\Models\StudentDisconnection;
@@ -216,7 +217,7 @@ class StudentDisconnectionExport implements FromCollection, WithHeadings, Should
                 // Add borders to all cells
                 $highestRow = $sheet->getHighestRow();
                 $sheet->getStyle("A1:J{$highestRow}")->getBorders()->getAllBorders()
-                    ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+                    ->setBorderStyle(Border::BORDER_THIN);
 
                 // Auto-adjust column widths
                 foreach (range('A', 'J') as $column) {

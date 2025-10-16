@@ -2,6 +2,9 @@
 
 namespace App\Filament\Actions;
 
+use Filament\Actions\BulkAction;
+use Filament\Schemas\Components\Utilities\Get;
+use Exception;
 use App\Classes\Core;
 use App\Enums\WhatsAppMessageStatus;
 use App\Helpers\PhoneHelper;
@@ -15,9 +18,7 @@ use App\Services\WhatsAppService;
 use App\Traits\HandlesWhatsAppProgress;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Get;
 use Filament\Notifications\Notification;
-use Filament\Tables\Actions\BulkAction;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
@@ -185,7 +186,7 @@ class SendWhatsAppMessageToSelectedStudentsAction extends BulkAction
             // Clean phone number using phone helper (remove + sign)
             try {
                 $phoneNumber = str_replace('+', '', phone($student->phone, 'MA')->formatE164());
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 $phoneNumber = null;
             }
 
@@ -252,7 +253,7 @@ class SendWhatsAppMessageToSelectedStudentsAction extends BulkAction
                             'delay_seconds' => $delaySeconds,
                         ]);
 
-                    } catch (\Exception $e) {
+                    } catch (Exception $e) {
                         // Update message history as failed
                         $messageHistory->update([
                             'status' => WhatsAppMessageStatus::FAILED,
@@ -272,7 +273,7 @@ class SendWhatsAppMessageToSelectedStudentsAction extends BulkAction
                 $messagesQueued++;
                 $messageIndex++;
 
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 Log::error('Failed to queue bulk message for student', [
                     'student_id' => $student->id,
                     'student_name' => $student->name,

@@ -203,7 +203,7 @@ class Student extends Model
         }
 
         // Calculate disconnection date as the day after the last present day
-        return \Carbon\Carbon::parse($lastPresentDay->date)->addDay()->format('Y-m-d');
+        return Carbon::parse($lastPresentDay->date)->addDay()->format('Y-m-d');
     }
 
     public function getDaysSinceLastPresentAttribute(): ?int

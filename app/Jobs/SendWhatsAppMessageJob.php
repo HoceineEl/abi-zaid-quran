@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use Exception;
 use App\Models\WhatsAppMessageHistory;
 use App\Models\WhatsAppSession;
 use App\Services\WhatsAppService;
@@ -29,7 +30,7 @@ class SendWhatsAppMessageJob implements ShouldQueue
             $session = WhatsAppSession::find($this->sessionId);
 
             if (!$session || !$session->isConnected()) {
-                throw new \Exception('WhatsApp session not connected');
+                throw new Exception('WhatsApp session not connected');
             }
 
             $result = $whatsappService->sendTextMessage(
@@ -49,7 +50,7 @@ class SendWhatsAppMessageJob implements ShouldQueue
                 $messageHistory->markAsSent($result[0]['messageId'] ?? null);
             }
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to send WhatsApp message in job', [
                 'session_id' => $this->sessionId,
                 'to' => $this->to,

@@ -11,14 +11,14 @@ class AttendanceChart extends ChartWidget
 {
     use InteractsWithPageFilters;
 
-    protected static ?string $heading = 'سجل الحضور والغياب';
-    protected static ?string $maxHeight = '300px';
-    protected static ?string $pollingInterval = '30s';
+    protected ?string $heading = 'سجل الحضور والغياب';
+    protected ?string $maxHeight = '300px';
+    protected ?string $pollingInterval = '30s';
 
     protected function getData(): array
     {
-        $dateFrom = $this->filters['date_from'] ?? now()->startOfYear();
-        $dateTo = $this->filters['date_to'] ?? now();
+        $dateFrom = $this->pageFilters['date_from'] ?? now()->startOfYear();
+        $dateTo = $this->pageFilters['date_to'] ?? now();
 
         $data = Attendance::whereBetween('date', [$dateFrom, $dateTo])
             ->selectRaw('DATE(date) as date')

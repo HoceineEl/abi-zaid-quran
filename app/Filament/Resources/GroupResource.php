@@ -2,6 +2,27 @@
 
 namespace App\Filament\Resources;
 
+use Filament\Schemas\Schema;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Forms\Components\TagsInput;
+use Filament\Actions\Action;
+use Filament\Tables\Filters\TrashedFilter;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\ViewAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\RestoreAction;
+use Filament\Actions\ForceDeleteAction;
+use Filament\Forms\Components\DatePicker;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\BulkAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\RestoreBulkAction;
+use Filament\Actions\ForceDeleteBulkAction;
+use App\Filament\Resources\GroupResource\Pages\ListGroups;
+use App\Filament\Resources\GroupResource\Pages\CreateGroup;
+use App\Filament\Resources\GroupResource\Pages\EditGroup;
+use App\Filament\Resources\GroupResource\Pages\ViewGroup;
 use App\Classes\Core;
 use App\Enums\MessageSubmissionType;
 use App\Exports\DailyAttendanceSummaryExport;
@@ -16,22 +37,16 @@ use App\Models\GroupMessageTemplate;
 use App\Models\Message;
 use App\Models\Student;
 use Filament\Forms;
-use Filament\Forms\Components\Actions\Action as FormAction;
-use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\ToggleButtons;
-use Filament\Forms\Form;
-use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Resources\Resource;
 use Filament\Tables;
-use Filament\Tables\Actions\Action as ActionsAction;
-use Filament\Tables\Actions\ActionGroup;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Maatwebsite\Excel\Facades\Excel;
@@ -41,7 +56,7 @@ class GroupResource extends Resource
 {
     protected static ?string $model = Group::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-users';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-users';
 
     protected static ?string $navigationLabel = 'المجموعات';
 
@@ -49,11 +64,11 @@ class GroupResource extends Resource
 
     protected static ?string $pluralModelLabel = 'مجموعات';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('name')
+        return $schema
+            ->components([
+                TextInput::make('name')
                     ->label('الاسم')
                     ->required(),
                 Grid::make(3)
@@ -70,7 +85,7 @@ class GroupResource extends Resource
                             ->dehydrated(false)
                             ->reactive()
                             ->default(false),
-                        Forms\Components\ToggleButtons::make('type')
+                        ToggleButtons::make('type')
                             ->label('نوع المجموعة')
                             ->inline()
                             ->hidden(fn(Get $get) => $get('custom_type') === true)
@@ -90,18 +105,18 @@ class GroupResource extends Resource
                             ->label('مجموعة قرآن')
                             ->default(true)
                             ->helperText('حدد إذا كانت هذه المجموعة تدرس القرآن أم لا'),
-                        Forms\Components\ToggleButtons::make('message_submission_type')
+                        ToggleButtons::make('message_submission_type')
                             ->label('نوع الرسائل المقبولة للتسجيل')
                             ->options(MessageSubmissionType::class)
                             ->inline()
                             ->default(MessageSubmissionType::Media),
                     ]),
-                Forms\Components\TagsInput::make('ignored_names_phones')
+                TagsInput::make('ignored_names_phones')
                     ->label('أسماء وأرقام مستثناة من التسجيل')
                     ->helperText('أضف أسماء وأرقام هواتف يجب تجاهلها عند استيراد سجل الواتساب')
                     ->placeholder('أضف اسم أو رقم هاتف واضغط Enter')
                     ->separator(','),
-                Forms\Components\Select::make('template_id')
+                Select::make('template_id')
                     ->label('قالب الرسائل')
                     ->options(GroupMessageTemplate::pluck('name', 'id'))
                     ->searchable()
@@ -122,17 +137,17 @@ class GroupResource extends Resource
                         return $record->messageTemplates()->wherePivot('is_default', true)->first()?->id;
                     })
                     ->createOptionForm([
-                        Forms\Components\TextInput::make('name')
+                        TextInput::make('name')
                             ->label('اسم القالب')
                             ->required()
                             ->maxLength(255),
-                        Forms\Components\Textarea::make('content')
+                        Textarea::make('content')
                             ->label('محتوى الرسالة')
                             ->required()
                             ->helperText('يمكنك استخدام المتغيرات التالية: {student_name}, {group_name}, {curr_date}')
                             ->columnSpanFull(),
                     ])
-                    ->createOptionAction(function (Forms\Components\Actions\Action $action) {
+                    ->createOptionAction(function (Action $action) {
                         return $action
                             ->modalHeading('إنشاء قالب رسالة جديد')
                             ->modalSubmitActionLabel('إنشاء')
@@ -146,11 +161,11 @@ class GroupResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name')
+                TextColumn::make('name')
                     ->label('الاسم')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('type')
+                TextColumn::make('type')
                     ->label('نوع الحفظ')
                     ->formatStateUsing(
                         function ($state) {
@@ -162,7 +177,7 @@ class GroupResource extends Resource
                         },
                     )
                     ->sortable(),
-                Tables\Columns\TextColumn::make('message_submission_type')
+                TextColumn::make('message_submission_type')
                     ->label('نوع الرسائل المقبولة')
                     ->badge(),
                 // Tables\Columns\IconColumn::make('is_quran_group')
@@ -172,7 +187,7 @@ class GroupResource extends Resource
                 //     ->falseIcon('heroicon-o-x-circle')
                 //     ->trueColor('success')
                 //     ->falseColor('danger'),
-                Tables\Columns\TextColumn::make('messageTemplates.name')
+                TextColumn::make('messageTemplates.name')
                     ->label('قالب الرسالة')
                     ->default('لا يوجد')
                     ->badge()
@@ -184,7 +199,7 @@ class GroupResource extends Resource
                         $defaultTemplate = $record->messageTemplates()->wherePivot('is_default', true)->first();
                         return $defaultTemplate?->name ?? 'لا يوجد';
                     }),
-                Tables\Columns\TextColumn::make('managers.name')
+                TextColumn::make('managers.name')
                     ->label('المشرفون')
                     ->badge(),
                 TextColumn::make('created_at')->label('تاريخ الإنشاء')
@@ -202,12 +217,12 @@ class GroupResource extends Resource
                 //     ->searchable(false),
             ])
             ->filters([
-                Tables\Filters\TrashedFilter::make(),
+                TrashedFilter::make(),
             ])
             ->recordUrl(fn(?Group $record) => $record ? GroupResource::getUrl('edit', ['record' => $record, 'activeRelationManager' => 0]) : null)
-            ->actions([
+            ->recordActions([
 
-                Tables\Actions\Action::make('export_attendance')
+                Action::make('export_attendance')
                     ->label('تصدير كشف الحضور')
                     ->icon('heroicon-o-share')
                     ->color('success')
@@ -271,23 +286,23 @@ class GroupResource extends Resource
                     //         $data['message_type'] = 'custom';
                     //         Core::sendMessageToSpecific($data, 'manager');
                     //     }),
-                    Tables\Actions\ViewAction::make(),
-                    Tables\Actions\EditAction::make(),
-                    Tables\Actions\RestoreAction::make(),
-                    Tables\Actions\ForceDeleteAction::make(),
+                    ViewAction::make(),
+                    EditAction::make(),
+                    RestoreAction::make(),
+                    ForceDeleteAction::make(),
                 ])
             ])
             ->headerActions([
                 SendBulkReminderToAllGroupsAction::make(),
                 SendMessageToAllGroupMembersAction::make(),
 
-                ActionsAction::make('export_daily_attendance_summary')
+                Action::make('export_daily_attendance_summary')
                     ->label('تصدير موجز الحضور اليومي')
                     ->icon('heroicon-o-document-arrow-down')
                     ->color('success')
                     // ->visible(fn() => auth()->user()->role === 'admin')
-                    ->form([
-                        Forms\Components\DatePicker::make('export_date')
+                    ->schema([
+                        DatePicker::make('export_date')
                             ->label('التاريخ')
                             ->default(today())
                             ->required()
@@ -301,9 +316,9 @@ class GroupResource extends Resource
                         return Excel::download(new DailyAttendanceSummaryExport($selectedDate, auth()->id()), 'daily-attendance-summary-' . $selectedDate . '.xlsx');
                     }),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\BulkAction::make('toggle_quran_group')
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    BulkAction::make('toggle_quran_group')
                         ->label('تبديل حالة مجموعة القرآن')
                         ->icon('heroicon-o-academic-cap')
                         ->visible(fn() => auth()->user()->isAdministrator())
@@ -329,13 +344,13 @@ class GroupResource extends Resource
                                 ->send();
                         })
                         ->deselectRecordsAfterCompletion(),
-                    Tables\Actions\BulkAction::make('set_template')
+                    BulkAction::make('set_template')
                         ->label('تعيين قالب رسالة')
                         ->icon('heroicon-o-chat-bubble-left-right')
                         ->visible(fn() => auth()->user()->isAdministrator())
                         ->color('primary')
                         ->form([
-                            Forms\Components\Select::make('template_id')
+                            Select::make('template_id')
                                 ->label('اختر قالب الرسالة')
                                 ->options(
                                     GroupMessageTemplate::pluck('name', 'id')->prepend('لا يوجد', '')
@@ -368,10 +383,10 @@ class GroupResource extends Resource
                                 ->send();
                         })
                         ->deselectRecordsAfterCompletion(),
-                    Tables\Actions\DeleteBulkAction::make()
+                    DeleteBulkAction::make()
                         ->disabled(! Core::canChange()),
-                    Tables\Actions\RestoreBulkAction::make(),
-                    Tables\Actions\ForceDeleteBulkAction::make()
+                    RestoreBulkAction::make(),
+                    ForceDeleteBulkAction::make()
                         ->disabled(! Core::canChange()),
                 ]),
             ]);
@@ -389,10 +404,10 @@ class GroupResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListGroups::route('/'),
-            'create' => Pages\CreateGroup::route('/create'),
-            'edit' => Pages\EditGroup::route('/{record}/edit'),
-            'view' => Pages\ViewGroup::route('/{record}'),
+            'index' => ListGroups::route('/'),
+            'create' => CreateGroup::route('/create'),
+            'edit' => EditGroup::route('/{record}/edit'),
+            'view' => ViewGroup::route('/{record}'),
         ];
     }
 

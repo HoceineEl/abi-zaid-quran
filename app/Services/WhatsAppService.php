@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Exception;
 use App\Enums\WhatsAppConnectionStatus;
 use App\Enums\WhatsAppMessageStatus;
 use App\Models\WhatsAppSession;
@@ -58,7 +59,7 @@ class WhatsAppService
     protected function getMasterKey(): string
     {
         if (is_null($this->masterKey)) {
-            throw new \Exception('WhatsApp API token is not configured.');
+            throw new Exception('WhatsApp API token is not configured.');
         }
 
         return $this->masterKey;
@@ -193,7 +194,7 @@ class WhatsAppService
         $token = Cache::get("whatsapp_token_{$sessionId}");
 
         if (!$token) {
-            throw new \Exception("Session token not found for session {$sessionId}");
+            throw new Exception("Session token not found for session {$sessionId}");
         }
 
         // Format phone number using the phone helper (remove + sign)
@@ -228,8 +229,8 @@ class WhatsAppService
                 return $result;
             }
 
-            throw new \Exception("HTTP {$response->status()}: " . $response->body());
-        } catch (\Exception $e) {
+            throw new Exception("HTTP {$response->status()}: " . $response->body());
+        } catch (Exception $e) {
             Log::error('Failed to send WhatsApp message', [
                 'session_id' => $sessionId,
                 'to' => $to,
@@ -290,16 +291,16 @@ class WhatsAppService
                         return;
                     }
                 }
-            } catch (\Exception $qrException) {
+            } catch (Exception $qrException) {
                 Log::warning('QR refresh endpoint failed', [
                     'session_id' => $session->id,
                     'error' => $qrException->getMessage(),
                 ]);
             }
 
-            throw new \Exception('No QR code available for session');
-        } catch (\Exception $e) {
-            throw new \Exception('Failed to refresh QR code: ' . $e->getMessage());
+            throw new Exception('No QR code available for session');
+        } catch (Exception $e) {
+            throw new Exception('Failed to refresh QR code: ' . $e->getMessage());
         }
     }
 

@@ -2,7 +2,7 @@
 
 namespace App\Filament\Pages;
 
-use Filament\Pages\Auth\Login;
+use Filament\Auth\Pages\Login;
 use Filament\Pages\Page;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\HtmlString;
@@ -12,7 +12,7 @@ class CustomLogin extends Login
 {
     public function getHeading(): string | Htmlable
     {
-        $panel = Filament::getCurrentPanel();
+        $panel = Filament::getCurrentOrDefaultPanel();
 
         $teacherLoginLink = '';
         if ($panel->getId() === 'association') {

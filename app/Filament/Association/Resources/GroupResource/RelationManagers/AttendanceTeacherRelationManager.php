@@ -2,31 +2,31 @@
 
 namespace App\Filament\Association\Resources\GroupResource\RelationManagers;
 
+use Filament\Actions\Action;
+use Filament\Support\Enums\Size;
+use Filament\Schemas\Components\Section;
+use Filament\Forms\Components\DatePicker;
+use Filament\Tables\Enums\RecordActionsPosition;
+use Filament\Actions\BulkAction;
 use App\Enums\Troubles;
 use App\Models\Attendance;
 use App\Models\Memorizer;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Tables\Actions\BulkAction;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Model;
-use Filament\Tables\Enums\ActionsPosition;
-use Filament\Tables\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\CheckboxList;
-use Filament\Forms\Components\Section;
 use App\Enums\MemorizationScore;
 use App\Filament\Association\Resources\GroupResource;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\ToggleButtons;
-use Filament\Support\Enums\ActionSize;
 use App\Models\User;
 use Filament\Forms\Components\Toggle;
-use Filament\Notifications\Actions\Action as ActionsAction;
 use Filament\Support\Colors\Color;
 use Filament\Tables\Actions\ActionGroup;
 use Illuminate\Support\Str;
@@ -39,7 +39,7 @@ class AttendanceTeacherRelationManager extends RelationManager
 
     protected static ?string $title = 'تسجيل الحضور والغياب';
 
-    protected static ?string $icon = 'heroicon-o-user-group';
+    protected static string | \BackedEnum | null $icon = 'heroicon-o-user-group';
 
 
     protected function canView(Model $record): bool
@@ -101,7 +101,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                     ->badge(),
 
             ])
-            ->actions([
+            ->recordActions([
                 self::sendNotificationAction(),
                 Action::make('mark_present')
                     ->tooltip('تسجيل حضور')
@@ -143,7 +143,7 @@ class AttendanceTeacherRelationManager extends RelationManager
 
                         return $attendance;
                     })
-                    ->form([
+                    ->schema([
                         Toggle::make('send_message')
                             ->label('إرسال الرسالة الي الولي ؟')
                             ->helperText('سيتم تحويلك تلقائياً لإرسال رسالة غياب للولي. هذا مهم للتوثيق وحمايتك في حال حدوث أي مشكلة , نسأل الله السلامة.')
@@ -229,11 +229,11 @@ class AttendanceTeacherRelationManager extends RelationManager
                     ->tooltip('إضافة ملاحظات وتقييم')
                     ->label('')
                     ->icon('heroicon-o-document-text')
-                    ->size(ActionSize::ExtraLarge)
+                    ->size(Size::ExtraLarge)
                     ->color('info')
                     ->slideOver()
                     ->modalSubmitActionLabel('حفظ')
-                    ->form([
+                    ->schema([
                         Section::make('تقييم الحفظ')
                             ->schema([
                                 ToggleButtons::make('score')
@@ -323,7 +323,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                                     ->body("قام الطالب {$record->name} في مجموعة {$this->ownerRecord->name} بـ " . $troublesLabels . " بتاريخ " . now()->format('Y-m-d'))
                                     ->warning()
                                     ->actions([
-                                        ActionsAction::make('view_attendance')
+                                        Action::make('view_attendance')
                                             ->label('عرض الحضور')
                                             ->url(fn() => GroupResource::getUrl('view', ['record' => $this->ownerRecord, 'activeRelationManager' => '0'], panel: 'association'))
                                     ])
@@ -341,8 +341,8 @@ class AttendanceTeacherRelationManager extends RelationManager
                     ->label('')
                     ->icon('heroicon-o-pencil-square')
                     ->color('info')
-                    ->form([
-                        \Filament\Forms\Components\DatePicker::make('birth_date')
+                    ->schema([
+                        DatePicker::make('birth_date')
                             ->label('تاريخ الميلاد')
                             ->required(),
 
@@ -361,12 +361,12 @@ class AttendanceTeacherRelationManager extends RelationManager
                             ->send();
                     })
 
-            ], ActionsPosition::BeforeColumns)
+            ], RecordActionsPosition::BeforeColumns)
             ->headerActions([
                 Action::make('export_table')
                     ->label('إرسال التقرير اليومي')
                     ->icon('heroicon-o-share')
-                    ->size(ActionSize::Small)
+                    ->size(Size::Small)
                     ->color('success')
                     ->action(function () {
                         $date = now()->format('Y-m-d');
@@ -389,7 +389,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                         ]);
                     })
             ])
-            ->bulkActions([
+            ->toolbarActions([
                 BulkAction::make('mark_attendance_bulk')
                     ->label('تسجيل الحضور')
                     ->icon('heroicon-o-check-circle')
@@ -507,7 +507,7 @@ class AttendanceTeacherRelationManager extends RelationManager
             ->hidden(function (Memorizer $record) {
                 return !$record->phone;
             })
-            ->form([
+            ->schema([
                 ToggleButtons::make('message_type')
                     ->label('نوع الرسالة')
                     ->options([

@@ -2,6 +2,8 @@
 
 namespace App\Filament\Association\Resources\MemorizerResource\RelationManagers;
 
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -20,7 +22,7 @@ class ReminderLogsRelationManager extends RelationManager
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('type')
+                TextColumn::make('type')
                     ->label('النوع')
                     ->formatStateUsing(fn(string $state): string => match ($state) {
                         'payment' => 'تذكير بالدفع',
@@ -47,17 +49,17 @@ class ReminderLogsRelationManager extends RelationManager
                         default => 'secondary',
                     }),
 
-                Tables\Columns\TextColumn::make('phone_number')
+                TextColumn::make('phone_number')
                     ->label('رقم الهاتف')
                     ->extraCellAttributes(['dir' => 'ltr'])
                     ->alignRight(),
-                Tables\Columns\TextColumn::make('message')
+                TextColumn::make('message')
                     ->label('الرسالة')
                     ->limit(50),
-                Tables\Columns\IconColumn::make('is_parent')
+                IconColumn::make('is_parent')
                     ->label('ولي الأمر')
                     ->boolean(),
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->label('تاريخ الإرسال')
                     ->dateTime('Y-m-d H:i:s'),
             ])
@@ -67,10 +69,10 @@ class ReminderLogsRelationManager extends RelationManager
             ->headerActions([
                 //
             ])
-            ->actions([
+            ->recordActions([
                 //
             ])
-            ->bulkActions([
+            ->toolbarActions([
                 //
             ]);
     }

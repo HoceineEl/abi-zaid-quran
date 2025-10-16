@@ -2,12 +2,14 @@
 
 namespace App\Filament\Association\Resources\GroupResource\RelationManagers;
 
+use Filament\Schemas\Schema;
+use DatePeriod;
+use DateTime;
+use DateInterval;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Support\Enums\IconSize;
 use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Columns\IconColumn\IconColumnSize;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
@@ -30,9 +32,9 @@ class AttendancesRelationManager extends RelationManager
     {
         return !auth()->user()->isTeacher();
     }
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form->schema([]);
+        return $schema->components([]);
     }
 
     public function table(Table $table): Table
@@ -40,10 +42,10 @@ class AttendancesRelationManager extends RelationManager
         $this->dateFrom = $this->dateFrom ?? now()->subDays(4)->format('Y-m-d');
         $this->dateTo = $this->dateTo ?? now()->format('Y-m-d');
 
-        $dateRange = new \DatePeriod(
-            new \DateTime($this->dateFrom),
-            new \DateInterval('P1D'),
-            (new \DateTime($this->dateTo))->modify('+1 day')
+        $dateRange = new DatePeriod(
+            new DateTime($this->dateFrom),
+            new DateInterval('P1D'),
+            (new DateTime($this->dateTo))->modify('+1 day')
         );
 
         $attendanceColumns = collect();
@@ -69,7 +71,7 @@ class AttendancesRelationManager extends RelationManager
                         'absent' => 'heroicon-o-x-circle',
                         default => 'heroicon-o-minus-circle',
                     })
-                    ->size(IconColumnSize::ExtraLarge)
+                    ->size(IconSize::ExtraLarge)
                     ->color(fn(string $state): string => match ($state) {
                         'present' => 'success',
                         'absent' => 'danger',
@@ -94,7 +96,7 @@ class AttendancesRelationManager extends RelationManager
                 Filter::make('date')
                     ->columnSpan(4)
                     ->columns()
-                    ->form([
+                    ->schema([
                         DatePicker::make('date_from')
                             ->label('من تاريخ')
                             ->reactive()
@@ -119,8 +121,8 @@ class AttendancesRelationManager extends RelationManager
             })
             ->paginated(false)
             ->headerActions([])
-            ->actions([])
-            ->bulkActions([]);
+            ->recordActions([])
+            ->toolbarActions([]);
     }
 
     public function isReadOnly(): bool

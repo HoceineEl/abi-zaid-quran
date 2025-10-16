@@ -2,6 +2,13 @@
 
 namespace App\Filament\Resources\StudentDisconnectionResource\Pages;
 
+use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Actions\CreateAction;
+use Filament\Actions\Action;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Toggle;
+use Maatwebsite\Excel\Facades\Excel;
 use App\Filament\Exports\StudentDisconnectionExporter;
 use App\Exports\StudentDisconnectionExport;
 use App\Filament\Resources\StudentDisconnectionResource;
@@ -12,7 +19,6 @@ use App\Services\DisconnectionService;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Notifications\Notification;
-use Filament\Resources\Components\Tab;
 use Illuminate\Database\Eloquent\Builder;
 
 class ListStudentDisconnections extends ListRecords
@@ -65,16 +71,16 @@ class ListStudentDisconnections extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
-            Actions\Action::make('get_disconnected_students')
+            CreateAction::make(),
+            Action::make('get_disconnected_students')
                 ->label('إضافة الطلاب المنقطعين')
                 ->icon('heroicon-o-plus-circle')
                 ->color('success')
                 ->requiresConfirmation()
                 ->modalHeading('إضافة الطلاب المنقطعين')
                 ->modalDescription('سيتم إضافة الطلاب من المجموعات النشطة (لديها تقدم في آخر 7 أيام) الذين لديهم يومان أو أكثر غياب متتاليان إلى قائمة الانقطاع.')
-                ->form([
-                    \Filament\Forms\Components\Select::make('excluded_groups')
+                ->schema([
+                    Select::make('excluded_groups')
                         ->label('استثناء المجموعات')
                         ->multiple()
                         ->options(Group::active()->pluck('name', 'id'))
@@ -85,7 +91,7 @@ class ListStudentDisconnections extends ListRecords
                 ->action(function ($data) {
                     $this->addDisconnectedStudents($data['excluded_groups'] ?? []);
                 }),
-            Actions\Action::make('check_returned_students')
+            Action::make('check_returned_students')
                 ->label('فحص الطلاب العائدين')
                 ->icon('heroicon-o-arrow-path')
                 ->color('info')
@@ -95,7 +101,7 @@ class ListStudentDisconnections extends ListRecords
                 ->action(function () {
                     $this->checkReturnedStudents();
                 }),
-            Actions\Action::make('export_table')
+            Action::make('export_table')
                 ->label('تصدير كشف الانقطاع')
                 ->icon('heroicon-o-share')
                 ->color('success')
@@ -118,20 +124,20 @@ class ListStudentDisconnections extends ListRecords
             //     ->label('تصدير Excel')
             //     ->exporter(StudentDisconnectionExporter::class)
             //     ->icon('heroicon-o-arrow-down-tray'),
-            Actions\Action::make('export_custom_excel')
+            Action::make('export_custom_excel')
                 ->label('تصدير Excel')
                 ->icon('heroicon-o-document-arrow-down')
                 ->color('warning')
-                ->form([
-                    \Filament\Forms\Components\DatePicker::make('start_date')
+                ->schema([
+                    DatePicker::make('start_date')
                         ->label('من تاريخ آخر حضور')
                         ->displayFormat('m/d/Y')
                         ->default(now()->subDays(14)->format('Y-m-d')),
-                    \Filament\Forms\Components\DatePicker::make('end_date')
+                    DatePicker::make('end_date')
                         ->label('إلى تاريخ آخر حضور')
                         ->displayFormat('m/d/Y')
                         ->default(now()->format('Y-m-d')),
-                    \Filament\Forms\Components\Toggle::make('include_returned')
+                    Toggle::make('include_returned')
                         ->label('تضمين الطلاب العائدين')
                         ->default(true)
                         ->helperText('اختر ما إذا كنت تريد تضمين الطلاب الذين عادوا في التصدير'),
@@ -143,7 +149,7 @@ class ListStudentDisconnections extends ListRecords
                     $dateRange = "من {$startDate} إلى {$endDate}";
 
                     $export = new StudentDisconnectionExport($dateRange, $startDate, $endDate, $includeReturned);
-                    return \Maatwebsite\Excel\Facades\Excel::download($export, 'students-disconnection-' . now()->format('Y-m-d') . '.xlsx');
+                    return Excel::download($export, 'students-disconnection-' . now()->format('Y-m-d') . '.xlsx');
                 }),
         ];
     }

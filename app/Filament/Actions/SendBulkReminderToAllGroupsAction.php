@@ -2,6 +2,11 @@
 
 namespace App\Filament\Actions;
 
+use Filament\Actions\Action;
+use Filament\Forms\Components\Select;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Forms\Components\Placeholder;
+use Exception;
 use App\Classes\Core;
 use App\Enums\WhatsAppMessageStatus;
 use App\Helpers\PhoneHelper;
@@ -14,9 +19,7 @@ use App\Services\WhatsAppService;
 use App\Traits\HandlesWhatsAppProgress;
 use Filament\Forms;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Get;
 use Filament\Notifications\Notification;
-use Filament\Tables\Actions\Action;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -42,7 +45,7 @@ class SendBulkReminderToAllGroupsAction extends Action
 
                 // Template source selection - only for admins
                 if ($isAdmin) {
-                    $fields[] = Forms\Components\Select::make('template_source')
+                    $fields[] = Select::make('template_source')
                     ->label('مصدر القالب')
                     ->options([
                         'group_default' => 'استخدام القالب الافتراضي لكل مجموعة',
@@ -53,7 +56,7 @@ class SendBulkReminderToAllGroupsAction extends Action
                     ->reactive()
                     ->helperText('اختر كيفية تحديد محتوى الرسالة لكل مجموعة');
 
-                    $fields[] = Forms\Components\Select::make('global_template_id')
+                    $fields[] = Select::make('global_template_id')
                     ->label('اختر القالب الموحد')
                     ->options(function () {
                         // Get all templates from all user's groups
@@ -82,7 +85,7 @@ class SendBulkReminderToAllGroupsAction extends Action
                 }
 
                 // Rest of form fields that are always shown
-                $fields[] = Forms\Components\Placeholder::make('groups_summary')
+                $fields[] = Placeholder::make('groups_summary')
                     ->label('ملخص المجموعات')
                     ->content(function () {
                         $userGroups = $this->getUserGroups();
@@ -312,7 +315,7 @@ class SendBulkReminderToAllGroupsAction extends Action
                             'delay_seconds' => $delaySeconds,
                         ]);
 
-                    } catch (\Exception $e) {
+                    } catch (Exception $e) {
                         // Update message history as failed
                         $messageHistory->update([
                             'status' => WhatsAppMessageStatus::FAILED,
@@ -334,7 +337,7 @@ class SendBulkReminderToAllGroupsAction extends Action
                 $messagesQueued++;
                 $messageIndex++;
 
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 Log::error('Failed to queue bulk WhatsApp reminder for unmarked student', [
                     'student_id' => $student->id,
                     'student_name' => $student->name,

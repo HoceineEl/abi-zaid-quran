@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Services\WhatsAppService;
+use Exception;
 use App\Enums\WhatsAppConnectionStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -79,7 +81,7 @@ class WhatsAppSession extends Model
     public function updateQrCode(?string $qrCode): void
     {
         // Let the service handle QR code cleaning
-        $service = app(\App\Services\WhatsAppService::class);
+        $service = app(WhatsAppService::class);
         $cleanedQrCode = $service->cleanQrCodeData($qrCode);
 
         $this->update([
@@ -141,7 +143,7 @@ class WhatsAppSession extends Model
             });
 
             return true;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to delete WhatsApp session', [
                 'session_id' => $this->id,
                 'error' => $e->getMessage(),
@@ -166,10 +168,10 @@ class WhatsAppSession extends Model
     {
         try {
             if ($this->isConnected()) {
-                $whatsappService = app(\App\Services\WhatsAppService::class);
+                $whatsappService = app(WhatsAppService::class);
                 $whatsappService->logout($this);
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             \Log::warning('Failed to logout from WhatsApp service during deletion', [
                 'session_id' => $this->id,
                 'error' => $e->getMessage(),

@@ -2,12 +2,13 @@
 
 namespace App\Filament\Resources\GroupResource\Pages;
 
+use Filament\Actions\CreateAction;
+use Filament\Schemas\Components\Tabs\Tab;
 use App\Filament\Resources\GroupResource;
 use App\Models\Group;
 use App\Models\Student;
 use Carbon\Carbon;
 use Filament\Actions;
-use Filament\Resources\Components\Tab;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Support\Enums\ActionSize;
 use Illuminate\Database\Eloquent\Builder;
@@ -39,7 +40,7 @@ class ListGroups extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make()
+            CreateAction::make()
                 ->visible(auth()->user()->isAdministrator()),
         ];
     }
