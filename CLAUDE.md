@@ -8,13 +8,14 @@ ABI ZAID is a comprehensive Quran memorization management system built with Lara
 
 ## Tech Stack
 
-- **PHP**: 8.2+
-- **Laravel**: 11.x
-- **Filament**: 3.2.57 (Admin panel)
-- **Livewire**: 3.5
-- **Database**: SQLite (default) or MySQL
-- **Frontend**: Tailwind CSS 3.x, Vite
-- **Testing**: Pest 2.x
+- **PHP**: 8.3.11
+- **Laravel**: 11.46.1
+- **Filament**: 4.1.9 (Admin panel)
+- **Livewire**: 3.6.4
+- **Database**: MySQL
+- **Frontend**: Tailwind CSS 3.4.10, Vite
+- **Testing**: Pest 2.36.0
+- **Icons**: secondnetwork/blade-tabler-icons 3.35.0
 
 ## Development Commands
 
