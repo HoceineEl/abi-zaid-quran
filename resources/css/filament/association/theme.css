@@ -1,10 +1,11 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import '../../../../vendor/filament/filament/resources/css/theme.css';
+
+@source '../../../../app/Filament';
+@source '../../../../resources/views/filament';
 
 
 body {
-    @apply !transition-all !duration-300 !ease-in-out ;
+    @apply !transition-all !duration-300 !ease-in-out;
 }
 .fi-panel-guest .fi-topbar-open-sidebar-btn {
     @apply !hidden;
@@ -42,7 +43,7 @@ body {
                 @apply !text-gray-700 dark:!text-gray-300;
                 
                 &:hover {
-                    @apply !-translate-x-1 ;
+                    @apply !-translate-x-1;
                 }
                 svg {
                     @apply !text-gray-600 dark:!text-gray-300;
@@ -52,18 +53,18 @@ body {
         }
     }
     .fi-sidebar-nav-groups{
-      @apply !gap-y-3 ;
+      @apply !gap-y-3;
     }
 
     & .fi-sidebar-nav {
-        @apply !shadow-xl !pt-2 !gap-y-6 !border-e dark:!border-e-gray-900 ;
+        @apply !shadow-xl !pt-2 !gap-y-6 !border-e dark:!border-e-gray-900;
         scroll-behavior: smooth;
   
         &>ul {
-            @apply gap-0 !important;
+            @apply !gap-0;
   
             &>li {
-                @apply !py-2.5 !border-b !border-gray-200 dark:!border-gray-800 first:!pt-0 last:!pb-0 last:!border-0 ;
+                @apply !py-2.5 !border-b !border-gray-200 dark:!border-gray-800 first:!pt-0 last:!pb-0 last:!border-0;
             }
         }
     }
@@ -72,14 +73,14 @@ body {
         
         .fi-sidebar-group-label {
             @apply !text-sm !font-extrabold  !tracking-wider;
-            @apply !text-gray-500 dark:!text-gray-400 ;
+            @apply !text-gray-500 dark:!text-gray-400;
         }
     }
     & .fi-sidebar-item-button {
-      @apply gap-2 !important;
+      @apply !gap-2;
 
       &:hover {
-          @apply !bg-gray-200/30 dark:!bg-gray-800/30 ;
+          @apply !bg-gray-200/30 dark:!bg-gray-800/30;
       }
   }
 
