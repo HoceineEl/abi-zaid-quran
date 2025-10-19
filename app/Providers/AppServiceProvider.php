@@ -46,5 +46,6 @@ class AppServiceProvider extends ServiceProvider
         DB::prohibitDestructiveCommands(app()->environment('production'));
 
         Model::unguard();
+        Model::automaticallyEagerLoadRelationships();
     }
 }

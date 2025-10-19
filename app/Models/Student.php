@@ -131,6 +131,13 @@ class Student extends Model
             ->latest();
     }
 
+    public function last_presence()
+    {
+        return $this->hasOne(Progress::class)
+            ->where('status', 'memorized')
+            ->latest('date');
+    }
+
     public function needACall(): Attribute
     {
         return Attribute::make(

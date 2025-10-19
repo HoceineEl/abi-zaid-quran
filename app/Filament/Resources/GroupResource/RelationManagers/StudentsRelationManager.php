@@ -57,6 +57,10 @@ class StudentsRelationManager extends RelationManager
 
     protected static ?string $pluralModelLabel = 'طلاب';
 
+    private static array $messageTemplateCache = [];
+
+    private static array $whatsAppUrlCache = [];
+
     public function form(Schema $schema): Schema
     {
         return $schema
@@ -1114,6 +1118,11 @@ class StudentsRelationManager extends RelationManager
                             $query->where('date', $today)
                                 ->latest();
                         },
+                        'last_presence' => function ($query) {
+                            $query->where('status', 'memorized')
+                                ->latest('date')
+                                ->limit(1);
+                        },
                     ])
                     ->orderByDesc('attendance_count');
             });
@@ -1126,6 +1135,12 @@ class StudentsRelationManager extends RelationManager
 
     public static function getWhatsAppUrl(Student $record, Group $ownerRecord): string
     {
+        // Cache to prevent duplicate URL generation per request
+        $cacheKey = "{$record->id}_{$ownerRecord->id}";
+        if (isset(self::$whatsAppUrlCache[$cacheKey])) {
+            return self::$whatsAppUrlCache[$cacheKey];
+        }
+
         // Format phone number for WhatsApp
         $number = $record->phone;
 
@@ -1144,8 +1159,14 @@ class StudentsRelationManager extends RelationManager
             $number = '+'.$number;
         }
 
-        // Check if the group has a default message template
-        $defaultTemplate = $ownerRecord->messageTemplates()->wherePivot('is_default', true)->first();
+        // Check if the group has a default message template (use cache to prevent N+1 queries)
+        $groupId = $ownerRecord->id;
+        if (! isset(self::$messageTemplateCache[$groupId])) {
+            self::$messageTemplateCache[$groupId] = $ownerRecord->messageTemplates()
+                ->wherePivot('is_default', true)
+                ->first();
+        }
+        $defaultTemplate = self::$messageTemplateCache[$groupId];
         if ($defaultTemplate) {
             $message = Core::processMessageTemplate($defaultTemplate->content, $record, $ownerRecord);
         }
@@ -1213,6 +1234,9 @@ MSG;
         }
 
         $url = route('whatsapp', ['number' => $number, 'message' => $message, 'student_id' => $record->id]);
+
+        // Cache the URL before returning
+        self::$whatsAppUrlCache[$cacheKey] = $url;
 
         // Open in new tab
         return $url;

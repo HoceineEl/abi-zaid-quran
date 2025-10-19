@@ -16,6 +16,10 @@ class GroupMessageTemplate extends Model
         'content',
     ];
 
+    private static array $variableValuesCache = [];
+
+    private static array $lastPresenceCache = [];
+
     /**
      * The groups that belong to the message template.
      */
@@ -87,27 +91,54 @@ class GroupMessageTemplate extends Model
 
     /**
      * Get the values for variables based on student and group
+     *
+     * @param  Student  $student  The student object
+     * @param  Group  $group  The group object
+     * @param  mixed  $lastPresence  Optional pre-loaded last presence progress to avoid N+1 queries
      */
-    public static function getVariableValues(Student $student, Group $group): array
+    public static function getVariableValues(Student $student, Group $group, mixed $lastPresence = null): array
     {
+        // Use cache to prevent duplicate queries during request
+        $cacheKey = "{$student->id}_{$group->id}";
+        if (isset(self::$variableValuesCache[$cacheKey])) {
+            return self::$variableValuesCache[$cacheKey];
+        }
+
         // Set locale to Arabic
         Carbon::setLocale('ar');
 
-        // Get the student's last presence date
-        $lastPresence = $student->progresses()
-            ->where('status', 'memorized')
-            ->latest('date')
-            ->first();
+        // Use eager-loaded relationship if available, otherwise query (with cache)
+        if ($lastPresence === null) {
+            // Check if last_presence relationship is already loaded
+            if ($student->relationLoaded('last_presence')) {
+                $lastPresence = $student->last_presence;
+            } else {
+                // Fall back to cached query
+                $studentId = $student->id;
+                if (! isset(self::$lastPresenceCache[$studentId])) {
+                    self::$lastPresenceCache[$studentId] = $student->progresses()
+                        ->where('status', 'memorized')
+                        ->latest('date')
+                        ->first();
+                }
+                $lastPresence = self::$lastPresenceCache[$studentId];
+            }
+        }
 
         $lastPresenceDate = $lastPresence
             ? Carbon::parse($lastPresence->date)->translatedFormat('l d F Y')
             : 'لم يسجل حضور بعد';
 
-        return [
+        $values = [
             '{student_name}' => $student->name,
             '{group_name}' => $group->name,
             '{curr_date}' => Carbon::now()->translatedFormat('l d F Y'),
             '{last_presence}' => $lastPresenceDate,
         ];
+
+        // Cache the result
+        self::$variableValuesCache[$cacheKey] = $values;
+
+        return $values;
     }
 }
