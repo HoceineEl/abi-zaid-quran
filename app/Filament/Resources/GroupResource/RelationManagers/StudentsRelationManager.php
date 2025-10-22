@@ -218,9 +218,10 @@ class StudentsRelationManager extends RelationManager
                             ->success()
                             ->send();
                     }),
+                SendReminderToUnmarkedStudentsAction::make()
+                    ->size(ActionSize::ExtraSmall)
+                    ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user())),
                 ActionsActionGroup::make([
-                    SendReminderToUnmarkedStudentsAction::make()
-                        ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user())),
                     SendAbsentStudentsMessageAction::make()
                         ->visible(fn() => $this->ownerRecord->managers->contains(auth()->user())),
                     Action::make('copy_students_from_other_groups')
@@ -1303,5 +1304,4 @@ MSG;
         // Combine the sorted collections
         return $sortedPresent->concat($sortedAbsent);
     }
-
 }
