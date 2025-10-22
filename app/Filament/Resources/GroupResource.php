@@ -278,7 +278,8 @@ class GroupResource extends Resource
                 ])
             ])
             ->headerActions([
-                SendBulkReminderToAllGroupsAction::make(),
+                SendBulkReminderToAllGroupsAction::make()
+                    ->hidden(),
                 SendMessageToAllGroupMembersAction::make(),
 
                 ActionsAction::make('export_daily_attendance_summary')

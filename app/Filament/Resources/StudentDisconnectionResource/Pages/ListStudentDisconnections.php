@@ -55,7 +55,7 @@ class ListStudentDisconnections extends ListRecords
                 'student.progresses' => function ($query) {
                     $query->where('status', 'memorized')->latest('date')->limit(1);
                 },
-                'group' => fn ($query) => $query->withoutGlobalScope('userGroups')
+                'group'
             ])
             ->orderByRaw('
                 (SELECT MAX(p.date)
@@ -103,10 +103,7 @@ class ListStudentDisconnections extends ListRecords
                 ->icon('heroicon-o-share')
                 ->color('success')
                 ->action(function () {
-                    $disconnections = StudentDisconnection::with([
-                        'student',
-                        'group' => fn ($query) => $query->withoutGlobalScope('userGroups')
-                    ])
+                    $disconnections = StudentDisconnection::with(['student', 'group'])
                         ->orderBy('created_at', 'desc')
                         ->get();
 

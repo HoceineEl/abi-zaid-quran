@@ -386,9 +386,6 @@ class StudentDisconnectionResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->with([
-                'student',
-                'group' => fn ($query) => $query->withoutGlobalScope('userGroups')
-            ]);
+            ->with(['student', 'group']);
     }
 }

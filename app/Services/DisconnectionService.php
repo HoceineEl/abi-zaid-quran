@@ -57,10 +57,7 @@ class DisconnectionService
 
   public function checkReturnedStudents(): int
   {
-    $disconnections = StudentDisconnection::with([
-        'student',
-        'group' => fn ($query) => $query->withoutGlobalScope('userGroups')
-      ])
+    $disconnections = StudentDisconnection::with(['student', 'group'])
       ->where('has_returned', false)
       ->get();
 
