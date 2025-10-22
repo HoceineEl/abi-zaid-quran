@@ -27,7 +27,9 @@ class StudentDisconnection extends Model
 
     public function group(): BelongsTo
     {
-        return $this->belongsTo(Group::class)->withoutGlobalScope('userGroups');
+        return $this->belongsTo(Group::class)
+            ->withoutGlobalScope('userGroups')
+            ->withTrashed();
     }
 
     public function getStudentNameAttribute(): string
