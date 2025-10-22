@@ -217,8 +217,10 @@ class Student extends Model
         return (int) now()->diffInDays($lastPresentDate);
     }
 
-    public function scopeDisconnectedFromActiveGroups(Builder $query, int $consecutiveDays = 2): Builder
+    public function scopeDisconnectedFromActiveGroups(Builder $query, ?int $consecutiveDays = null): Builder
     {
+        $consecutiveDays = $consecutiveDays ?? config('students.disconnection.consecutive_absent_days_threshold', 3);
+
         return $query->whereHas('group', function ($groupQuery) {
             $groupQuery->active();
         })->filter(function ($student) use ($consecutiveDays) {
@@ -226,8 +228,10 @@ class Student extends Model
         });
     }
 
-    public function hasConsecutiveAbsentDaysInWorkingGroup(int $requiredDays = 2): bool
+    public function hasConsecutiveAbsentDaysInWorkingGroup(?int $requiredDays = null): bool
     {
+        $requiredDays = $requiredDays ?? config('students.disconnection.consecutive_absent_days_threshold', 3);
+
         // Use the new method to get current consecutive absent days
         return $this->getCurrentConsecutiveAbsentDays() >= $requiredDays;
     }
@@ -249,8 +253,10 @@ class Student extends Model
 
     public function getDisconnectionDateBasedOnGroupActivity(): ?string
     {
-        // Only consider students with at least 2 consecutive absent days
-        if ($this->getCurrentConsecutiveAbsentDays() < 2) {
+        $threshold = config('students.disconnection.consecutive_absent_days_threshold', 3);
+
+        // Only consider students with at least the configured consecutive absent days
+        if ($this->getCurrentConsecutiveAbsentDays() < $threshold) {
             return null;
         }
 
@@ -262,7 +268,7 @@ class Student extends Model
             return Carbon::parse($lastPresentDate)->addDay()->format('Y-m-d');
         }
 
-        // If never present, use the date of the second consecutive absence
+        // If never present, use the date of the threshold consecutive absence
         $groupWorkingDates = $this->getGroupWorkingDates(30);
         $absentCount = 0;
 
@@ -273,7 +279,7 @@ class Student extends Model
 
             if (!$progress || ($progress->status === 'absent' && (int)$progress->with_reason === 0)) {
                 $absentCount++;
-                if ($absentCount === 2) {
+                if ($absentCount === $threshold) {
                     return $date;
                 }
             }

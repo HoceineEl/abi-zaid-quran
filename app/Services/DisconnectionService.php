@@ -12,16 +12,21 @@ class DisconnectionService
 {
   public function getDisconnectedStudentsFromWorkingGroups(array $excludedGroups = []): Collection
   {
-    return Student::with(['group', 'progresses'])
+    $threshold = config('students.disconnection.consecutive_absent_days_threshold', 3);
+
+    return Student::with([
+        'group' => fn ($query) => $query->withoutGlobalScope('userGroups'),
+        'progresses'
+      ])
       ->whereHas('group', function ($query) use ($excludedGroups) {
-        $query->active();
+        $query->withoutGlobalScope('userGroups')->active();
         if (!empty($excludedGroups)) {
           $query->whereNotIn('id', $excludedGroups);
         }
       })
       ->get()
-      ->filter(function ($student) {
-        return $student->hasConsecutiveAbsentDaysInWorkingGroup(2) &&
+      ->filter(function ($student) use ($threshold) {
+        return $student->hasConsecutiveAbsentDaysInWorkingGroup($threshold) &&
           !$this->studentAlreadyDisconnected($student);
       })
       ->sortByDesc(function ($student) {
@@ -52,7 +57,10 @@ class DisconnectionService
 
   public function checkReturnedStudents(): int
   {
-    $disconnections = StudentDisconnection::with('student')
+    $disconnections = StudentDisconnection::with([
+        'student',
+        'group' => fn ($query) => $query->withoutGlobalScope('userGroups')
+      ])
       ->where('has_returned', false)
       ->get();
 
@@ -70,17 +78,17 @@ class DisconnectionService
 
   public function getActiveGroups(): Collection
   {
-    return Group::active()->get();
+    return Group::withoutGlobalScope('userGroups')->active()->get();
   }
 
   public function getWorkingGroupsOnDate(string $date): Collection
   {
-    return Group::working($date)->get();
+    return Group::withoutGlobalScope('userGroups')->working($date)->get();
   }
 
   public function getWorkingGroupsInDateRange(string $startDate, string $endDate): Collection
   {
-    return Group::workingInDateRange($startDate, $endDate)->get();
+    return Group::withoutGlobalScope('userGroups')->workingInDateRange($startDate, $endDate)->get();
   }
 
   private function studentAlreadyDisconnected(Student $student): bool

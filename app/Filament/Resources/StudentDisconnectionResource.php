@@ -59,7 +59,11 @@ class StudentDisconnectionResource extends Resource
 
                 Forms\Components\Select::make('group_id')
                     ->label('المجموعة')
-                    ->relationship('group', 'name')
+                    ->relationship(
+                        name: 'group',
+                        titleAttribute: 'name',
+                        modifyQueryUsing: fn (Builder $query) => $query->withoutGlobalScope('userGroups')
+                    )
                     ->searchable()
                     ->required()
                     ->disabled(),
@@ -193,7 +197,7 @@ class StudentDisconnectionResource extends Resource
             ->filters([
                 Tables\Filters\SelectFilter::make('group_id')
                     ->label('المجموعة')
-                    ->relationship('group', 'name'),
+                    ->relationship('group', 'name', modifyQueryUsing: fn (Builder $query) => $query->withoutGlobalScope('userGroups')),
 
                 Tables\Filters\SelectFilter::make('message_response')
                     ->label('تفاعل مع الرسالة')
@@ -382,6 +386,9 @@ class StudentDisconnectionResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->with(['student', 'group']);
+            ->with([
+                'student',
+                'group' => fn ($query) => $query->withoutGlobalScope('userGroups')
+            ]);
     }
 }

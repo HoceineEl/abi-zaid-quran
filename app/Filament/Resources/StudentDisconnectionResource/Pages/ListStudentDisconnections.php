@@ -51,9 +51,12 @@ class ListStudentDisconnections extends ListRecords
     protected function getTableQuery(): Builder
     {
         return parent::getTableQuery()
-            ->with(['student.progresses' => function ($query) {
-                $query->where('status', 'memorized')->latest('date')->limit(1);
-            }])
+            ->with([
+                'student.progresses' => function ($query) {
+                    $query->where('status', 'memorized')->latest('date')->limit(1);
+                },
+                'group' => fn ($query) => $query->withoutGlobalScope('userGroups')
+            ])
             ->orderByRaw('
                 (SELECT MAX(p.date)
                  FROM progress p
@@ -72,12 +75,12 @@ class ListStudentDisconnections extends ListRecords
                 ->color('success')
                 ->requiresConfirmation()
                 ->modalHeading('إضافة الطلاب المنقطعين')
-                ->modalDescription('سيتم إضافة الطلاب من المجموعات النشطة (لديها تقدم في آخر 7 أيام) الذين لديهم يومان أو أكثر غياب متتاليان إلى قائمة الانقطاع.')
+                ->modalDescription('سيتم إضافة الطلاب من المجموعات النشطة (لديها تقدم في آخر 7 أيام) الذين لديهم ثلاثة أيام أو أكثر غياب متتالية إلى قائمة الانقطاع.')
                 ->form([
                     \Filament\Forms\Components\Select::make('excluded_groups')
                         ->label('استثناء المجموعات')
                         ->multiple()
-                        ->options(Group::active()->pluck('name', 'id'))
+                        ->options(Group::withoutGlobalScope('userGroups')->active()->pluck('name', 'id'))
                         ->searchable()
                         ->preload()
                         ->helperText('اختر المجموعات النشطة التي لا تريد إضافة طلابها إلى قائمة الانقطاع (المجموعات النشطة = لديها تقدم في آخر 7 أيام)'),
@@ -100,7 +103,10 @@ class ListStudentDisconnections extends ListRecords
                 ->icon('heroicon-o-share')
                 ->color('success')
                 ->action(function () {
-                    $disconnections = StudentDisconnection::with(['student', 'group'])
+                    $disconnections = StudentDisconnection::with([
+                        'student',
+                        'group' => fn ($query) => $query->withoutGlobalScope('userGroups')
+                    ])
                         ->orderBy('created_at', 'desc')
                         ->get();
 
@@ -155,13 +161,13 @@ class ListStudentDisconnections extends ListRecords
         if ($addedCount > 0) {
             Notification::make()
                 ->title('تم إضافة الطلاب المنقطعين')
-                ->body("تم إضافة {$addedCount} طالب إلى قائمة الانقطاع من المجموعات النشطة (لديها تقدم في آخر 7 أيام).")
+                ->body("تم إضافة {$addedCount} طالب إلى قائمة الانقطاع من المجموعات النشطة (الطلاب لديهم 3 أيام أو أكثر غياب متتالية).")
                 ->success()
                 ->send();
         } else {
             Notification::make()
                 ->title('لا يوجد طلاب منقطعين')
-                ->body('لا يوجد طلاب لديهم يومان أو أكثر غياب متتاليان في المجموعات النشطة (لديها تقدم في آخر 7 أيام) أو تم إضافتهم مسبقاً.')
+                ->body('لا يوجد طلاب لديهم ثلاثة أيام أو أكثر غياب متتالية في المجموعات النشطة (لديها تقدم في آخر 7 أيام) أو تم إضافتهم مسبقاً.')
                 ->info()
                 ->send();
         }
