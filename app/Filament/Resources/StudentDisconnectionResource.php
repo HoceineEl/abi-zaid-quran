@@ -4,6 +4,9 @@ namespace App\Filament\Resources;
 
 use App\Enums\DisconnectionStatus;
 use App\Enums\MessageResponseStatus;
+use App\Filament\Actions\MoveDisconnectedStudentToGroupAction;
+use App\Filament\Actions\SendWhatsAppBulkToDisconnectedAction;
+use App\Filament\Actions\SendWhatsAppMessageToDisconnectedAction;
 use App\Filament\Resources\StudentDisconnectionResource\Pages;
 use Illuminate\Support\Collection;
 use App\Models\StudentDisconnection;
@@ -77,9 +80,23 @@ class StudentDisconnectionResource extends Resource
                     ->label('تاريخ التواصل')
                     ->nullable(),
 
-                Forms\Components\ToggleButtons::make('message_response')
-                    ->label('تفاعل مع الرسالة')
-                    ->options(MessageResponseStatus::class)
+                Forms\Components\DatePicker::make('reminder_message_date')
+                    ->label('تاريخ الرسالة التذكيرية')
+                    ->nullable(),
+
+                Forms\Components\DatePicker::make('warning_message_date')
+                    ->label('تاريخ الرسالة الإندارية')
+                    ->nullable(),
+
+                Forms\Components\Select::make('message_response')
+                    ->label('حالة التواصل')
+                    ->options([
+                        MessageResponseStatus::NotContacted->value => MessageResponseStatus::NotContacted->getLabel(),
+                        MessageResponseStatus::ReminderMessage->value => MessageResponseStatus::ReminderMessage->getLabel(),
+                        MessageResponseStatus::WarningMessage->value => MessageResponseStatus::WarningMessage->getLabel(),
+                        MessageResponseStatus::No->value => MessageResponseStatus::No->getLabel(),
+                        MessageResponseStatus::Yes->value => MessageResponseStatus::Yes->getLabel(),
+                    ])
                     ->default(MessageResponseStatus::NotContacted->value)
                     ->nullable(),
 
@@ -143,6 +160,20 @@ class StudentDisconnectionResource extends Resource
                     ->sortable()
                     ->placeholder('لم يتم التواصل'),
 
+                Tables\Columns\TextColumn::make('reminder_message_date')
+                    ->label('تاريخ الرسالة التذكيرية')
+                    ->date('Y-m-d')
+                    ->sortable()
+                    ->placeholder('لم يتم الإرسال')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                Tables\Columns\TextColumn::make('warning_message_date')
+                    ->label('تاريخ الرسالة الإندارية')
+                    ->date('Y-m-d')
+                    ->sortable()
+                    ->placeholder('لم يتم الإرسال')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 ToggleColumn::make('has_been_contacted')
                     ->label('تم التواصل')
                     ->state(function (StudentDisconnection $record): bool {
@@ -162,14 +193,22 @@ class StudentDisconnectionResource extends Resource
                         }
                     }),
                 SelectColumn::make('message_response')
-                    ->label('تفاعل مع الرسالة')
+                    ->label('حالة التواصل')
                     ->options([
-                        MessageResponseStatus::Yes->value => MessageResponseStatus::Yes->getLabel(),
-                        MessageResponseStatus::No->value => MessageResponseStatus::No->getLabel(),
                         MessageResponseStatus::NotContacted->value => MessageResponseStatus::NotContacted->getLabel(),
+                        MessageResponseStatus::ReminderMessage->value => MessageResponseStatus::ReminderMessage->getLabel(),
+                        MessageResponseStatus::WarningMessage->value => MessageResponseStatus::WarningMessage->getLabel(),
+                        MessageResponseStatus::No->value => MessageResponseStatus::No->getLabel(),
+                        MessageResponseStatus::Yes->value => MessageResponseStatus::Yes->getLabel(),
                     ])
                     ->afterStateUpdated(function (StudentDisconnection $record, $state) {
-                        if ($state === MessageResponseStatus::Yes->value || $state === MessageResponseStatus::No->value) {
+                        // Update contact_date if selecting a contacted status
+                        if (in_array($state, [
+                            MessageResponseStatus::Yes->value,
+                            MessageResponseStatus::No->value,
+                            MessageResponseStatus::ReminderMessage->value,
+                            MessageResponseStatus::WarningMessage->value,
+                        ])) {
                             $record->update([
                                 'contact_date' => now()->format('Y-m-d'),
                                 'message_response' => $state,
@@ -245,6 +284,7 @@ class StudentDisconnectionResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                SendWhatsAppMessageToDisconnectedAction::make(),
                 // Tables\Actions\Action::make('mark_contacted')
                 // ->label('تم التواصل')
                 // ->icon('heroicon-o-phone')
@@ -278,6 +318,8 @@ class StudentDisconnectionResource extends Resource
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
+                    SendWhatsAppBulkToDisconnectedAction::make(),
+                    MoveDisconnectedStudentToGroupAction::make(),
                     Tables\Actions\BulkAction::make('mark_contacted_bulk')
                         ->label('تم التواصل')
                         ->icon('heroicon-o-phone')
@@ -288,8 +330,13 @@ class StudentDisconnectionResource extends Resource
                                 ->required()
                                 ->default(now()),
                             Forms\Components\Select::make('message_response')
-                                ->label('تفاعل مع الرسالة')
-                                ->options(MessageResponseStatus::class)
+                                ->label('حالة التواصل')
+                                ->options([
+                                    MessageResponseStatus::ReminderMessage->value => MessageResponseStatus::ReminderMessage->getLabel(),
+                                    MessageResponseStatus::WarningMessage->value => MessageResponseStatus::WarningMessage->getLabel(),
+                                    MessageResponseStatus::No->value => MessageResponseStatus::No->getLabel(),
+                                    MessageResponseStatus::Yes->value => MessageResponseStatus::Yes->getLabel(),
+                                ])
                                 ->required(),
                         ])
                         ->action(function (Collection $records, array $data) {
@@ -346,8 +393,13 @@ class StudentDisconnectionResource extends Resource
                                 ->required()
                                 ->default(now()),
                             Forms\Components\Select::make('message_response')
-                                ->label('تفاعل مع الرسالة')
-                                ->options(MessageResponseStatus::class)
+                                ->label('حالة التواصل')
+                                ->options([
+                                    MessageResponseStatus::ReminderMessage->value => MessageResponseStatus::ReminderMessage->getLabel(),
+                                    MessageResponseStatus::WarningMessage->value => MessageResponseStatus::WarningMessage->getLabel(),
+                                    MessageResponseStatus::No->value => MessageResponseStatus::No->getLabel(),
+                                    MessageResponseStatus::Yes->value => MessageResponseStatus::Yes->getLabel(),
+                                ])
                                 ->required(),
                         ])
                         ->action(function (Collection $records, array $data) {

@@ -16,6 +16,8 @@ class StudentDisconnection extends Model
     protected $casts = [
         'disconnection_date' => 'date',
         'contact_date' => 'date',
+        'reminder_message_date' => 'date',
+        'warning_message_date' => 'date',
         'message_response' => MessageResponseStatus::class,
         'has_returned' => 'boolean',
     ];
@@ -48,7 +50,11 @@ class StudentDisconnection extends Model
             return DisconnectionStatus::Responded;
         }
 
-        if ($this->contact_date) {
+        if ($this->contact_date && in_array($this->message_response, [
+            MessageResponseStatus::ReminderMessage,
+            MessageResponseStatus::WarningMessage,
+            MessageResponseStatus::No,
+        ])) {
             return DisconnectionStatus::Contacted;
         }
 

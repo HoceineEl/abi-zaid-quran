@@ -37,14 +37,22 @@ class StudentDisconnectionExporter extends Exporter
                 ->label('تاريخ التواصل')
                 ->formatStateUsing(fn($state) => $state ? $state->format('Y-m-d') : 'لم يتم التواصل'),
             ExportColumn::make('message_response')
-                ->label('تفاعل مع الرسالة')
+                ->label('حالة التواصل')
                 ->formatStateUsing(fn($state) => match ($state) {
                     MessageResponseStatus::Yes => 'نعم',
                     MessageResponseStatus::No => 'لا',
                     MessageResponseStatus::NotContacted => 'لم يتم التواصل',
+                    MessageResponseStatus::ReminderMessage => 'الرسالة التذكيرية',
+                    MessageResponseStatus::WarningMessage => 'الرسالة الإندارية',
                     null => 'لم يتم التواصل',
                     default => 'لم يتم التواصل',
                 }),
+            ExportColumn::make('reminder_message_date')
+                ->label('تاريخ الرسالة التذكيرية')
+                ->formatStateUsing(fn($state) => $state ? $state->format('Y-m-d') : 'لم يتم الإرسال'),
+            ExportColumn::make('warning_message_date')
+                ->label('تاريخ الرسالة الإندارية')
+                ->formatStateUsing(fn($state) => $state ? $state->format('Y-m-d') : 'لم يتم الإرسال'),
             ExportColumn::make('status')
                 ->label('الحالة')
                 ->formatStateUsing(fn($state) => match ($state) {

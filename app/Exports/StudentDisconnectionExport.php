@@ -60,6 +60,8 @@ class StudentDisconnectionExport implements FromCollection, WithHeadings, Should
                     MessageResponseStatus::Yes => 'نعم',
                     MessageResponseStatus::No => 'لا',
                     MessageResponseStatus::NotContacted => 'لم يتم التواصل',
+                    MessageResponseStatus::ReminderMessage => 'الرسالة التذكيرية',
+                    MessageResponseStatus::WarningMessage => 'الرسالة الإندارية',
                     null => 'لم يتم التواصل',
                     default => 'لم يتم التواصل',
                 };
@@ -86,6 +88,8 @@ class StudentDisconnectionExport implements FromCollection, WithHeadings, Should
                     'disconnection_date' => Carbon::parse($disconnection->disconnection_date)->format('Y-m-d'),
                     'disconnection_duration' => $disconnectionDuration,
                     'contact_date' => $disconnection->contact_date ? Carbon::parse($disconnection->contact_date)->format('Y-m-d') : 'لم يتم التواصل',
+                    'reminder_message_date' => $disconnection->reminder_message_date ? Carbon::parse($disconnection->reminder_message_date)->format('Y-m-d') : 'لم يتم الإرسال',
+                    'warning_message_date' => $disconnection->warning_message_date ? Carbon::parse($disconnection->warning_message_date)->format('Y-m-d') : 'لم يتم الإرسال',
                     'status' => $status,
                 ];
             });
@@ -97,11 +101,13 @@ class StudentDisconnectionExport implements FromCollection, WithHeadings, Should
             'الترتيب',
             'اسم الطالب',
             'ملاحظات',
-            'تفاعل مع الرسالة',
+            'حالة التواصل',
             'المجموعة',
             'تاريخ الانقطاع',
             'مدة الانقطاع',
             'تاريخ التواصل',
+            'تاريخ الرسالة التذكيرية',
+            'تاريخ الرسالة الإندارية',
             'الحالة',
         ];
     }
@@ -122,10 +128,10 @@ class StudentDisconnectionExport implements FromCollection, WithHeadings, Should
 
                 // Add title and date range as headings
                 $sheet->insertNewRowBefore(1, 2);
-                $sheet->mergeCells('A1:J1');
+                $sheet->mergeCells('A1:K1');
                 $sheet->setCellValue('A1', 'تقرير الطلاب المنقطعين');
 
-                $sheet->mergeCells('A2:J2');
+                $sheet->mergeCells('A2:K2');
                 $dateRangeText = 'النطاق الزمني: ' . $this->dateRange;
                 if (!$this->includeReturned) {
                     $dateRangeText .= ' (لا يشمل الطلاب العائدين)';
@@ -147,8 +153,8 @@ class StudentDisconnectionExport implements FromCollection, WithHeadings, Should
                     ->getStartColor()->setARGB('D9E1F2');
 
                 // Style the headings row (which is now row 3)
-                $sheet->getStyle('A3:J3')->getFont()->setBold(true);
-                $sheet->getStyle('A3:J3')->getFill()
+                $sheet->getStyle('A3:K3')->getFont()->setBold(true);
+                $sheet->getStyle('A3:K3')->getFill()
                     ->setFillType(Fill::FILL_SOLID)
                     ->getStartColor()->setARGB('E7E6E6');
 
@@ -162,12 +168,12 @@ class StudentDisconnectionExport implements FromCollection, WithHeadings, Should
 
                     // Alternate row colors for better readability
                     $fillColor = $rowIndex % 2 == 0 ? 'F9F9F9' : 'FFFFFF';
-                    $sheet->getStyle("A{$rowIndex}:J{$rowIndex}")->getFill()
+                    $sheet->getStyle("A{$rowIndex}:K{$rowIndex}")->getFill()
                         ->setFillType(Fill::FILL_SOLID)
                         ->getStartColor()->setARGB($fillColor);
 
-                    // Color code the status column
-                    $statusCell = "I{$rowIndex}";
+                    // Color code the status column (now K instead of I)
+                    $statusCell = "K{$rowIndex}";
                     $statusValue = $sheet->getCell($statusCell)->getValue();
 
                     $statusColor = match ($statusValue) {
@@ -192,18 +198,22 @@ class StudentDisconnectionExport implements FromCollection, WithHeadings, Should
                     $sheet->getStyle($statusCell)->getFont()->getColor()->setARGB($textColor);
 
                     // Color code the message response column
-                    $responseCell = "C{$rowIndex}";
+                    $responseCell = "D{$rowIndex}";
                     $responseValue = $sheet->getCell($responseCell)->getValue();
 
                     $responseColor = match ($responseValue) {
                         'نعم' => 'C6EFCE', // Green
                         'لا' => 'FFC7CE', // Red
+                        'الرسالة التذكيرية' => 'B4C7E7', // Light Blue
+                        'الرسالة الإندارية' => 'FFD966', // Light Orange
                         default => 'F2F2F2', // Gray
                     };
 
                     $responseTextColor = match ($responseValue) {
                         'نعم' => '006100',
                         'لا' => '9C0006',
+                        'الرسالة التذكيرية' => '1F4E78',
+                        'الرسالة الإندارية' => '9C5700',
                         default => '7F7F7F',
                     };
 
@@ -215,11 +225,11 @@ class StudentDisconnectionExport implements FromCollection, WithHeadings, Should
 
                 // Add borders to all cells
                 $highestRow = $sheet->getHighestRow();
-                $sheet->getStyle("A1:J{$highestRow}")->getBorders()->getAllBorders()
+                $sheet->getStyle("A1:K{$highestRow}")->getBorders()->getAllBorders()
                     ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
 
                 // Auto-adjust column widths
-                foreach (range('A', 'J') as $column) {
+                foreach (range('A', 'K') as $column) {
                     if ($column === 'C') { // Notes column
                         $sheet->getColumnDimension($column)->setWidth(30);
                     } else {
