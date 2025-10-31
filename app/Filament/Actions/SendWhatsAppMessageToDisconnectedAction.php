@@ -48,6 +48,17 @@ class SendWhatsAppMessageToDisconnectedAction extends Action
     {
         $isAdmin = auth()->user()->isAdministrator();
         $group = $record->group;
+        $defaultTemplate = null;
+        $defaultTemplateId = 'custom';
+
+        if ($group && method_exists($group, 'messageTemplates')) {
+            $defaultTemplate = $group->messageTemplates()
+                ->wherePivot('is_default', true)
+                ->first();
+            if ($defaultTemplate) {
+                $defaultTemplateId = $defaultTemplate->id;
+            }
+        }
 
         $fields = [
             Forms\Components\ToggleButtons::make('message_type')
@@ -71,7 +82,7 @@ class SendWhatsAppMessageToDisconnectedAction extends Action
                         ->prepend('رسالة مخصصة', 'custom')
                         ->toArray();
                 })
-                ->default('custom')
+                ->default($defaultTemplateId)
                 ->live();
         }
 
@@ -79,13 +90,6 @@ class SendWhatsAppMessageToDisconnectedAction extends Action
         $showMessageField = $isAdmin || !$group || !method_exists($group, 'messageTemplates');
 
         if ($showMessageField) {
-            // Get default template if available
-            $defaultTemplate = null;
-            if ($group && method_exists($group, 'messageTemplates')) {
-                $defaultTemplate = $group->messageTemplates()
-                    ->wherePivot('is_default', true)
-                    ->first();
-            }
 
             // Use default or predefined message
             $defaultMessage = $defaultTemplate ? $defaultTemplate->content : <<<'ARABIC'

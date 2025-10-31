@@ -33,7 +33,7 @@ class SendUnmarkedStudentsMessageAction extends Action
         $this->label('إرسال رسالة تذكير للبقية')
             ->icon('heroicon-o-chat-bubble-oval-left')
             ->color('warning')
-            ->form(function() {
+            ->form(function () {
                 $fields = [];
                 $isAdmin = auth()->user()->isAdministrator();
                 $ownerRecord = $this->getLivewire()->ownerRecord ?? $this->getRecord();
@@ -141,7 +141,7 @@ class SendUnmarkedStudentsMessageAction extends Action
 
         return $ownerRecord->students->filter(function ($student) use ($selectedDate) {
             return $student->progresses->where('date', $selectedDate)->count() == 0 ||
-                   $student->progresses->where('date', $selectedDate)->where('status', null)->count() > 0;
+                $student->progresses->where('date', $selectedDate)->where('status', null)->count() > 0;
         });
     }
 
@@ -291,7 +291,6 @@ class SendUnmarkedStudentsMessageAction extends Action
                             'student_phone' => $phoneNumber,
                             'message_id' => $result[0]['messageId'] ?? null,
                         ]);
-
                     } catch (\Exception $e) {
                         // Update message history as failed
                         $messageHistory->update([
@@ -307,7 +306,6 @@ class SendUnmarkedStudentsMessageAction extends Action
                 });
 
                 $messagesQueued++;
-
             } catch (\Exception $e) {
                 Log::error('Failed to queue WhatsApp message for unmarked student', [
                     'student_id' => $student->id,

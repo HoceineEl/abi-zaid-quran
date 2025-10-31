@@ -55,7 +55,9 @@ class SendReminderToUnmarkedStudentsAction extends Action
                             }
                             return ['custom' => 'رسالة مخصصة'];
                         })
-                        ->default('custom')
+                        ->default(function () use ($defaultTemplate) {
+                            return $defaultTemplate ? $defaultTemplate->id : 'custom';
+                        })
                         ->reactive();
                 }
 
