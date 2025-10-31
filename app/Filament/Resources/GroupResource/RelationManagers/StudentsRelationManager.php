@@ -296,9 +296,20 @@ class StudentsRelationManager extends RelationManager
                     ->action(function () {
                         $students = self::getSortedStudentsForAttendanceReport($this->ownerRecord);
 
-                        // Calculate presence percentage
-                        $totalStudents = $students->count();
-                        $presentStudents = $students->where('attendance_count', '>', 0)->count();
+                        // Calculate presence percentage (excluding absent with reason from the total count)
+                        // Only count students who are present or absent without reason
+                        $countableStudents = $students->filter(function ($student) {
+                            // Include present students
+                            if ($student->attendance_count > 0) {
+                                return true;
+                            }
+                            // Include absent without reason students
+                            $todayProgress = $student->today_progress;
+                            return !($todayProgress && $todayProgress->status === 'absent' && $todayProgress->with_reason === true);
+                        });
+
+                        $totalStudents = $countableStudents->count();
+                        $presentStudents = $countableStudents->where('attendance_count', '>', 0)->count();
                         $presencePercentage = $totalStudents > 0 ? round(($presentStudents / $totalStudents) * 100) : 0;
 
                         $html = view('components.students-export-table', [
@@ -1272,8 +1283,21 @@ MSG;
         $students = $students->sortByDesc('attendance_count');
 
         // Then prepare and sort by attendance remark within each group
-        $presentStudents = $students->where('attendance_count', '>', 0)->values();
-        $absentStudents = $students->where('attendance_count', '=', 0)->values();
+        // Mark as present only if attendance_count > 0 (status = 'memorized')
+        // Exclude students with absence by reason from being counted as absent
+        $presentStudents = $students->filter(function ($student) use ($date) {
+            return $student->attendance_count > 0;
+        })->values();
+
+        $absentStudents = $students->filter(function ($student) use ($date) {
+            // Only count as absent if attendance_count = 0 AND not absent with reason
+            if ($student->attendance_count > 0) {
+                return false;
+            }
+            // Check if student is absent with reason for this date
+            $todayProgress = $student->progresses->where('date', $date)->first();
+            return !($todayProgress && $todayProgress->status === 'absent' && $todayProgress->with_reason === true);
+        })->values();
 
         // Sort present students by attendance remark
         $sortedPresent = $presentStudents->sortBy(function ($student) {
