@@ -4,6 +4,7 @@ namespace App\Exports;
 
 use App\Enums\DisconnectionStatus;
 use App\Enums\MessageResponseStatus;
+use App\Enums\StudentReactionStatus;
 use App\Models\StudentDisconnection;
 use Carbon\Carbon;
 use Maatwebsite\Excel\Concerns\FromCollection;
@@ -57,13 +58,21 @@ class StudentDisconnectionExport implements FromCollection, WithHeadings, Should
                 $disconnectionDuration = $daysSinceLastPresent === null ? 'غير محدد' : $daysSinceLastPresent . ' يوم';
 
                 $messageResponse = match ($disconnection->message_response) {
-                    MessageResponseStatus::Yes => 'نعم',
-                    MessageResponseStatus::No => 'لا',
                     MessageResponseStatus::NotContacted => 'لم يتم التواصل',
                     MessageResponseStatus::ReminderMessage => 'الرسالة التذكيرية',
                     MessageResponseStatus::WarningMessage => 'الرسالة الإندارية',
                     null => 'لم يتم التواصل',
                     default => 'لم يتم التواصل',
+                };
+
+                $studentReaction = match ($disconnection->student_reaction) {
+                    StudentReactionStatus::ReactedToReminder => 'تفاعل مع التذكير',
+                    StudentReactionStatus::ReactedToWarning => 'تفاعل مع الإنذار',
+                    StudentReactionStatus::PositiveResponse => 'استجابة إيجابية',
+                    StudentReactionStatus::NegativeResponse => 'استجابة سلبية',
+                    StudentReactionStatus::NoResponse => 'لم يستجب',
+                    null => 'لا يوجد',
+                    default => 'لا يوجد',
                 };
 
                 // Check if student has returned
@@ -90,6 +99,8 @@ class StudentDisconnectionExport implements FromCollection, WithHeadings, Should
                     'contact_date' => $disconnection->contact_date ? Carbon::parse($disconnection->contact_date)->format('Y-m-d') : 'لم يتم التواصل',
                     'reminder_message_date' => $disconnection->reminder_message_date ? Carbon::parse($disconnection->reminder_message_date)->format('Y-m-d') : 'لم يتم الإرسال',
                     'warning_message_date' => $disconnection->warning_message_date ? Carbon::parse($disconnection->warning_message_date)->format('Y-m-d') : 'لم يتم الإرسال',
+                    'student_reaction' => $studentReaction,
+                    'student_reaction_date' => $disconnection->student_reaction_date ? Carbon::parse($disconnection->student_reaction_date)->format('Y-m-d') : 'لا يوجد',
                     'status' => $status,
                 ];
             });
@@ -108,6 +119,8 @@ class StudentDisconnectionExport implements FromCollection, WithHeadings, Should
             'تاريخ التواصل',
             'تاريخ الرسالة التذكيرية',
             'تاريخ الرسالة الإندارية',
+            'تفاعل الطالب',
+            'تاريخ التفاعل',
             'الحالة',
         ];
     }
@@ -128,10 +141,10 @@ class StudentDisconnectionExport implements FromCollection, WithHeadings, Should
 
                 // Add title and date range as headings
                 $sheet->insertNewRowBefore(1, 2);
-                $sheet->mergeCells('A1:K1');
+                $sheet->mergeCells('A1:M1');
                 $sheet->setCellValue('A1', 'تقرير الطلاب المنقطعين');
 
-                $sheet->mergeCells('A2:K2');
+                $sheet->mergeCells('A2:M2');
                 $dateRangeText = 'النطاق الزمني: ' . $this->dateRange;
                 if (!$this->includeReturned) {
                     $dateRangeText .= ' (لا يشمل الطلاب العائدين)';
@@ -153,8 +166,8 @@ class StudentDisconnectionExport implements FromCollection, WithHeadings, Should
                     ->getStartColor()->setARGB('D9E1F2');
 
                 // Style the headings row (which is now row 3)
-                $sheet->getStyle('A3:K3')->getFont()->setBold(true);
-                $sheet->getStyle('A3:K3')->getFill()
+                $sheet->getStyle('A3:M3')->getFont()->setBold(true);
+                $sheet->getStyle('A3:M3')->getFill()
                     ->setFillType(Fill::FILL_SOLID)
                     ->getStartColor()->setARGB('E7E6E6');
 
@@ -168,12 +181,12 @@ class StudentDisconnectionExport implements FromCollection, WithHeadings, Should
 
                     // Alternate row colors for better readability
                     $fillColor = $rowIndex % 2 == 0 ? 'F9F9F9' : 'FFFFFF';
-                    $sheet->getStyle("A{$rowIndex}:K{$rowIndex}")->getFill()
+                    $sheet->getStyle("A{$rowIndex}:M{$rowIndex}")->getFill()
                         ->setFillType(Fill::FILL_SOLID)
                         ->getStartColor()->setARGB($fillColor);
 
-                    // Color code the status column (now K instead of I)
-                    $statusCell = "K{$rowIndex}";
+                    // Color code the status column (now M instead of K)
+                    $statusCell = "M{$rowIndex}";
                     $statusValue = $sheet->getCell($statusCell)->getValue();
 
                     $statusColor = match ($statusValue) {
@@ -202,16 +215,12 @@ class StudentDisconnectionExport implements FromCollection, WithHeadings, Should
                     $responseValue = $sheet->getCell($responseCell)->getValue();
 
                     $responseColor = match ($responseValue) {
-                        'نعم' => 'C6EFCE', // Green
-                        'لا' => 'FFC7CE', // Red
                         'الرسالة التذكيرية' => 'B4C7E7', // Light Blue
                         'الرسالة الإندارية' => 'FFD966', // Light Orange
                         default => 'F2F2F2', // Gray
                     };
 
                     $responseTextColor = match ($responseValue) {
-                        'نعم' => '006100',
-                        'لا' => '9C0006',
                         'الرسالة التذكيرية' => '1F4E78',
                         'الرسالة الإندارية' => '9C5700',
                         default => '7F7F7F',
@@ -221,15 +230,42 @@ class StudentDisconnectionExport implements FromCollection, WithHeadings, Should
                         ->setFillType(Fill::FILL_SOLID)
                         ->getStartColor()->setARGB($responseColor);
                     $sheet->getStyle($responseCell)->getFont()->getColor()->setARGB($responseTextColor);
+
+                    // Color code the student reaction column (K)
+                    $reactionCell = "K{$rowIndex}";
+                    $reactionValue = $sheet->getCell($reactionCell)->getValue();
+
+                    $reactionColor = match ($reactionValue) {
+                        'تفاعل مع التذكير' => 'B4C7E7', // Light Blue
+                        'تفاعل مع الإنذار' => 'FFD966', // Light Orange
+                        'استجابة إيجابية' => 'C6EFCE', // Green
+                        'استجابة سلبية' => 'FFC7CE', // Red
+                        'لم يستجب' => 'F2F2F2', // Gray
+                        default => 'FFFFFF', // White
+                    };
+
+                    $reactionTextColor = match ($reactionValue) {
+                        'تفاعل مع التذكير' => '1F4E78',
+                        'تفاعل مع الإنذار' => '9C5700',
+                        'استجابة إيجابية' => '006100',
+                        'استجابة سلبية' => '9C0006',
+                        'لم يستجب' => '7F7F7F',
+                        default => '000000',
+                    };
+
+                    $sheet->getStyle($reactionCell)->getFill()
+                        ->setFillType(Fill::FILL_SOLID)
+                        ->getStartColor()->setARGB($reactionColor);
+                    $sheet->getStyle($reactionCell)->getFont()->getColor()->setARGB($reactionTextColor);
                 }
 
                 // Add borders to all cells
                 $highestRow = $sheet->getHighestRow();
-                $sheet->getStyle("A1:K{$highestRow}")->getBorders()->getAllBorders()
+                $sheet->getStyle("A1:M{$highestRow}")->getBorders()->getAllBorders()
                     ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
 
                 // Auto-adjust column widths
-                foreach (range('A', 'K') as $column) {
+                foreach (range('A', 'M') as $column) {
                     if ($column === 'C') { // Notes column
                         $sheet->getColumnDimension($column)->setWidth(30);
                     } else {

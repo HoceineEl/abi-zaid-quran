@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\DisconnectionStatus;
 use App\Enums\MessageResponseStatus;
+use App\Enums\StudentReactionStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -19,6 +20,8 @@ class StudentDisconnection extends Model
         'reminder_message_date' => 'date',
         'warning_message_date' => 'date',
         'message_response' => MessageResponseStatus::class,
+        'student_reaction' => StudentReactionStatus::class,
+        'student_reaction_date' => 'date',
         'has_returned' => 'boolean',
     ];
 
@@ -46,18 +49,22 @@ class StudentDisconnection extends Model
 
     public function getStatusAttribute(): DisconnectionStatus
     {
-        if ($this->contact_date && $this->message_response === MessageResponseStatus::Yes) {
+        // If student reacted positively → Responded
+        if ($this->student_reaction === StudentReactionStatus::PositiveResponse) {
             return DisconnectionStatus::Responded;
         }
 
-        if ($this->contact_date && in_array($this->message_response, [
-            MessageResponseStatus::ReminderMessage,
-            MessageResponseStatus::WarningMessage,
-            MessageResponseStatus::No,
-        ])) {
+        // If any reaction exists (except no response) → Contacted
+        if ($this->student_reaction && $this->student_reaction !== StudentReactionStatus::NoResponse) {
             return DisconnectionStatus::Contacted;
         }
 
+        // If any message was sent → Contacted
+        if ($this->contact_date) {
+            return DisconnectionStatus::Contacted;
+        }
+
+        // Default → Disconnected
         return DisconnectionStatus::Disconnected;
     }
 

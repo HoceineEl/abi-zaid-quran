@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Enums\DisconnectionStatus;
 use App\Enums\MessageResponseStatus;
+use App\Enums\StudentReactionStatus;
 use App\Filament\Actions\MoveDisconnectedStudentToGroupAction;
 use App\Filament\Actions\SendWhatsAppBulkToDisconnectedAction;
 use App\Filament\Actions\SendWhatsAppMessageToDisconnectedAction;
@@ -16,7 +17,6 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\SelectColumn;
-use Filament\Tables\Columns\ToggleColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
@@ -94,10 +94,17 @@ class StudentDisconnectionResource extends Resource
                         MessageResponseStatus::NotContacted->value => MessageResponseStatus::NotContacted->getLabel(),
                         MessageResponseStatus::ReminderMessage->value => MessageResponseStatus::ReminderMessage->getLabel(),
                         MessageResponseStatus::WarningMessage->value => MessageResponseStatus::WarningMessage->getLabel(),
-                        MessageResponseStatus::No->value => MessageResponseStatus::No->getLabel(),
-                        MessageResponseStatus::Yes->value => MessageResponseStatus::Yes->getLabel(),
                     ])
                     ->default(MessageResponseStatus::NotContacted->value)
+                    ->nullable(),
+
+                Forms\Components\Select::make('student_reaction')
+                    ->label('تفاعل الطالب')
+                    ->options(StudentReactionStatus::class)
+                    ->nullable(),
+
+                Forms\Components\DatePicker::make('student_reaction_date')
+                    ->label('تاريخ التفاعل')
                     ->nullable(),
 
                 Forms\Components\Textarea::make('notes')
@@ -115,19 +122,8 @@ class StudentDisconnectionResource extends Resource
                 Tables\Columns\TextColumn::make('student.name')
                     ->label('اسم الطالب')
                     ->searchable()
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('group.name')
-                    ->label('المجموعة')
-                    ->searchable()
-                    ->sortable(),
-
-
-                Tables\Columns\TextColumn::make('student.last_present_date')
-                    ->label('آخر حضور')
-                    ->date('Y-m-d')
                     ->sortable()
-                    ->placeholder('لا يوجد'),
+                    ->description(fn (StudentDisconnection $record): string => $record->group->name ?? ''),
 
                 Tables\Columns\TextColumn::make('consecutive_absent_days')
                     ->label('أيام الغياب المتتالية')
@@ -140,7 +136,12 @@ class StudentDisconnectionResource extends Resource
                         $record->student->getCurrentConsecutiveAbsentDays() >= 5 ? 'danger' :
                         ($record->student->getCurrentConsecutiveAbsentDays() >= 3 ? 'warning' : 'gray')
                     )
-                    ->sortable(),
+                    ->sortable()
+                    ->description(fn (StudentDisconnection $record): ?string =>
+                        $record->student->last_present_date
+                            ? 'آخر حضور: ' . $record->student->last_present_date
+                            : 'لا يوجد حضور'
+                    ),
 
                 Tables\Columns\TextColumn::make('disconnection_duration')
                     ->label('مدة الانقطاع')
@@ -152,13 +153,8 @@ class StudentDisconnectionResource extends Resource
                         return $daysSinceLastPresent . ' يوم';
                     })
                     ->badge()
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('contact_date')
-                    ->label('تاريخ التواصل')
-                    ->date('Y-m-d')
                     ->sortable()
-                    ->placeholder('لم يتم التواصل'),
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 Tables\Columns\TextColumn::make('reminder_message_date')
                     ->label('تاريخ الرسالة التذكيرية')
@@ -174,38 +170,57 @@ class StudentDisconnectionResource extends Resource
                     ->placeholder('لم يتم الإرسال')
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                ToggleColumn::make('has_been_contacted')
-                    ->label('تم التواصل')
-                    ->state(function (StudentDisconnection $record): bool {
-                        return $record->contact_date !== null;
-                    })
-                    ->updateStateUsing(function (StudentDisconnection $record, $state) {
+                SelectColumn::make('student_reaction')
+                    ->label('تفاعل الطالب')
+                    ->options([
+                        StudentReactionStatus::ReactedToReminder->value => StudentReactionStatus::ReactedToReminder->getLabel(),
+                        StudentReactionStatus::ReactedToWarning->value => StudentReactionStatus::ReactedToWarning->getLabel(),
+                        StudentReactionStatus::PositiveResponse->value => StudentReactionStatus::PositiveResponse->getLabel(),
+                        StudentReactionStatus::NegativeResponse->value => StudentReactionStatus::NegativeResponse->getLabel(),
+                        StudentReactionStatus::NoResponse->value => StudentReactionStatus::NoResponse->getLabel(),
+                    ])
+                    ->afterStateUpdated(function (StudentDisconnection $record, $state) {
+                        // Update student_reaction_date when reaction is selected
                         if ($state) {
                             $record->update([
-                                'contact_date' => now()->format('Y-m-d'),
-                                'message_response' => MessageResponseStatus::No,
-                            ]);
-                        } else {
-                            $record->update([
-                                'contact_date' => null,
-                                'message_response' => MessageResponseStatus::NotContacted,
+                                'student_reaction' => $state,
+                                'student_reaction_date' => now()->format('Y-m-d'),
                             ]);
                         }
-                    }),
+                    })
+                    ->selectablePlaceholder(true)
+                    ->placeholder('لا يوجد')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('student_reaction_date')
+                    ->label('تاريخ التفاعل')
+                    ->date('Y-m-d')
+                    ->sortable()
+                    ->placeholder('لا يوجد')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                Tables\Columns\IconColumn::make('has_been_contacted')
+                    ->label('تم التواصل')
+                    ->boolean()
+                    ->state(fn (StudentDisconnection $record): bool => $record->contact_date !== null)
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('contact_date')
+                    ->label('تاريخ التواصل')
+                    ->date('Y-m-d')
+                    ->sortable()
+                    ->placeholder('لم يتم التواصل')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 SelectColumn::make('message_response')
                     ->label('حالة التواصل')
                     ->options([
                         MessageResponseStatus::NotContacted->value => MessageResponseStatus::NotContacted->getLabel(),
                         MessageResponseStatus::ReminderMessage->value => MessageResponseStatus::ReminderMessage->getLabel(),
                         MessageResponseStatus::WarningMessage->value => MessageResponseStatus::WarningMessage->getLabel(),
-                        MessageResponseStatus::No->value => MessageResponseStatus::No->getLabel(),
-                        MessageResponseStatus::Yes->value => MessageResponseStatus::Yes->getLabel(),
                     ])
                     ->afterStateUpdated(function (StudentDisconnection $record, $state) {
                         // Update contact_date if selecting a contacted status
                         if (in_array($state, [
-                            MessageResponseStatus::Yes->value,
-                            MessageResponseStatus::No->value,
                             MessageResponseStatus::ReminderMessage->value,
                             MessageResponseStatus::WarningMessage->value,
                         ])) {
@@ -239,8 +254,12 @@ class StudentDisconnectionResource extends Resource
                     ->relationship('group', 'name', modifyQueryUsing: fn (Builder $query) => $query->withoutGlobalScope('userGroups')),
 
                 Tables\Filters\SelectFilter::make('message_response')
-                    ->label('تفاعل مع الرسالة')
+                    ->label('حالة التواصل')
                     ->options(MessageResponseStatus::class),
+
+                Tables\Filters\SelectFilter::make('student_reaction')
+                    ->label('تفاعل الطالب')
+                    ->options(StudentReactionStatus::class),
 
                 Tables\Filters\Filter::make('last_present_date')
                     ->label('آخر حضور')
@@ -334,8 +353,6 @@ class StudentDisconnectionResource extends Resource
                                 ->options([
                                     MessageResponseStatus::ReminderMessage->value => MessageResponseStatus::ReminderMessage->getLabel(),
                                     MessageResponseStatus::WarningMessage->value => MessageResponseStatus::WarningMessage->getLabel(),
-                                    MessageResponseStatus::No->value => MessageResponseStatus::No->getLabel(),
-                                    MessageResponseStatus::Yes->value => MessageResponseStatus::Yes->getLabel(),
                                 ])
                                 ->required(),
                         ])
@@ -397,8 +414,6 @@ class StudentDisconnectionResource extends Resource
                                 ->options([
                                     MessageResponseStatus::ReminderMessage->value => MessageResponseStatus::ReminderMessage->getLabel(),
                                     MessageResponseStatus::WarningMessage->value => MessageResponseStatus::WarningMessage->getLabel(),
-                                    MessageResponseStatus::No->value => MessageResponseStatus::No->getLabel(),
-                                    MessageResponseStatus::Yes->value => MessageResponseStatus::Yes->getLabel(),
                                 ])
                                 ->required(),
                         ])
@@ -415,6 +430,35 @@ class StudentDisconnectionResource extends Resource
                         ->requiresConfirmation()
                         ->modalHeading('تحديث حالة التواصل للطلاب غير المتواصلين')
                         ->modalDescription('سيتم تحديث حالة التواصل للطلاب الذين لم يتم التواصل معهم بعد.'),
+                    Tables\Actions\BulkAction::make('record_student_reaction')
+                        ->label('تسجيل تفاعل الطالب')
+                        ->icon('heroicon-o-hand-thumb-up')
+                        ->color('success')
+                        ->form([
+                            Forms\Components\Select::make('student_reaction')
+                                ->label('تفاعل الطالب')
+                                ->options(StudentReactionStatus::class)
+                                ->required(),
+                            Forms\Components\DatePicker::make('student_reaction_date')
+                                ->label('تاريخ التفاعل')
+                                ->required()
+                                ->default(now()),
+                            Forms\Components\Textarea::make('notes')
+                                ->label('ملاحظات')
+                                ->rows(2),
+                        ])
+                        ->action(function (Collection $records, array $data) {
+                            $records->each(function ($record) use ($data) {
+                                $record->update([
+                                    'student_reaction' => $data['student_reaction'],
+                                    'student_reaction_date' => $data['student_reaction_date'],
+                                    'notes' => $data['notes'] ?? $record->notes,
+                                ]);
+                            });
+                        })
+                        ->requiresConfirmation()
+                        ->modalHeading('تسجيل تفاعل الطالب')
+                        ->modalDescription('سيتم تسجيل تفاعل الطالب للطلاب المحددين.'),
                 ]),
             ])
             ->defaultSort('created_at', 'desc');
