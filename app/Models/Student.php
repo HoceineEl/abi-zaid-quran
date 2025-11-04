@@ -277,7 +277,13 @@ class Student extends Model
                 ->where('date', $date)
                 ->first();
 
-            if (!$progress || ($progress->status === 'absent' && (int)$progress->with_reason === 0)) {
+            // Skip days with no progress record OR null status (pending/WhatsApp reminder sent)
+            if (!$progress || $progress->status === null) {
+                continue;
+            }
+
+            // Only count explicit absence records without reason
+            if ($progress->status === 'absent' && (int)$progress->with_reason === 0) {
                 $absentCount++;
                 if ($absentCount === $threshold) {
                     return $date;
@@ -334,11 +340,16 @@ class Student extends Model
                 ->where('date', $date)
                 ->first();
 
-            // If no progress or absent without reason, increment counter
-            if (!$progress || ($progress->status === 'absent' && (int)$progress->with_reason === 0)) {
+            // Skip days with no progress record OR null status (pending/WhatsApp reminder sent)
+            if (!$progress || $progress->status === null) {
+                continue;
+            }
+
+            // Only count explicit absence records without reason
+            if ($progress->status === 'absent' && (int)$progress->with_reason === 0) {
                 $consecutiveAbsentDays++;
             } else {
-                // Stop counting when we find a present day
+                // Stop counting when we find a present day (memorized status) or absent with reason
                 break;
             }
         }
