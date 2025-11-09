@@ -34,9 +34,10 @@ class DisconnectionService
       });
   }
 
-  public function addDisconnectedStudents(array $excludedGroups = []): int
+  public function addDisconnectedStudents(array $excludedGroups = []): array
   {
     $students = $this->getDisconnectedStudentsFromWorkingGroups($excludedGroups);
+    $skippedStudents = $this->getSkippedDisconnectedStudents($excludedGroups);
     $addedCount = 0;
 
     foreach ($students as $student) {
@@ -52,7 +53,32 @@ class DisconnectionService
       }
     }
 
-    return $addedCount;
+    return [
+      'added' => $addedCount,
+      'skipped' => $skippedStudents,
+    ];
+  }
+
+  public function getSkippedDisconnectedStudents(array $excludedGroups = []): Collection
+  {
+    $threshold = config('students.disconnection.consecutive_absent_days_threshold', 3);
+
+    return Student::with([
+        'group' => fn ($query) => $query->withoutGlobalScope('userGroups'),
+        'progresses'
+      ])
+      ->whereHas('group', function ($query) use ($excludedGroups) {
+        $query->withoutGlobalScope('userGroups')->active();
+        if (!empty($excludedGroups)) {
+          $query->whereNotIn('id', $excludedGroups);
+        }
+      })
+      ->get()
+      ->filter(function ($student) use ($threshold) {
+        // Students who meet the threshold but are already disconnected (has_returned=false)
+        return $student->hasConsecutiveAbsentDaysInWorkingGroup($threshold) &&
+          $this->studentAlreadyDisconnected($student);
+      });
   }
 
   public function checkReturnedStudents(): int

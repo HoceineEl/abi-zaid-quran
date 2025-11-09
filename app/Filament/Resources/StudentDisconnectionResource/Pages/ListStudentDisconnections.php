@@ -153,18 +153,50 @@ class ListStudentDisconnections extends ListRecords
 
     private function addDisconnectedStudents(array $excludedGroups = []): void
     {
-        $addedCount = $this->disconnectionService->addDisconnectedStudents($excludedGroups);
+        $result = $this->disconnectionService->addDisconnectedStudents($excludedGroups);
+        $addedCount = $result['added'];
+        $skippedStudents = $result['skipped'];
+
+        // Build notification body
+        $body = '';
+
+        if ($addedCount > 0) {
+            $body .= "تم إضافة {$addedCount} طالب إلى قائمة الانقطاع.";
+        }
+
+        if ($skippedStudents->count() > 0) {
+            $skippedNames = $skippedStudents->pluck('name')->take(5)->join('، ');
+            $remainingCount = $skippedStudents->count() - 5;
+
+            if ($addedCount > 0) {
+                $body .= "\n\n";
+            }
+
+            $body .= "تم تخطي {$skippedStudents->count()} طالب (موجودين بالفعل في القائمة ولم يعودوا بعد):\n{$skippedNames}";
+
+            if ($remainingCount > 0) {
+                $body .= " و {$remainingCount} آخرين";
+            }
+        }
 
         if ($addedCount > 0) {
             Notification::make()
                 ->title('تم إضافة الطلاب المنقطعين')
-                ->body("تم إضافة {$addedCount} طالب إلى قائمة الانقطاع من المجموعات النشطة (الطلاب لديهم 3 أيام أو أكثر غياب متتالية).")
+                ->body($body)
                 ->success()
+                ->duration(10000) // Show for 10 seconds to allow reading the list
+                ->send();
+        } elseif ($skippedStudents->count() > 0) {
+            Notification::make()
+                ->title('لا يوجد طلاب جدد لإضافتهم')
+                ->body($body)
+                ->warning()
+                ->duration(10000)
                 ->send();
         } else {
             Notification::make()
                 ->title('لا يوجد طلاب منقطعين')
-                ->body('لا يوجد طلاب لديهم ثلاثة أيام أو أكثر غياب متتالية في المجموعات النشطة (لديها تقدم في آخر 7 أيام) أو تم إضافتهم مسبقاً.')
+                ->body('لا يوجد طلاب لديهم ثلاثة أيام أو أكثر غياب متتالية في المجموعات النشطة.')
                 ->info()
                 ->send();
         }

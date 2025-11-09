@@ -272,7 +272,7 @@
                     @foreach ($studentsChunk as $index => $student)
                         @php
                             $todayProgress = $student->today_progress;
-                            $consecutiveAbsentDays = $student->consecutiveAbsentDays;
+                           // $consecutiveAbsentDays = $student->consecutiveAbsentDays;
                             $absenceStatus = $student->absenceStatus;
                             $status = $todayProgress?->status ?? 'pending';
                             $withReason = $todayProgress?->with_reason;

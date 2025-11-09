@@ -110,7 +110,29 @@ class StudentsRelationManager extends RelationManager
                             default => $record->today_progress ? 'warning' : null,
                         };
                     })
+                    ->description(function (Student $record) {
+                        // Show group name
+                        return $record->group?->name;
+                    })
                     ->label('الاسم'),
+                IconColumn::make('is_disconnected')
+                    ->label('منقطع')
+                    ->boolean()
+                    ->getStateUsing(function (Student $record) {
+                        return StudentDisconnection::where('student_id', $record->id)
+                            ->where('has_returned', false)
+                            ->exists();
+                    })
+                    ->trueIcon('heroicon-o-exclamation-triangle')
+                    ->falseIcon('heroicon-o-check-circle')
+                    ->trueColor('danger')
+                    ->falseColor('success')
+                    ->tooltip(function (Student $record) {
+                        $isDisconnected = StudentDisconnection::where('student_id', $record->id)
+                            ->where('has_returned', false)
+                            ->exists();
+                        return $isDisconnected ? 'الطالب في قائمة المنقطعين' : 'الطالب غير منقطع';
+                    }),
 
                 TextColumn::make('phone')
                     ->url(fn($record) => "tel:{$record->phone}")
