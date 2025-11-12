@@ -132,17 +132,31 @@ class Group extends Model
             }])
             ->get()
             ->map(function ($group) {
+                // Count present students (status='memorized')
                 $presentCount = $group->students->filter(function ($student) {
                     return $student->progresses->where('status', 'memorized')->isNotEmpty();
                 })->count();
 
-                $absentCount = $group->students_count - $presentCount;
+                // Count absent WITHOUT reason (status='absent' AND with_reason=false)
+                $absentWithoutReasonCount = $group->students->filter(function ($student) {
+                    return $student->progresses->filter(function ($progress) {
+                        return $progress->status === 'absent' && $progress->with_reason == false;
+                    })->isNotEmpty();
+                })->count();
+
+                // Count absent WITH reason (status='absent' AND with_reason=true)
+                $absentWithReasonCount = $group->students->filter(function ($student) {
+                    return $student->progresses->filter(function ($progress) {
+                        return $progress->status === 'absent' && $progress->with_reason == true;
+                    })->isNotEmpty();
+                })->count();
 
                 return [
                     'id' => $group->id,
                     'name' => $group->name,
                     'present' => $presentCount,
-                    'absent' => $absentCount,
+                    'absent' => $absentWithoutReasonCount,
+                    'absent_with_reason' => $absentWithReasonCount,
                 ];
             });
     }

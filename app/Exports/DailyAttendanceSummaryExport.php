@@ -34,6 +34,7 @@ class DailyAttendanceSummaryExport implements FromCollection, WithHeadings, Shou
                 'name' => $row['name'],
                 'present' => $row['present'],
                 'absent' => $row['absent'],
+                'absent_with_reason' => $row['absent_with_reason'],
             ];
         });
     }
@@ -44,6 +45,7 @@ class DailyAttendanceSummaryExport implements FromCollection, WithHeadings, Shou
             'اسم المجموعة',
             'حاضر',
             'غائب',
+            'غائب بعذر',
         ];
     }
 
@@ -64,7 +66,7 @@ class DailyAttendanceSummaryExport implements FromCollection, WithHeadings, Shou
                 // Add translated date as a heading using the selected date
                 $selectedDate = Carbon::parse($this->date)->locale('ar')->translatedFormat('l, j F Y');
                 $sheet->insertNewRowBefore(1, 1);
-                $sheet->mergeCells('A1:C1');
+                $sheet->mergeCells('A1:D1');
                 $sheet->setCellValue('A1', 'تقرير الحضور ليوم: ' . $selectedDate);
 
                 // Style the heading
@@ -72,7 +74,7 @@ class DailyAttendanceSummaryExport implements FromCollection, WithHeadings, Shou
                 $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
                 // Style the original headings row (which is now row 2)
-                $sheet->getStyle('A2:C2')->getFont()->setBold(true);
+                $sheet->getStyle('A2:D2')->getFont()->setBold(true);
 
                 if ($sheet->getHighestRow() < 3) {
                     return;
@@ -81,18 +83,25 @@ class DailyAttendanceSummaryExport implements FromCollection, WithHeadings, Shou
                 foreach ($sheet->getRowIterator(3) as $row) {
                     $presentCell = 'B' . $row->getRowIndex();
                     $absentCell = 'C' . $row->getRowIndex();
+                    $absentWithReasonCell = 'D' . $row->getRowIndex();
 
-                    // Color for present
+                    // Color for present (green)
                     $sheet->getStyle($presentCell)->getFill()
                         ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
                         ->getStartColor()->setARGB('C6EFCE');
                     $sheet->getStyle($presentCell)->getFont()->getColor()->setARGB('006100');
 
-                    // Color for absent
+                    // Color for absent without reason (red)
                     $sheet->getStyle($absentCell)->getFill()
                         ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
                         ->getStartColor()->setARGB('FFC7CE');
                     $sheet->getStyle($absentCell)->getFont()->getColor()->setARGB('9C0006');
+
+                    // Color for absent with reason (yellow/amber)
+                    $sheet->getStyle($absentWithReasonCell)->getFill()
+                        ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                        ->getStartColor()->setARGB('FFEB9C');
+                    $sheet->getStyle($absentWithReasonCell)->getFont()->getColor()->setARGB('9C6500');
                 }
             },
         ];
