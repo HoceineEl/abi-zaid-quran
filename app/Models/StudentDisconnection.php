@@ -14,6 +14,22 @@ class StudentDisconnection extends Model
     use HasFactory;
 
 
+    protected $fillable = [
+        'student_id',
+        'group_id',
+        'disconnection_date',
+        'contact_date',
+        'reminder_message_date',
+        'warning_message_date',
+        'message_response',
+        'student_reaction',
+        'student_reaction_date',
+        'questionnaire_sent_at',
+        'has_been_converted_to_mandatory_group',
+        'has_returned',
+        'notes',
+    ];
+
     protected $casts = [
         'disconnection_date' => 'date',
         'contact_date' => 'date',
@@ -22,6 +38,8 @@ class StudentDisconnection extends Model
         'message_response' => MessageResponseStatus::class,
         'student_reaction' => StudentReactionStatus::class,
         'student_reaction_date' => 'date',
+        'questionnaire_sent_at' => 'datetime',
+        'has_been_converted_to_mandatory_group' => 'boolean',
         'has_returned' => 'boolean',
     ];
 

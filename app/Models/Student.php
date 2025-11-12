@@ -269,16 +269,20 @@ class Student extends Model
         }
 
         // If never present, use the date of the threshold consecutive absence
-        $groupWorkingDates = $this->getGroupWorkingDates(30);
+        // Get progress records from last 15 days (today - 14 days to today)
+        $startDate = now()->subDays(14)->format('Y-m-d');
+        $endDate = now()->format('Y-m-d');
+
+        $recentProgresses = $this->progresses()
+            ->whereBetween('date', [$startDate, $endDate])
+            ->orderBy('date', 'desc')
+            ->get();
+
         $absentCount = 0;
 
-        foreach ($groupWorkingDates as $date) {
-            $progress = $this->progresses()
-                ->where('date', $date)
-                ->first();
-
-            // Skip days with no progress record OR null status (pending/WhatsApp reminder sent)
-            if (!$progress || $progress->status === null) {
+        foreach ($recentProgresses as $progress) {
+            // Skip null status records (WhatsApp reminder sent, pending)
+            if ($progress->status === null) {
                 continue;
             }
 
@@ -286,8 +290,11 @@ class Student extends Model
             if ($progress->status === 'absent' && (int)$progress->with_reason === 0) {
                 $absentCount++;
                 if ($absentCount === $threshold) {
-                    return $date;
+                    return $progress->date;
                 }
+            } else {
+                // Stop when we find memorized or absent with reason
+                break;
             }
         }
 
@@ -326,22 +333,26 @@ class Student extends Model
 
     public function getCurrentConsecutiveAbsentDays(): int
     {
-        $groupWorkingDates = $this->getGroupWorkingDates(30);
+        // Get date range: last 15 days (today - 14 days to today)
+        $startDate = now()->subDays(14)->format('Y-m-d');
+        $endDate = now()->format('Y-m-d');
 
-        if ($groupWorkingDates->isEmpty()) {
+        // Get progress records within the last 15 days, ordered by date DESC
+        $recentProgresses = $this->progresses()
+            ->whereBetween('date', [$startDate, $endDate])
+            ->orderBy('date', 'desc')
+            ->get();
+
+        if ($recentProgresses->isEmpty()) {
             return 0;
         }
 
         $consecutiveAbsentDays = 0;
 
         // Check from most recent date backwards
-        foreach ($groupWorkingDates as $date) {
-            $progress = $this->progresses()
-                ->where('date', $date)
-                ->first();
-
-            // Skip days with no progress record OR null status (pending/WhatsApp reminder sent)
-            if (!$progress || $progress->status === null) {
+        foreach ($recentProgresses as $progress) {
+            // Skip null status records (WhatsApp reminder sent, pending) - continue counting
+            if ($progress->status === null) {
                 continue;
             }
 

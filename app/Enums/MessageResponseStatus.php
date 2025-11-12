@@ -11,6 +11,7 @@ enum MessageResponseStatus: string implements HasLabel, HasColor, HasIcon
     case NotContacted = 'not_contacted';
     case ReminderMessage = 'reminder_message';
     case WarningMessage = 'warning_message';
+    case QuestionnaireMessage = 'questionnaire_message';
 
     public function getLabel(): ?string
     {
@@ -18,6 +19,7 @@ enum MessageResponseStatus: string implements HasLabel, HasColor, HasIcon
             self::NotContacted => 'لم يتم التواصل',
             self::ReminderMessage => 'الرسالة التذكيرية',
             self::WarningMessage => 'الرسالة الإندارية',
+            self::QuestionnaireMessage => 'رسالة استفسارية',
         };
     }
 
@@ -27,6 +29,7 @@ enum MessageResponseStatus: string implements HasLabel, HasColor, HasIcon
             self::NotContacted => 'gray',
             self::ReminderMessage => 'info',
             self::WarningMessage => 'warning',
+            self::QuestionnaireMessage => 'success',
         };
     }
 
@@ -36,6 +39,7 @@ enum MessageResponseStatus: string implements HasLabel, HasColor, HasIcon
             self::NotContacted => 'heroicon-o-phone-x-mark',
             self::ReminderMessage => 'heroicon-o-bell',
             self::WarningMessage => 'heroicon-o-exclamation-circle',
+            self::QuestionnaireMessage => 'heroicon-o-clipboard-document-list',
         };
     }
 }

@@ -87,6 +87,11 @@ class MoveDisconnectedStudentToGroupAction extends BulkAction
                     'with_reason' => $originalStudent->with_reason ?? false,
                 ]);
 
+                // Mark the disconnection record as converted to mandatory group
+                $disconnection->update([
+                    'has_been_converted_to_mandatory_group' => true,
+                ]);
+
                 $duplicatedCount++;
 
                 Log::info('Student duplicated to new group', [

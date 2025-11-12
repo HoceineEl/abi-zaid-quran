@@ -110,10 +110,7 @@ class StudentsRelationManager extends RelationManager
                             default => $record->today_progress ? 'warning' : null,
                         };
                     })
-                    ->description(function (Student $record) {
-                        // Show group name
-                        return $record->group?->name;
-                    })
+
                     ->label('الاسم'),
                 IconColumn::make('is_disconnected')
                     ->label('منقطع')
