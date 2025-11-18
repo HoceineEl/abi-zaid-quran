@@ -83,7 +83,39 @@ class ListStudentDisconnections extends ListRecords
                         ->options(Group::withoutGlobalScope('userGroups')->active()->pluck('name', 'id'))
                         ->searchable()
                         ->preload()
-                        ->helperText('اختر المجموعات النشطة التي لا تريد إضافة طلابها إلى قائمة الانقطاع (المجموعات النشطة = لديها تقدم في آخر 7 أيام)'),
+                        ->live()
+                        ->helperText('اختر المجموعات النشطة التي لا تريد إضافة طلابها إلى قائمة الانقطاع (المجموعات النشطة = لديها تقدم في آخر 7 أيام)')
+                        ->hintActions([
+                            \Filament\Forms\Components\Actions\Action::make('select_all')
+                                ->label('اختيار الكل')
+                                ->icon('heroicon-m-check-circle')
+                                ->action(function ($set, $get) {
+                                    $allGroupIds = Group::withoutGlobalScope('userGroups')->active()->pluck('id')->toArray();
+                                    $set('excluded_groups', $allGroupIds);
+                                }),
+                            \Filament\Forms\Components\Actions\Action::make('select_female_groups')
+                                ->label('اختيار مجموعات الإناث')
+                                ->icon('heroicon-m-user-group')
+                                ->action(function ($set, $get) {
+                                    $femaleGroupIds = Group::withoutGlobalScope('userGroups')
+                                        ->active()
+                                        ->where(function ($query) {
+                                            $query->where('name', 'like', '%الحافظات%')
+                                                ->orWhere('name', 'like', '%نساء%')
+                                                ->orWhere('name', 'like', '%حافظات%');
+                                        })
+                                        ->pluck('id')
+                                        ->toArray();
+                                    $set('excluded_groups', $femaleGroupIds);
+                                }),
+                            \Filament\Forms\Components\Actions\Action::make('clear_all')
+                                ->label('إلغاء الكل')
+                                ->icon('heroicon-m-x-circle')
+                                ->color('danger')
+                                ->action(function ($set) {
+                                    $set('excluded_groups', []);
+                                }),
+                        ]),
                 ])
                 ->action(function ($data) {
                     $this->addDisconnectedStudents($data['excluded_groups'] ?? []);
