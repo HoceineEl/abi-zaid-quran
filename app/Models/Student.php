@@ -78,33 +78,12 @@ class Student extends Model
     {
         return Attribute::make(
             get: function () {
-                $absentProgresses = $this->progresses()
-                    ->latest('date')
-                    ->limit(3)
-                    ->orderBy('date', 'asc')
-                    ->get();
-                $threeDays = $absentProgresses;
-                $twoDays = $absentProgresses->take(2);
+                // Use the existing method that properly checks CONSECUTIVE absent days
+                $consecutiveAbsentDays = $this->getCurrentConsecutiveAbsentDays();
 
-                $twoDaysEbsentCount = $twoDays->where('status', 'absent')
-                    ->where(function ($item) {
-                        return (int)$item->with_reason === 0 || $item->with_reason === null;
-                    })
-                    ->count();
-
-                $threeDaysEbsentCount = $threeDays->where('status', 'absent')
-                    ->where(function ($item) {
-                        return (int)$item->with_reason === 0 || $item->with_reason === null;
-                    })
-                    ->count();
-
-                if (
-                    $threeDaysEbsentCount >= 3
-                ) {
+                if ($consecutiveAbsentDays >= 3) {
                     return 'critical';
-                } elseif (
-                    $twoDaysEbsentCount >= 2
-                ) {
+                } elseif ($consecutiveAbsentDays >= 2) {
                     return 'warning';
                 } else {
                     return 'normal';
