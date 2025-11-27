@@ -18,6 +18,8 @@
         "ryangjchandler/blade-tabler-icons": "^2.3",
         "silviolleite/laravelpwa": "^2.0",
         "stechstudio/filament-impersonate": "^3.16",
+        "symfony/console": "^7.3.0 <7.4",
+        "symfony/string": "^7.3.0 <7.4",
         "twilio/sdk": "^8.0"
     },
     "require-dev": {
@@ -74,6 +76,9 @@
         "allow-plugins": {
             "pestphp/pest-plugin": true,
             "php-http/discovery": true
+        },
+        "platform": {
+            "php": "8.2.27"
         }
     },
     "minimum-stability": "stable",
