@@ -33,8 +33,7 @@ class ListStudentDisconnections extends ListRecords
 
 
         return [
-            'all' => Tab::make('الكل')
-                ,
+            'all' => Tab::make('الكل'),
             'not_returned' => Tab::make('لم يعودوا')
                 ->modifyQueryUsing(fn(Builder $query) => $query->where('has_returned', false)),
             'returned' => Tab::make('عادوا')
@@ -73,7 +72,7 @@ class ListStudentDisconnections extends ListRecords
                 ->label('إضافة الطلاب المنقطعين')
                 ->icon('heroicon-o-plus-circle')
                 ->color('success')
-                ->requiresConfirmation()
+                ->modalWidth('5xl')
                 ->modalHeading('إضافة الطلاب المنقطعين')
                 ->modalDescription('سيتم إضافة الطلاب من المجموعات النشطة (لديها تقدم في آخر 7 أيام) الذين لديهم ثلاثة أيام أو أكثر غياب متتالية إلى قائمة الانقطاع.')
                 ->form([

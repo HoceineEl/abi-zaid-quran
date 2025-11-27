@@ -140,4 +140,9 @@ class MemorizerImporter extends Importer
 
         return $body;
     }
+
+    public function getJobConnection(): ?string
+    {
+        return 'sync';
+    }
 }

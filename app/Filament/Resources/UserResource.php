@@ -28,6 +28,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Filament\Infolists\Components\Section;
 use Filament\Infolists\Components\TextEntry;
+use STS\FilamentImpersonate\Tables\Actions\Impersonate;
 
 class UserResource extends Resource
 {
@@ -133,6 +134,8 @@ class UserResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                Impersonate::make()
+                    ->visible(fn () => Auth::user()?->role === 'admin' && app()->isLocal()),
                 ActionGroup::make([
                     Action::make('view_groups')
                         ->label('عرض المجموعات')

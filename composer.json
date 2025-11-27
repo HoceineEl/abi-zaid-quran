@@ -17,6 +17,7 @@
         "propaganistas/laravel-phone": "^6.0",
         "ryangjchandler/blade-tabler-icons": "^2.3",
         "silviolleite/laravelpwa": "^2.0",
+        "stechstudio/filament-impersonate": "^3.16",
         "twilio/sdk": "^8.0"
     },
     "require-dev": {
