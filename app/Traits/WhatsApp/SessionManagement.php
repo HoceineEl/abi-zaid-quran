@@ -29,7 +29,7 @@ trait SessionManagement
                 return $data;
             }
 
-            throw new \Exception("HTTP {$response->status()}: " . $response->body());
+            throw new \Exception("HTTP {$response->status()}: ".$response->body());
         } catch (\Exception $e) {
             Log::error('Failed to create WhatsApp session', [
                 'session_id' => $sessionId,
@@ -49,7 +49,7 @@ trait SessionManagement
                 return $response->json();
             }
 
-            throw new \Exception("HTTP {$response->status()}: " . $response->body());
+            throw new \Exception("HTTP {$response->status()}: ".$response->body());
         } catch (\Exception $e) {
             Log::error('Failed to get all WhatsApp sessions', [
                 'error' => $e->getMessage(),
@@ -92,7 +92,7 @@ trait SessionManagement
                 return $session;
             }
 
-            throw new \Exception("HTTP {$response->status()}: " . $response->body());
+            throw new \Exception("HTTP {$response->status()}: ".$response->body());
         } catch (\Exception $e) {
             Log::error('Failed to get WhatsApp session status', [
                 'session_id' => $sessionId,
@@ -132,6 +132,125 @@ trait SessionManagement
         throw new \Exception("Session {$sessionId} failed to connect after {$maxAttempts} attempts");
     }
 
+    /**
+     * Start a WhatsApp session asynchronously (non-blocking).
+     * This method returns immediately after creating/checking the session.
+     * Frontend polling will handle QR code retrieval.
+     */
+    public function startSessionAsync(WhatsAppSession $session): array
+    {
+        try {
+            $sessionId = $session->id;
+
+            // First check if session already exists on the API
+            try {
+                Log::info('Checking if session already exists', ['session_id' => $sessionId]);
+                $existingStatus = $this->getSessionStatus($sessionId);
+
+                Log::info('Found existing session on API', [
+                    'session_id' => $sessionId,
+                    'status' => $existingStatus['status'] ?? 'unknown',
+                    'has_qr' => ! empty($existingStatus['qr']),
+                ]);
+
+                // Update session from existing API status
+                $this->updateSessionFromApiStatus($session, $existingStatus);
+
+                return $existingStatus;
+            } catch (\Exception $e) {
+                Log::info('Session not found on API, creating new one', [
+                    'session_id' => $sessionId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
+            // Session doesn't exist, create it
+            $result = $this->createSession($sessionId);
+
+            // Set to CREATING status and return immediately - let polling do the rest
+            $session->update([
+                'status' => WhatsAppConnectionStatus::CREATING,
+                'session_data' => $result,
+                'last_activity_at' => now(),
+            ]);
+
+            Log::info('Session created, polling will handle QR retrieval', [
+                'session_id' => $sessionId,
+                'initial_status' => $result['status'] ?? 'unknown',
+            ]);
+
+            return $result;
+        } catch (\Exception $e) {
+            Log::error('Failed to start WhatsApp session async', [
+                'session_id' => $session->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            throw $e;
+        }
+    }
+
+    /**
+     * Update session model from API status response.
+     * Centralizes status update logic with strict connection verification.
+     */
+    public function updateSessionFromApiStatus(WhatsAppSession $session, array $apiResult): void
+    {
+        $apiStatus = strtoupper($apiResult['status'] ?? 'PENDING');
+        $modelStatus = WhatsAppConnectionStatus::fromApiStatus($apiStatus);
+
+        Log::info('Updating session from API status', [
+            'session_id' => $session->id,
+            'api_status' => $apiStatus,
+            'has_me' => isset($apiResult['me']),
+            'has_token' => ! empty($apiResult['token']),
+            'has_qr' => ! empty($apiResult['qr']),
+        ]);
+
+        // Handle connected status - with strict verification
+        if ($apiStatus === 'CONNECTED') {
+            // Verify real connection by checking for 'me' field or token
+            $hasPhoneInfo = ! empty($apiResult['me']) || ! empty($apiResult['user']);
+            $hasToken = ! empty($apiResult['token']);
+            $hasQr = ! empty($apiResult['qr']);
+
+            // If QR is still present or no phone info/token, not truly connected
+            if ($hasQr || (! $hasPhoneInfo && ! $hasToken)) {
+                Log::warning('API reports CONNECTED but verification failed', [
+                    'session_id' => $session->id,
+                    'has_phone_info' => $hasPhoneInfo,
+                    'has_token' => $hasToken,
+                    'has_qr' => $hasQr,
+                ]);
+                $modelStatus = WhatsAppConnectionStatus::PENDING;
+            } else {
+                $session->markAsConnected($apiResult);
+
+                return;
+            }
+        }
+
+        // Clean up QR code data if present
+        $qrCode = null;
+        if (! empty($apiResult['qr'])) {
+            $qrCode = $this->cleanQrCodeData($apiResult['qr']);
+        }
+
+        $session->update([
+            'status' => $modelStatus,
+            'qr_code' => $qrCode,
+            'session_data' => $apiResult,
+            'last_activity_at' => now(),
+        ]);
+    }
+
+    /**
+     * Start a WhatsApp session synchronously (blocking).
+     * This waits for QR code generation before returning.
+     * Use startSessionAsync() for non-blocking behavior.
+     *
+     * @deprecated Use startSessionAsync() for better UX
+     */
     public function startSession(WhatsAppSession $session): array
     {
         try {
@@ -145,7 +264,7 @@ trait SessionManagement
                 Log::info('Found existing session on API', [
                     'session_id' => $sessionId,
                     'status' => $existingStatus['status'] ?? 'unknown',
-                    'has_qr' => !empty($existingStatus['qr']),
+                    'has_qr' => ! empty($existingStatus['qr']),
                 ]);
 
                 // Use existing session instead of creating new one
@@ -160,9 +279,9 @@ trait SessionManagement
                 $result = $this->createSession($sessionId);
             }
 
-            // Wait for QR code if we don't have one yet
+            // Wait for QR code if we don't have one yet (reduced to 5 attempts for faster feedback)
             $attempts = 0;
-            $maxAttempts = 15; // Reduced attempts
+            $maxAttempts = 5;
 
             while ($attempts < $maxAttempts && empty($result['qr']) && $result['status'] !== 'CONNECTED') {
                 Log::info('Waiting for QR code', [
@@ -171,12 +290,12 @@ trait SessionManagement
                     'current_status' => $result['status'] ?? 'unknown',
                 ]);
 
-                sleep(2);
+                sleep(1);
                 $attempts++;
 
                 try {
                     $result = $this->getSessionStatus($sessionId);
-                    if (!empty($result['qr']) || $result['status'] === 'CONNECTED') {
+                    if (! empty($result['qr']) || $result['status'] === 'CONNECTED') {
                         break;
                     }
                 } catch (\Exception $e) {
@@ -188,39 +307,16 @@ trait SessionManagement
                 }
             }
 
-            // Get the final status to determine the correct status
-            $finalStatus = $result;
-            $status = strtoupper($finalStatus['status'] ?? 'PENDING');
-
-            // Map API statuses to our model statuses
-            $modelStatus = WhatsAppConnectionStatus::fromApiStatus($status);
-
-            // Clean up QR code data to ensure it's valid
-            $qrCode = null;
-            if (!empty($finalStatus['qr'])) {
-                $qrCode = $this->cleanQrCodeData($finalStatus['qr']);
-                Log::info('QR code processed', [
-                    'session_id' => $sessionId,
-                    'raw_qr_length' => strlen($finalStatus['qr']),
-                    'processed_qr_length' => strlen($qrCode ?? ''),
-                    'qr_type' => str_starts_with($qrCode ?? '', 'data:') ? 'data_url' : 'other',
-                ]);
-            }
-
-            $session->update([
-                'status' => $modelStatus,
-                'qr_code' => $qrCode,
-                'session_data' => $finalStatus,
-                'last_activity_at' => now(),
-            ]);
+            // Update session from API status
+            $this->updateSessionFromApiStatus($session, $result);
 
             Log::info('Session started successfully', [
                 'session_id' => $sessionId,
-                'final_status' => $status,
-                'has_qr' => !empty($qrCode),
+                'final_status' => $result['status'] ?? 'unknown',
+                'has_qr' => ! empty($result['qr']),
             ]);
 
-            return $finalStatus;
+            return $result;
         } catch (\Exception $e) {
             Log::error('Failed to start WhatsApp session', [
                 'session_id' => $session->id,

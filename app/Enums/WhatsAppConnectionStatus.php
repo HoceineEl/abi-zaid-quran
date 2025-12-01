@@ -40,7 +40,7 @@ enum WhatsAppConnectionStatus: string
             self::CREATING,
             self::CONNECTING,
             self::PENDING,
-            self::GENERATING_QR
+            self::GENERATING_QR,
         ]);
     }
 
@@ -50,7 +50,7 @@ enum WhatsAppConnectionStatus: string
             self::CREATING,
             self::CONNECTING,
             self::PENDING,
-            self::GENERATING_QR
+            self::GENERATING_QR,
         ]);
     }
 
@@ -73,7 +73,7 @@ enum WhatsAppConnectionStatus: string
             self::CREATING,
             self::CONNECTING,
             self::PENDING,
-            self::GENERATING_QR
+            self::GENERATING_QR,
         ]);
     }
 
@@ -88,7 +88,7 @@ enum WhatsAppConnectionStatus: string
             self::CREATING,
             self::CONNECTING,
             self::PENDING,
-            self::GENERATING_QR
+            self::GENERATING_QR,
         ]);
     }
 
@@ -98,7 +98,7 @@ enum WhatsAppConnectionStatus: string
             self::CREATING,
             self::CONNECTING,
             self::PENDING,
-            self::GENERATING_QR
+            self::GENERATING_QR,
         ]);
     }
 
@@ -109,7 +109,73 @@ enum WhatsAppConnectionStatus: string
             self::CREATING,
             self::CONNECTING,
             self::PENDING,
-            self::GENERATING_QR
+            self::GENERATING_QR,
         ]);
+    }
+
+    /**
+     * Check if transition to a new status is valid.
+     * This prevents invalid status changes like going from DISCONNECTED to CONNECTED directly.
+     */
+    public function canTransitionTo(self $newStatus): bool
+    {
+        // Same status is always allowed
+        if ($this === $newStatus) {
+            return true;
+        }
+
+        $validTransitions = [
+            self::DISCONNECTED->value => [
+                self::CREATING,
+                self::CONNECTING,
+                self::PENDING,
+                self::GENERATING_QR,
+            ],
+            self::CREATING->value => [
+                self::GENERATING_QR,
+                self::CONNECTING,
+                self::PENDING,
+                self::CONNECTED,
+                self::DISCONNECTED,
+            ],
+            self::CONNECTING->value => [
+                self::GENERATING_QR,
+                self::PENDING,
+                self::CONNECTED,
+                self::DISCONNECTED,
+            ],
+            self::GENERATING_QR->value => [
+                self::PENDING,
+                self::CONNECTING,
+                self::CONNECTED,
+                self::DISCONNECTED,
+            ],
+            self::PENDING->value => [
+                self::GENERATING_QR,
+                self::CONNECTING,
+                self::CONNECTED,
+                self::DISCONNECTED,
+            ],
+            self::CONNECTED->value => [
+                self::DISCONNECTED,
+            ],
+        ];
+
+        return in_array($newStatus, $validTransitions[$this->value] ?? []);
+    }
+
+    /**
+     * Get the polling interval in milliseconds for this status.
+     */
+    public function getPollingInterval(): int
+    {
+        return match ($this) {
+            self::CREATING => 2000,       // Fast polling when creating
+            self::CONNECTING => 2000,     // Fast polling when connecting
+            self::GENERATING_QR => 3000,  // Slightly slower for QR generation
+            self::PENDING => 5000,        // QR is shown, waiting for scan
+            self::CONNECTED => 30000,     // Health check every 30 seconds
+            self::DISCONNECTED => 0,      // No polling when disconnected
+        };
     }
 }

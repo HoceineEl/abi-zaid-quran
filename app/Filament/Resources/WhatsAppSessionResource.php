@@ -109,74 +109,35 @@ class WhatsAppSessionResource extends BaseResource
                 $whatsappService = app(WhatsAppService::class);
 
                 try {
-                    // First check if session already exists
-                    $result = $whatsappService->getSessionStatus($record->id);
-                    $apiStatus = strtoupper($result['status'] ?? 'PENDING');
+                    // Use async start - returns immediately, polling handles QR retrieval
+                    $whatsappService->startSessionAsync($record);
 
-                    \Log::info('Start session - existing session found', [
-                        'session_id' => $record->id,
-                        'api_status' => $apiStatus,
-                        'has_qr' => ! empty($result['qr']),
-                    ]);
+                    $record->refresh();
 
-                    if ($apiStatus === 'CONNECTED') {
-                        $record->markAsConnected($result);
-
+                    if ($record->status === WhatsAppConnectionStatus::CONNECTED) {
                         Notification::make()
                             ->title('تم بدء الجلسة بنجاح')
                             ->body('الجلسة متصلة بالفعل')
                             ->success()
                             ->send();
                     } else {
-                        $modelStatus = WhatsAppConnectionStatus::fromApiStatus($apiStatus);
-                        $record->update([
-                            'status' => $modelStatus,
-                            'session_data' => $result,
-                            'last_activity_at' => now(),
-                        ]);
-
-                        if (! empty($result['qr'])) {
-                            $record->updateQrCode($result['qr']);
-                        }
-
                         Notification::make()
-                            ->title('تم بدء الجلسة بنجاح')
-                            ->body('يرجى مسح رمز QR')
-                            ->success()
+                            ->title('جاري إعداد الجلسة...')
+                            ->body('سيظهر رمز QR خلال ثوانٍ قليلة')
+                            ->info()
                             ->send();
                     }
                 } catch (\Exception $e) {
-                    \Log::info('Start session - creating new session', [
+                    \Log::error('Failed to start session', [
                         'session_id' => $record->id,
                         'error' => $e->getMessage(),
                     ]);
 
-                    try {
-                        $result = $whatsappService->startSession($record);
-
-                        \Log::info('New session created', [
-                            'session_id' => $record->id,
-                            'status' => $result['status'] ?? 'unknown',
-                            'has_qr' => ! empty($result['qr']),
-                        ]);
-
-                        Notification::make()
-                            ->title('تم بدء الجلسة بنجاح')
-                            ->body('يرجى مسح رمز QR')
-                            ->success()
-                            ->send();
-                    } catch (\Exception $ex) {
-                        \Log::error('Failed to start session', [
-                            'session_id' => $record->id,
-                            'error' => $ex->getMessage(),
-                        ]);
-
-                        Notification::make()
-                            ->title('فشل في بدء الجلسة')
-                            ->body($ex->getMessage())
-                            ->danger()
-                            ->send();
-                    }
+                    Notification::make()
+                        ->title('فشل في بدء الجلسة')
+                        ->body($e->getMessage())
+                        ->danger()
+                        ->send();
                 }
             });
     }

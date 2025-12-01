@@ -1,17 +1,55 @@
+@php
+    $initialInterval = $getRecord()->status->getPollingInterval();
+@endphp
 <div
     x-data="{
         wasConnected: @js($getRecord()->status === \App\Enums\WhatsAppConnectionStatus::CONNECTED),
         currentStatus: @js($getRecord()->status->value),
         showConfetti: false,
+        polling: true,
+        interval: {{ $initialInterval }},
+        pollTimer: null,
+
+        init() {
+            this.startPolling();
+        },
+
+        startPolling() {
+            this.stopPolling();
+            if (!this.polling || this.interval === 0) return;
+
+            this.pollTimer = setInterval(() => {
+                $wire.pollStatus('{{ $getRecord()->id }}');
+            }, this.interval);
+        },
+
+        stopPolling() {
+            if (this.pollTimer) {
+                clearInterval(this.pollTimer);
+                this.pollTimer = null;
+            }
+        },
+
+        updateInterval(newInterval) {
+            this.interval = newInterval;
+            if (newInterval > 0) {
+                this.startPolling();
+            } else {
+                this.stopPolling();
+            }
+        },
+
         checkStatusChange() {
             const newStatus = @js($getRecord()->status->value);
             if (!this.wasConnected && newStatus === 'connected') {
                 this.wasConnected = true;
                 this.showConfetti = true;
+                this.stopPolling();
                 this.triggerConfetti();
             }
             this.currentStatus = newStatus;
         },
+
         triggerConfetti() {
             const confettiCount = 50;
             const colors = ['#10b981', '#3b82f6', '#f59e0b'];
@@ -33,8 +71,10 @@
             }, 5000);
         }
     }"
-        wire:poll.3s="pollStatus('{{ $getRecord()->id }}')"
-        x-effect="checkStatusChange()"
+    x-init="init()"
+    x-effect="checkStatusChange()"
+    x-on:polling-interval-changed.window="updateInterval($event.detail.interval)"
+    x-on:stop-polling.window="stopPolling()"
     class="relative w-full overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm transition-all duration-300"
 >
     <!-- Confetti Container -->
@@ -128,6 +168,29 @@
         </div>
     @endif
 
+    {{-- QR Loading Skeleton - shown when status expects QR but none available yet --}}
+    @if(!$showQr && $status->shouldShowQrCode())
+        <div class="mx-4 mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-600 rounded-lg">
+            <div class="flex flex-col items-center gap-4">
+                {{-- Skeleton QR Code --}}
+                <div class="h-56 w-56 rounded-2xl bg-gray-200 dark:bg-gray-700 animate-pulse flex items-center justify-center">
+                    <svg class="w-12 h-12 text-gray-400 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                </div>
+                <div class="text-center">
+                    <p class="text-sm font-medium text-blue-700 dark:text-blue-300">
+                        جاري إنشاء رمز QR...
+                    </p>
+                    <p class="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                        يرجى الانتظار لثوانٍ قليلة
+                    </p>
+                </div>
+            </div>
+        </div>
+    @endif
+
     @if ($showQr)
         <div class="mx-4 mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-600 rounded-lg">
             <div class="text-center mb-4">
@@ -150,33 +213,44 @@
                                 <div class="text-gray-500 text-sm font-medium">🔄 جاري إنشاء رمز QR...</div>
                                 <div class="absolute inset-0 bg-gradient-to-br from-sky-400/10 to-blue-400/10"></div>
                             </div>
-                            @once
-                                <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-                            @endonce
                             <script>
-                                document.addEventListener('DOMContentLoaded', function() {
-                                    const qrContent = {{ Js::from(substr($qrData, 11)) }}; // Remove 'qr-content:' prefix
-                                    const container = document.getElementById('session-qr-container-{{ $getRecord()->id }}');
-
-                                    if (container && window.QRCode) {
-                                        QRCode.toCanvas(qrContent, {
-                                            width: 224,
-                                            height: 224,
-                                            margin: 2,
-                                            color: {
-                                                dark: '#1e293b',
-                                                light: '#ffffff'
-                                            }
-                                        }).then(canvas => {
-                                            container.innerHTML = '';
-                                            canvas.className = 'h-56 w-56 rounded-2xl shadow-xl';
-                                            container.appendChild(canvas);
-                                        }).catch(err => {
-                                            container.innerHTML = '<div class="text-red-500 text-sm font-medium">⚠️ فشل في إنشاء رمز QR</div>';
-                                            console.error('QR code generation failed:', err);
-                                        });
+                                (function() {
+                                    // Load QRCode library if not already loaded
+                                    if (!window.QRCode && !window.QRCodeLoading) {
+                                        window.QRCodeLoading = true;
+                                        var script = document.createElement('script');
+                                        script.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js';
+                                        script.onload = function() { window.dispatchEvent(new Event('qrcode-loaded')); };
+                                        document.head.appendChild(script);
                                     }
-                                });
+
+                                    function generateQR() {
+                                        const qrContent = {{ Js::from(substr($qrData, 11)) }};
+                                        const container = document.getElementById('session-qr-container-{{ $getRecord()->id }}');
+
+                                        if (container && window.QRCode) {
+                                            QRCode.toCanvas(qrContent, {
+                                                width: 224,
+                                                height: 224,
+                                                margin: 2,
+                                                color: { dark: '#1e293b', light: '#ffffff' }
+                                            }).then(canvas => {
+                                                container.innerHTML = '';
+                                                canvas.className = 'h-56 w-56 rounded-2xl shadow-xl';
+                                                container.appendChild(canvas);
+                                            }).catch(err => {
+                                                container.innerHTML = '<div class="text-red-500 text-sm font-medium">⚠️ فشل في إنشاء رمز QR</div>';
+                                                console.error('QR code generation failed:', err);
+                                            });
+                                        }
+                                    }
+
+                                    if (window.QRCode) {
+                                        generateQR();
+                                    } else {
+                                        window.addEventListener('qrcode-loaded', generateQR, { once: true });
+                                    }
+                                })();
                             </script>
                         @else
                             <img src="{{ $qrData }}" alt="QR Code"
