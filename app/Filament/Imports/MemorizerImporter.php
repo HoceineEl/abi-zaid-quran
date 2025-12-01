@@ -35,32 +35,78 @@ class MemorizerImporter extends Importer
                 ->label('الفئة')
                 ->rules(['required', 'string'])
                 ->guess(['الفئة', 'المجموعة', 'الصف'])
-                ->fillRecordUsing(function (Memorizer $record, string $state, array $options) {
+                ->fillRecordUsing(function (Memorizer $record, ?string $state, array $options) {
                     if (isset($options['group_id'])) {
                         $record->memo_group_id = $options['group_id'];
-                    } else {
-                        $group = MemoGroup::firstOrCreate(['name' => $state], ['price' => 70, 'teacher_id' => $options['teacher_id'] ?? null ]);
-                        $record->memo_group_id = $group->id;
+                        return;
                     }
+
+                    if (!$state) {
+                        return;
+                    }
+
+                    $teacherId = $options['teacher_id'] ?? null;
+                    $defaultSex = $options['default_sex'] ?? 'male';
+
+                    // Extract teacher name from group name if it contains "-" and no teacher_id is set
+                    if (!$teacherId && str_contains($state, '-')) {
+                        $parts = explode('-', $state, 2);
+                        $teacherName = trim($parts[0]);
+
+                        if ($teacherName) {
+                            $teacher = User::firstOrCreate(
+                                ['name' => $teacherName, 'role' => 'teacher'],
+                                [
+                                    'phone' => '0666666666',
+                                    'sex' => $defaultSex,
+                                    'password' => bcrypt('teacher'),
+                                    'email' => Str::slug($teacherName) . rand(100, 999) . '@abi-zaid.com',
+                                ]
+                            );
+                            $teacherId = $teacher->id;
+                        }
+                    }
+
+                    $group = MemoGroup::firstOrCreate(
+                        ['name' => $state],
+                        ['price' => 70, 'teacher_id' => $teacherId]
+                    );
+
+                    // Update teacher if group exists but has no teacher
+                    if (!$group->teacher_id && $teacherId) {
+                        $group->update(['teacher_id' => $teacherId]);
+                    }
+
+                    $record->memo_group_id = $group->id;
                 }),
 
             ImportColumn::make('teacher')
                 ->label('الأستاذ')
-                ->rules(['required', 'string'])
+                ->rules(['nullable', 'string'])
                 ->guess(['الأستاذ', 'المعلم', 'المدرس', 'أستاذ'])
-                ->fillRecordUsing(function (Memorizer $record, string $state, array $options) {
+                ->fillRecordUsing(function (Memorizer $record, ?string $state, array $options) {
+                    // Skip if no group or no teacher state/option
+                    if (!$record->memo_group_id || (!$state && !isset($options['teacher_id']))) {
+                        return;
+                    }
+
+                    $group = MemoGroup::find($record->memo_group_id);
+                    if (!$group || $group->teacher_id) {
+                        // Skip if group already has a teacher (assigned by group column)
+                        return;
+                    }
+
                     if (isset($options['teacher_id'])) {
-                        $record->group->update(['teacher_id' => $options['teacher_id']]);
-                    } else {
+                        $group->update(['teacher_id' => $options['teacher_id']]);
+                    } elseif ($state) {
+                        $defaultSex = $options['default_sex'] ?? 'male';
                         $teacher = User::firstOrCreate(['name' => $state, 'role' => 'teacher'], [
                             'phone' => '0666666666',
-                            'sex' => 'male',
+                            'sex' => $defaultSex,
                             'password' => bcrypt('teacher'),
                             'email' => Str::slug($state) . rand(100, 999) . '@abi-zaid.com',
-                            'created_at' => now(),
-                            'updated_at' => now(),
                         ]);
-                        $record->group->update(['teacher_id' => $teacher->id]);
+                        $group->update(['teacher_id' => $teacher->id]);
                     }
                 }),
 
@@ -93,8 +139,19 @@ class MemorizerImporter extends Importer
 
     public function resolveRecord(): ?Memorizer
     {
+        $name = $this->data['name'] ?? null;
+
+        if (!$name) {
+            return null;
+        }
+
         if ($this->options['updateExisting'] ?? false) {
-            return Memorizer::firstOrNew(['name' => $this->data['name']]);
+            return Memorizer::firstOrNew(['name' => $name]);
+        }
+
+        // Skip if memorizer with same name already exists
+        if (Memorizer::where('name', $name)->exists()) {
+            return null;
         }
 
         return new Memorizer();
@@ -124,7 +181,14 @@ class MemorizerImporter extends Importer
                 ->placeholder('اختر الأستاذ(ة) (اختياري)')
                 ->helperText('إذا تم تحديد أستاذ(ة)، سيتم تجاهل عمود الأستاذ(ة) في ملف الاستيراد'),
 
-
+            Select::make('default_sex')
+                ->label('الجنس الافتراضي')
+                ->options([
+                    'male' => 'ذكر',
+                    'female' => 'أنثى',
+                ])
+                ->default('male')
+                ->helperText('الجنس الافتراضي للأساتذة الجدد الذين يتم إنشاؤهم أثناء الاستيراد'),
 
             Checkbox::make('updateExisting')
                 ->label('تحديث السجلات الموجودة'),

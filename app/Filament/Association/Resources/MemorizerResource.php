@@ -10,6 +10,7 @@ use App\Filament\Association\Resources\MemorizerResource\RelationManagers\Paymen
 use App\Filament\Association\Resources\MemorizerResource\RelationManagers\ReminderLogsRelationManager;
 use App\Filament\Exports\MemorizerExporter;
 use App\Filament\Imports\MemorizerImporter;
+use App\Models\MemoGroup;
 use App\Models\Memorizer;
 use App\Models\Round;
 use App\Models\User;
@@ -319,6 +320,27 @@ class MemorizerResource extends Resource
                             ->success()
                             ->send();
                     }),
+                Tables\Actions\BulkAction::make('attach_to_group')
+                    ->label('إلحاق بمجموعة')
+                    ->icon('heroicon-o-user-group')
+                    ->form([
+                        Select::make('memo_group_id')
+                            ->label('المجموعة')
+                            ->options(MemoGroup::pluck('name', 'id'))
+                            ->searchable()
+                            ->preload()
+                            ->required(),
+                    ])
+                    ->action(function (array $data, $livewire) {
+                        $recordIds = $livewire->getSelectedTableRecords()->pluck('id')->toArray();
+                        Memorizer::whereIn('id', $recordIds)->update(['memo_group_id' => $data['memo_group_id']]);
+
+                        Notification::make()
+                            ->title('تم إلحاق الطلاب بالمجموعة بنجاح')
+                            ->success()
+                            ->send();
+                    })
+                    ->deselectRecordsAfterCompletion(),
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
@@ -366,6 +388,37 @@ class MemorizerResource extends Resource
                     }),
 
 
+                Tables\Filters\SelectFilter::make('sex')
+                    ->label('الجنس')
+                    ->options([
+                        'male' => 'ذكر',
+                        'female' => 'أنثى',
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query->when($data['value'], function ($query) use ($data) {
+                            $query->whereHas('group.teacher', function ($query) use ($data) {
+                                $query->where('sex', $data['value']);
+                            });
+                        });
+                    }),
+
+                Filter::make('no_sex_defined')
+                    ->label('بدون جنس محدد')
+                    ->toggle()
+                    ->query(fn (Builder $query) => $query->where(function ($query) {
+                        $query->whereNull('memo_group_id')
+                            ->orWhereHas('group', fn ($q) => $q->whereNull('teacher_id'))
+                            ->orWhereDoesntHave('group.teacher');
+                    })),
+
+                Filter::make('no_teacher')
+                    ->label('بدون أستاذ')
+                    ->toggle()
+                    ->query(fn (Builder $query) => $query->where(function ($query) {
+                        $query->whereNull('memo_group_id')
+                            ->orWhereHas('group', fn ($q) => $q->whereNull('teacher_id'))
+                            ->orWhereDoesntHave('group.teacher');
+                    })),
             ])
             ->modifyQueryUsing(function (Builder $query) {
                 $query
