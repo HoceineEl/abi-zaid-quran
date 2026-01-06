@@ -16,6 +16,7 @@ use App\Models\GroupMessageTemplate;
 use App\Models\Message;
 use App\Models\Student;
 use Filament\Forms;
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Forms\Components\Actions\Action as FormAction;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Select;
@@ -148,7 +149,15 @@ class GroupResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->label('الاسم')
-                    ->searchable()
+                    ->searchable(
+                        query: function (Builder $query, string $search) {
+                            return $query
+                                ->where('name', 'like', "%{$search}%")
+                                ->orWhereHas('students', function (Builder $query) use ($search) {
+                                    $query->where('name', 'like', "%{$search}%");
+                                });
+                        }
+                    )
                     ->sortable(),
                 Tables\Columns\TextColumn::make('type')
                     ->label('نوع الحفظ')
