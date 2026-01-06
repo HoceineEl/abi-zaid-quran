@@ -13,6 +13,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class StudentResource extends Resource
 {
@@ -61,7 +62,18 @@ class StudentResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('name')->label('الاسم'),
+                TextColumn::make('name')
+                    ->label('الاسم')
+                    ->searchable(
+                        query: function (Builder $query, string $search) {
+                            return $query
+                                ->where('name', 'like', "%{$search}%")
+                                ->orWhereHas('group', function (Builder $query) use ($search) {
+                                    $query->where('name', 'like', "%{$search}%");
+                                });
+                        }
+                    )
+                    ->sortable(),
                 TextColumn::make('group.type')->label('نوع الحفظ')
                     ->formatStateUsing(function ($state) {
                         return match ($state) {
@@ -92,7 +104,10 @@ class StudentResource extends Resource
                     ->toggledHiddenByDefault(),
             ])
             ->filters([
-                //
+                Tables\Filters\SelectFilter::make('group_id')
+                    ->label('المجموعة')
+                    ->options(Group::pluck('name', 'id'))
+                    ->searchable(),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
