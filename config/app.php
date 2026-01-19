@@ -65,7 +65,9 @@ return [
     |
     */
 
-    'timezone' => env('APP_TIMEZONE', 'UTC'),
+    // Extended by 2 hours to allow teachers to submit attendance after midnight
+    // Etc/GMT+1 = GMT-1 (PHP naming convention is inverted)
+    'timezone' => 'Etc/GMT+1',
 
     /*
     |--------------------------------------------------------------------------

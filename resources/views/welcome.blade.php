@@ -112,13 +112,13 @@
         <div class="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px] animate-pulse-slow" style="animation-delay: 2s;"></div>
     </div>
 
-    <!-- Navbar (Optional for simple landing page, kept for UI completeness) -->
+    <!-- Navbar -->
     <nav class="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-slate-900/50 backdrop-blur-xl">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-center md:justify-between h-16">
-                <div class="flex items-center gap-3">
-                    <img src="{{ asset('logo.jpg') }}" alt="شعار الجمعية" class="h-10 w-10 rounded-full object-cover border-2 border-blue-500/30 shadow-lg" />
-                    <span class="font-bold text-lg text-slate-200 hidden sm:block">بوابة الجمعية</span>
+        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-center md:justify-between h-12 sm:h-16">
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <img src="{{ asset('logo.jpg') }}" alt="شعار الجمعية" class="h-8 w-8 sm:h-10 sm:w-10 rounded-full object-cover border-2 border-blue-500/30 shadow-lg" />
+                    <span class="font-bold text-sm sm:text-lg text-slate-200">بوابة الجمعية</span>
                 </div>
                 <div class="hidden md:flex items-center gap-4">
                     <span class="text-xs text-slate-500 font-mono">v2.0</span>
@@ -128,81 +128,77 @@
     </nav>
 
     <!-- Main Content -->
-    <main class="relative z-10 flex-grow flex flex-col items-center justify-center pt-24 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
+    <main class="relative z-10 flex-grow flex flex-col items-center justify-center pt-16 sm:pt-24 pb-6 sm:pb-12 px-3 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
 
         <!-- Hero Section -->
-        <div id="hero" class="text-center max-w-4xl mx-auto mb-20 relative opacity-0 translate-y-10 transition-all duration-1000 ease-out">
+        <div id="hero" class="text-center max-w-4xl mx-auto mb-8 sm:mb-16 md:mb-20 relative opacity-0 translate-y-10 transition-all duration-1000 ease-out">
 
             <!-- Main Logo Animation -->
-            <div class="relative mx-auto w-28 h-28 mb-10 animate-float group cursor-pointer">
+            <div class="relative mx-auto w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 mb-5 sm:mb-8 md:mb-10 animate-float group cursor-pointer">
                 <div class="absolute inset-0 bg-blue-500/30 rounded-full blur-2xl group-hover:bg-blue-500/50 transition-all duration-500"></div>
                 <div class="relative w-full h-full rounded-full border-2 border-blue-500/30 shadow-2xl ring-1 ring-white/10 overflow-hidden bg-white">
-                    <img src="{{ asset('logo.jpg') }}" alt="شعار الجمعية" class="w-full h-full object-cover hover:scale-110 transition-transform duration-500">
+                    <img src="{{ asset('logo.jpg') }}" alt="شعار الجمعية" class="w-full h-full object-cover">
                 </div>
             </div>
 
             <!-- Hero Text -->
-            <h1 class="text-4xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white via-slate-200 to-slate-500 tracking-tight leading-tight mb-6">
+            <h1 class="text-2xl sm:text-4xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white via-slate-200 to-slate-500 tracking-tight leading-tight mb-3 sm:mb-6">
                 مرحباً بكم في جمعية <br />
-                <span class="text-blue-500 inline-block mt-2">إبن أبي زيد القيرواني</span>
+                <span class="text-blue-500 inline-block mt-1 sm:mt-2">إبن أبي زيد القيرواني</span>
             </h1>
 
-            <p class="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto font-light leading-relaxed">
+            <p class="text-sm sm:text-lg md:text-xl text-slate-400 max-w-2xl mx-auto font-light leading-relaxed">
                 اختر الخدمة التي تريد الوصول إليها
             </p>
         </div>
 
         <!-- Cards Grid -->
-        <div id="cards-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full opacity-0 translate-y-10 transition-all duration-1000 delay-200 ease-out">
+        <div id="cards-grid" class="grid grid-cols-3 gap-3 sm:gap-4 md:gap-6 w-full opacity-0 translate-y-10 transition-all duration-1000 delay-200 ease-out">
 
             <!-- Card 1: Association Management -->
-            <!-- Link updated to /association -->
-            <a href="/association" class="spotlight-card group rounded-3xl p-8 h-full transition-all duration-300 hover:-translate-y-1">
-                <div class="relative z-10 flex flex-col h-full text-center md:text-right">
-                    <div class="w-14 h-14 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-6 group-hover:bg-blue-500/20 transition-colors mx-auto md:mx-0">
-                        <!-- SVG from your code converted to Lucide equivalent for style consistency, or keep generic icon -->
-                        <i data-lucide="building-2" class="w-7 h-7 text-blue-400"></i>
+            <a href="/association" class="spotlight-card group rounded-2xl sm:rounded-2xl md:rounded-3xl p-4 sm:p-5 md:p-8 h-full transition-all duration-300 hover:-translate-y-1 active:bg-blue-500/10">
+                <div class="relative z-10 flex flex-col h-full items-center text-center">
+                    <div class="w-12 h-12 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-xl sm:rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-3 sm:mb-4 md:mb-6 group-hover:bg-blue-500/20 transition-colors">
+                        <i data-lucide="building-2" class="w-6 h-6 sm:w-6 sm:h-6 md:w-7 md:h-7 text-blue-400"></i>
                     </div>
-                    <h3 class="text-2xl font-bold text-white mb-3 group-hover:text-blue-300 transition-colors">إدارة الجمعية</h3>
-                    <p class="text-slate-400 text-sm leading-relaxed">الوصول إلى لوحة تحكم إدارة الجمعية</p>
+                    <h3 class="text-[11px] sm:text-base md:text-2xl font-bold text-white mb-1 sm:mb-2 md:mb-3 group-hover:text-blue-300 transition-colors leading-tight">إدارة الجمعية</h3>
+                    <p class="text-slate-400 text-[10px] sm:text-xs md:text-sm leading-relaxed hidden sm:block">الوصول إلى لوحة تحكم إدارة الجمعية</p>
 
-                    <div class="mt-auto pt-8 flex items-center justify-center md:justify-start text-blue-400 text-sm font-medium opacity-0 group-hover:opacity-100 transition-all duration-300">
+                    <div class="mt-auto pt-2 sm:pt-6 md:pt-8 flex items-center justify-center text-blue-400 text-[10px] sm:text-sm font-medium sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-300">
                         <span>دخول</span>
-                        <i data-lucide="arrow-left" class="w-4 h-4 mr-2"></i>
+                        <i data-lucide="arrow-left" class="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2"></i>
                     </div>
                 </div>
             </a>
 
             <!-- Card 2: Quran/Scientific Programs -->
-            <!-- Link updated to /quran-program -->
-            <a href="/quran-program" class="spotlight-card group rounded-3xl p-8 h-full transition-all duration-300 hover:-translate-y-1">
-                <div class="relative z-10 flex flex-col h-full text-center md:text-right">
-                    <div class="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-6 group-hover:bg-emerald-500/20 transition-colors mx-auto md:mx-0">
-                        <i data-lucide="book-open" class="w-7 h-7 text-emerald-400"></i>
+            <a href="/quran-program" class="spotlight-card group rounded-2xl sm:rounded-2xl md:rounded-3xl p-4 sm:p-5 md:p-8 h-full transition-all duration-300 hover:-translate-y-1 active:bg-emerald-500/10">
+                <div class="relative z-10 flex flex-col h-full items-center text-center">
+                    <div class="w-12 h-12 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-xl sm:rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-3 sm:mb-4 md:mb-6 group-hover:bg-emerald-500/20 transition-colors">
+                        <i data-lucide="book-open" class="w-6 h-6 sm:w-6 sm:h-6 md:w-7 md:h-7 text-emerald-400"></i>
                     </div>
-                    <h3 class="text-2xl font-bold text-white mb-3 group-hover:text-emerald-300 transition-colors">البرامج العلمية الرقمية</h3>
-                    <p class="text-slate-400 text-sm leading-relaxed">الوصول إلى منصة البرامج التعليمية</p>
+                    <h3 class="text-[11px] sm:text-base md:text-2xl font-bold text-white mb-1 sm:mb-2 md:mb-3 group-hover:text-emerald-300 transition-colors leading-tight">البرامج العلمية</h3>
+                    <p class="text-slate-400 text-[10px] sm:text-xs md:text-sm leading-relaxed hidden sm:block">الوصول إلى منصة البرامج التعليمية</p>
 
-                    <div class="mt-auto pt-8 flex items-center justify-center md:justify-start text-emerald-400 text-sm font-medium opacity-0 group-hover:opacity-100 transition-all duration-300">
+                    <div class="mt-auto pt-2 sm:pt-6 md:pt-8 flex items-center justify-center text-emerald-400 text-[10px] sm:text-sm font-medium sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-300">
                         <span>دخول</span>
-                        <i data-lucide="arrow-left" class="w-4 h-4 mr-2"></i>
+                        <i data-lucide="arrow-left" class="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2"></i>
                     </div>
                 </div>
             </a>
 
             <!-- Card 3: Teachers -->
-            <!-- Link updated to /teacher -->
-            <a href="/teacher" class="spotlight-card group rounded-3xl p-8 h-full transition-all duration-300 hover:-translate-y-1">
-                <div class="relative z-10 flex flex-col h-full text-center md:text-right">
-                    <div class="w-14 h-14 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-6 group-hover:bg-purple-500/20 transition-colors mx-auto md:mx-0">
-                        <i data-lucide="users" class="w-7 h-7 text-purple-400"></i>
+            <a href="/teacher" class="spotlight-card group rounded-2xl sm:rounded-2xl md:rounded-3xl p-4 sm:p-5 md:p-8 h-full transition-all duration-300 hover:-translate-y-1 active:bg-purple-500/10">
+                <div class="relative z-10 flex flex-col h-full items-center text-center">
+                    <div class="w-12 h-12 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-xl sm:rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-3 sm:mb-4 md:mb-6 group-hover:bg-purple-500/20 transition-colors">
+                        <i data-lucide="users" class="w-6 h-6 sm:w-6 sm:h-6 md:w-7 md:h-7 text-purple-400"></i>
                     </div>
-                    <h3 class="text-2xl font-bold text-white mb-3 group-hover:text-purple-300 transition-colors">المعلمين</h3>
-                    <p class="text-slate-400 text-sm leading-relaxed">الوصول إلى لوحة تحكم المعلمين</p>
+                    <h3 class="text-[11px] sm:text-base md:text-2xl font-bold text-white mb-1 sm:mb-2 md:mb-3 group-hover:text-purple-300 transition-colors leading-tight">المعلمين</h3>
+                    <p class="text-slate-400 text-[10px] sm:text-xs md:text-sm leading-relaxed hidden sm:block">الوصول إلى لوحة تحكم المعلمين</p>
 
-                    <div class="mt-auto pt-8 flex items-center justify-center md:justify-start text-purple-400 text-sm font-medium opacity-0 group-hover:opacity-100 transition-all duration-300">
+                    <div class="mt-auto pt-2 sm:pt-6 md:pt-8 flex items-center justify-center text-purple-400 text-[10px] sm:text-sm font-medium sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-300">
                         <span>دخول</span>
-                        <i data-lucide="arrow-left" class="w-4 h-4 mr-2"></i>
+                        <i data-lucide="arrow-left" class="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2"></i>
                     </div>
                 </div>
             </a>
@@ -212,8 +208,8 @@
     </main>
 
     <!-- Footer -->
-    <footer class="relative z-10 w-full py-8 border-t border-white/5 bg-slate-900/80 backdrop-blur-md mt-auto">
-        <div class="max-w-7xl mx-auto px-4 text-center text-sm text-slate-500">
+    <footer class="relative z-10 w-full py-4 sm:py-8 border-t border-white/5 bg-slate-900/80 backdrop-blur-md mt-auto">
+        <div class="max-w-7xl mx-auto px-3 sm:px-4 text-center text-xs sm:text-sm text-slate-500">
             <p class="font-medium">جميع الحقوق محفوظة © <span id="year">2025</span> جمعية إبن أبي زيد القيرواني</p>
         </div>
     </footer>

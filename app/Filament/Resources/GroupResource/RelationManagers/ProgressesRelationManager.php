@@ -307,7 +307,11 @@ class ProgressesRelationManager extends RelationManager
                                     ->send();
                             }
                         }),
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->modalHeading('حذف الطلاب المحددين')
+                        ->modalDescription('هل أنت متأكد من حذف الطلاب المحددين؟ سيتم حذف جميع بيانات التقدم والحضور المرتبطة بهم.')
+                        ->modalSubmitActionLabel('نعم، احذف')
+                        ->modalCancelActionLabel('إلغاء'),
                 ]),
             ])
             ->actions([
@@ -319,7 +323,6 @@ class ProgressesRelationManager extends RelationManager
                     ->url(function (Student $record) {
                         return StudentsRelationManager::getWhatsAppUrl($record, $this->ownerRecord);
                     }, true),
-
             ])
             ->actionsPosition(ActionsPosition::BeforeColumns);
     }

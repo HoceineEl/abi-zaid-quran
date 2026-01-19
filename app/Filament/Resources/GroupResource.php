@@ -15,6 +15,7 @@ use App\Models\Group;
 use App\Models\GroupMessageTemplate;
 use App\Models\Message;
 use App\Models\Student;
+use App\Models\User;
 use Filament\Forms;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Forms\Components\Actions\Action as FormAction;
@@ -383,6 +384,83 @@ class GroupResource extends Resource
                     Tables\Actions\RestoreBulkAction::make(),
                     Tables\Actions\ForceDeleteBulkAction::make()
                         ->disabled(! Core::canChange()),
+                    Tables\Actions\BulkAction::make('export_vcf')
+                        ->label('تصدير جهات الاتصال (VCF)')
+                        ->icon('heroicon-o-phone')
+                        ->color('info')
+                        ->action(function ($records) {
+                            $phones = collect();
+                            $vcfContent = '';
+
+                            foreach ($records as $group) {
+                                foreach ($group->students as $student) {
+                                    $phone = preg_replace('/[^0-9+]/', '', $student->phone);
+
+                                    if (empty($phone) || $phones->contains($phone)) {
+                                        continue;
+                                    }
+
+                                    $phones->push($phone);
+
+                                    $vcfContent .= "BEGIN:VCARD\r\n";
+                                    $vcfContent .= "VERSION:3.0\r\n";
+                                    $vcfContent .= "FN:{$student->name}\r\n";
+                                    $vcfContent .= "TEL;TYPE=CELL:{$phone}\r\n";
+                                    $vcfContent .= "END:VCARD\r\n";
+                                }
+                            }
+
+                            if (empty($vcfContent)) {
+                                Notification::make()
+                                    ->title('لا توجد جهات اتصال للتصدير')
+                                    ->warning()
+                                    ->send();
+
+                                return;
+                            }
+
+                            $filename = 'contacts_'.now()->format('Y-m-d_H-i').'.vcf';
+
+                            return response()->streamDownload(function () use ($vcfContent) {
+                                echo $vcfContent;
+                            }, $filename, [
+                                'Content-Type' => 'text/vcard',
+                            ]);
+                        })
+                        ->deselectRecordsAfterCompletion(),
+                    Tables\Actions\BulkAction::make('assign_managers')
+                        ->label('تعيين مشرفين للمجموعات')
+                        ->icon('heroicon-o-user-plus')
+                        ->color('success')
+                        ->visible(fn () => auth()->user()->isAdministrator())
+                        ->form([
+                            Forms\Components\Select::make('managers')
+                                ->label('اختر المشرفين')
+                                ->options(
+                                    User::where('role', '!=', 'teacher')
+                                        ->pluck('name', 'id')
+                                )
+                                ->multiple()
+                                ->searchable()
+                                ->preload()
+                                ->required(),
+                        ])
+                        ->action(function (array $data, $records) {
+                            $managerIds = $data['managers'];
+                            $groupCount = 0;
+
+                            foreach ($records as $group) {
+                                $group->managers()->syncWithoutDetaching($managerIds);
+                                $groupCount++;
+                            }
+
+                            Notification::make()
+                                ->title('تم تعيين المشرفين بنجاح')
+                                ->body("تم إضافة المشرفين إلى {$groupCount} مجموعة")
+                                ->success()
+                                ->send();
+                        })
+                        ->deselectRecordsAfterCompletion(),
                 ]),
             ]);
     }
