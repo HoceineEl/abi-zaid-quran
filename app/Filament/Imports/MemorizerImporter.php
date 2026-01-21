@@ -67,9 +67,8 @@ class MemorizerImporter extends Importer
                             // Normalize Arabic characters for matching
                             $normalizedName = str_replace(['أ', 'إ', 'آ', 'ى'], ['ا', 'ا', 'ا', 'ي'], $teacherName);
 
-                            // Try to find existing teacher with similar name
+                            // Try to find existing teacher with similar name (any sex first)
                             $teacher = User::where('role', 'teacher')
-                                ->where('sex', $defaultSex)
                                 ->where(function ($query) use ($teacherName, $normalizedName) {
                                     $query->where('name', $teacherName)
                                         ->orWhere('name', 'like', $teacherName . '%')
@@ -78,7 +77,7 @@ class MemorizerImporter extends Importer
                                 })
                                 ->first();
 
-                            // If no teacher found, create one
+                            // If no teacher found, create one with the default sex
                             if (!$teacher) {
                                 $teacher = User::create([
                                     'name' => $teacherName,
