@@ -144,6 +144,22 @@ class MemorizerImporter extends Importer
                     return in_array(mb_strtolower(trim($state)), ['نعم', 'معفى', 'معفي', '1', 'true', 'yes'], true);
                 }),
 
+            ImportColumn::make('sex')
+                ->label('الجنس')
+                ->rules(['nullable', 'string'])
+                ->guess(['الجنس', 'النوع', 'ذكر/أنثى'])
+                ->fillRecordUsing(function (Memorizer $record, ?string $state, array $options) {
+                    if ($state) {
+                        $record->sex = match (mb_strtolower(trim($state))) {
+                            'ذكر', 'رجل', 'صبي', 'ولد', 'male', 'm' => 'male',
+                            'أنثى', 'مرأة', 'بنت', 'female', 'f' => 'female',
+                            default => $options['default_sex'] ?? 'male',
+                        };
+                    } else {
+                        $record->sex = $options['default_sex'] ?? 'male';
+                    }
+                }),
+
         ];
     }
 
@@ -198,7 +214,7 @@ class MemorizerImporter extends Importer
                     'female' => 'أنثى',
                 ])
                 ->default('male')
-                ->helperText('الجنس الافتراضي للأساتذة الجدد الذين يتم إنشاؤهم أثناء الاستيراد'),
+                ->helperText('الجنس الافتراضي للطلاب والأساتذة الجدد'),
 
             Checkbox::make('updateExisting')
                 ->label('تحديث السجلات الموجودة'),
