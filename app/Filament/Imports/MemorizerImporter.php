@@ -33,9 +33,10 @@ class MemorizerImporter extends Importer
 
             ImportColumn::make('group')
                 ->label('الفئة')
-                ->rules(['required', 'string'])
+                ->rules(['nullable', 'string'])
                 ->guess(['الفئة', 'المجموعة', 'الصف'])
                 ->fillRecordUsing(function (Memorizer $record, ?string $state, array $options) {
+                    // If group_id option is set, ALWAYS use it (ignore file's group column)
                     if (isset($options['group_id'])) {
                         $record->memo_group_id = $options['group_id'];
                         return;
@@ -47,28 +48,54 @@ class MemorizerImporter extends Importer
 
                     $teacherId = $options['teacher_id'] ?? null;
                     $defaultSex = $options['default_sex'] ?? 'male';
+                    $groupName = trim($state);
 
-                    // Extract teacher name from group name if it contains "-" and no teacher_id is set
-                    if (!$teacherId && str_contains($state, '-')) {
-                        $parts = explode('-', $state, 2);
-                        $teacherName = trim($parts[0]);
+                    // Try to find or create teacher
+                    if (!$teacherId) {
+                        $teacherName = null;
+
+                        // Extract teacher name from group name if it contains "-"
+                        if (str_contains($groupName, '-')) {
+                            $parts = explode('-', $groupName, 2);
+                            $teacherName = trim($parts[0]);
+                        } else {
+                            // Use the group name itself as teacher name
+                            $teacherName = $groupName;
+                        }
 
                         if ($teacherName) {
-                            $teacher = User::firstOrCreate(
-                                ['name' => $teacherName, 'role' => 'teacher'],
-                                [
+                            // Normalize Arabic characters for matching
+                            $normalizedName = str_replace(['أ', 'إ', 'آ', 'ى'], ['ا', 'ا', 'ا', 'ي'], $teacherName);
+
+                            // Try to find existing teacher with similar name
+                            $teacher = User::where('role', 'teacher')
+                                ->where('sex', $defaultSex)
+                                ->where(function ($query) use ($teacherName, $normalizedName) {
+                                    $query->where('name', $teacherName)
+                                        ->orWhere('name', 'like', $teacherName . '%')
+                                        ->orWhere('name', 'like', $normalizedName . '%')
+                                        ->orWhere('name', 'like', '%' . $teacherName . '%');
+                                })
+                                ->first();
+
+                            // If no teacher found, create one
+                            if (!$teacher) {
+                                $teacher = User::create([
+                                    'name' => $teacherName,
+                                    'role' => 'teacher',
                                     'phone' => '0666666666',
                                     'sex' => $defaultSex,
                                     'password' => bcrypt('teacher'),
                                     'email' => Str::slug($teacherName) . rand(100, 999) . '@abi-zaid.com',
-                                ]
-                            );
+                                ]);
+                            }
+
                             $teacherId = $teacher->id;
                         }
                     }
 
                     $group = MemoGroup::firstOrCreate(
-                        ['name' => $state],
+                        ['name' => $groupName],
                         ['price' => 70, 'teacher_id' => $teacherId]
                     );
 
@@ -144,22 +171,6 @@ class MemorizerImporter extends Importer
                     return in_array(mb_strtolower(trim($state)), ['نعم', 'معفى', 'معفي', '1', 'true', 'yes'], true);
                 }),
 
-            ImportColumn::make('sex')
-                ->label('الجنس')
-                ->rules(['nullable', 'string'])
-                ->guess(['الجنس', 'النوع', 'ذكر/أنثى'])
-                ->fillRecordUsing(function (Memorizer $record, ?string $state, array $options) {
-                    if ($state) {
-                        $record->sex = match (mb_strtolower(trim($state))) {
-                            'ذكر', 'رجل', 'صبي', 'ولد', 'male', 'm' => 'male',
-                            'أنثى', 'مرأة', 'بنت', 'female', 'f' => 'female',
-                            default => $options['default_sex'] ?? 'male',
-                        };
-                    } else {
-                        $record->sex = $options['default_sex'] ?? 'male';
-                    }
-                }),
-
         ];
     }
 
@@ -185,9 +196,22 @@ class MemorizerImporter extends Importer
 
     protected function beforeSave(): void
     {
-        // Set sex from default_sex option if not already set from the import column
-        if (empty($this->record->sex)) {
-            $this->record->sex = $this->options['default_sex'] ?? 'male';
+        // Ensure group is assigned from option if not already set
+        if (empty($this->record->memo_group_id) && isset($this->options['group_id'])) {
+            $this->record->memo_group_id = $this->options['group_id'];
+        }
+
+        // Skip record if no group assigned
+        if (empty($this->record->memo_group_id)) {
+            throw new \Filament\Actions\Imports\Exceptions\RowImportFailedException('لم يتم تحديد المجموعة');
+        }
+
+        // Ensure the group has a teacher assigned (for sex derivation)
+        if ($this->record->memo_group_id && isset($this->options['teacher_id'])) {
+            $group = MemoGroup::find($this->record->memo_group_id);
+            if ($group && !$group->teacher_id) {
+                $group->update(['teacher_id' => $this->options['teacher_id']]);
+            }
         }
     }
 
@@ -206,6 +230,8 @@ class MemorizerImporter extends Importer
             Select::make('group_id')
                 ->label('المجموعة')
                 ->options(fn() => MemoGroup::all()->pluck('name', 'id'))
+                ->searchable()
+                ->preload()
                 ->placeholder('اختر المجموعة (اختياري)')
                 ->helperText('إذا تم تحديد مجموعة، سيتم تجاهل عمود المجموعة في ملف الاستيراد'),
 
@@ -222,7 +248,7 @@ class MemorizerImporter extends Importer
                     'female' => 'أنثى',
                 ])
                 ->default('male')
-                ->helperText('الجنس الافتراضي للطلاب والأساتذة الجدد'),
+                ->helperText('الجنس الافتراضي للأساتذة الجدد الذين يتم إنشاؤهم أثناء الاستيراد'),
 
             Checkbox::make('updateExisting')
                 ->label('تحديث السجلات الموجودة'),

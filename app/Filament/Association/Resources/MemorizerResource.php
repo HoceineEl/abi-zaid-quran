@@ -341,28 +341,6 @@ class MemorizerResource extends Resource
                             ->send();
                     })
                     ->deselectRecordsAfterCompletion(),
-                Tables\Actions\BulkAction::make('assign_sex')
-                    ->label('تحديد الجنس')
-                    ->icon('heroicon-o-user')
-                    ->form([
-                        Select::make('sex')
-                            ->label('الجنس')
-                            ->options([
-                                'male' => 'ذكر',
-                                'female' => 'أنثى',
-                            ])
-                            ->required(),
-                    ])
-                    ->action(function (array $data, $livewire) {
-                        $recordIds = $livewire->getSelectedTableRecords()->pluck('id')->toArray();
-                        Memorizer::whereIn('id', $recordIds)->update(['sex' => $data['sex']]);
-
-                        Notification::make()
-                            ->title('تم تحديد الجنس بنجاح')
-                            ->success()
-                            ->send();
-                    })
-                    ->deselectRecordsAfterCompletion(),
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
@@ -418,31 +396,19 @@ class MemorizerResource extends Resource
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query->when($data['value'], function ($query) use ($data) {
-                            $query->whereHas('group.teacher', function ($query) use ($data) {
-                                $query->where('sex', $data['value']);
-                            });
+                            $query->whereHas('teacher', fn ($q) => $q->where('sex', $data['value']));
                         });
                     }),
 
                 Filter::make('no_sex_defined')
                     ->label('بدون جنس محدد')
                     ->toggle()
-                    ->query(fn (Builder $query) => $query
-                        ->whereNull('sex')
-                        ->where(function ($query) {
-                            $query->whereNull('memo_group_id')
-                                ->orWhereHas('group', fn ($q) => $q->whereNull('teacher_id'))
-                                ->orWhereDoesntHave('group.teacher');
-                        })),
+                    ->query(fn (Builder $query) => $query->whereDoesntHave('teacher')),
 
                 Filter::make('no_teacher')
                     ->label('بدون أستاذ')
                     ->toggle()
-                    ->query(fn (Builder $query) => $query->where(function ($query) {
-                        $query->whereNull('memo_group_id')
-                            ->orWhereHas('group', fn ($q) => $q->whereNull('teacher_id'))
-                            ->orWhereDoesntHave('group.teacher');
-                    })),
+                    ->query(fn (Builder $query) => $query->whereDoesntHave('teacher')),
             ])
             ->modifyQueryUsing(function (Builder $query) {
                 $query

@@ -19,7 +19,6 @@ class Memorizer extends Model
         'phone',
         'address',
         'birth_date',
-        'sex',
         'city',
         'photo',
         'exempt',
@@ -118,7 +117,7 @@ class Memorizer extends Model
     public function sex(): Attribute
     {
         return Attribute::make(
-            get: fn() => $this->attributes['sex'] ?? $this->group?->teacher?->sex ?? 'male',
+            get: fn() => $this->group?->teacher?->sex ?? 'male',
         );
     }
 
