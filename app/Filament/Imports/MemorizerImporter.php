@@ -67,8 +67,9 @@ class MemorizerImporter extends Importer
                             // Normalize Arabic characters for matching
                             $normalizedName = str_replace(['أ', 'إ', 'آ', 'ى'], ['ا', 'ا', 'ا', 'ي'], $teacherName);
 
-                            // Try to find existing teacher with similar name (any sex first)
+                            // First: try to find teacher with matching name AND chosen sex
                             $teacher = User::where('role', 'teacher')
+                                ->where('sex', $defaultSex)
                                 ->where(function ($query) use ($teacherName, $normalizedName) {
                                     $query->where('name', $teacherName)
                                         ->orWhere('name', 'like', $teacherName . '%')
@@ -77,7 +78,19 @@ class MemorizerImporter extends Importer
                                 })
                                 ->first();
 
-                            // If no teacher found, create one with the default sex
+                            // Second: if not found, search any teacher with matching name
+                            if (!$teacher) {
+                                $teacher = User::where('role', 'teacher')
+                                    ->where(function ($query) use ($teacherName, $normalizedName) {
+                                        $query->where('name', $teacherName)
+                                            ->orWhere('name', 'like', $teacherName . '%')
+                                            ->orWhere('name', 'like', $normalizedName . '%')
+                                            ->orWhere('name', 'like', '%' . $teacherName . '%');
+                                    })
+                                    ->first();
+                            }
+
+                            // Third: if still not found, create one with the chosen sex
                             if (!$teacher) {
                                 $teacher = User::create([
                                     'name' => $teacherName,
