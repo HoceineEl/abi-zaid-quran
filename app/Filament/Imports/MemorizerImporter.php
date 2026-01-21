@@ -133,6 +133,16 @@ class MemorizerImporter extends Importer
                 })
                 ->example('2000-01-01'),
 
+            ImportColumn::make('exempt')
+                ->label('معفى')
+                ->rules(['nullable', 'boolean'])
+                ->guess(['معفى', 'معفي', 'الإعفاء', 'Mo3fa', 'ma3fi'])
+                ->castStateUsing(function (?string $state) {
+                    if ($state === null || $state === '') {
+                        return false;
+                    }
+                    return in_array(mb_strtolower(trim($state)), ['نعم', 'معفى', 'معفي', '1', 'true', 'yes'], true);
+                }),
 
         ];
     }
