@@ -183,6 +183,14 @@ class MemorizerImporter extends Importer
         return new Memorizer();
     }
 
+    protected function beforeSave(): void
+    {
+        // Set sex from default_sex option if not already set from the import column
+        if (empty($this->record->sex)) {
+            $this->record->sex = $this->options['default_sex'] ?? 'male';
+        }
+    }
+
     protected function mapSex(?string $sex): string
     {
         return match (trim(strtolower($sex))) {
