@@ -28,13 +28,14 @@ class DailyAttendanceSummaryExport implements FromCollection, WithHeadings, Shou
      */
     public function collection()
     {
-        // Remove group number from the mapped data
         return Group::getDailyAttendanceSummary($this->date, $this->userId)->map(function ($row) {
             return [
                 'name' => $row['name'],
-                'present' => $row['present'],
-                'absent' => $row['absent'],
-                'absent_with_reason' => $row['absent_with_reason'],
+                'total_students' => $row['total_students'],
+                'present' => $row['present'] ?: '-',
+                'absent' => $row['absent'] ?: '-',
+                'absent_with_reason' => $row['absent_with_reason'] ?: '-',
+                'not_specified' => $row['not_specified'] ?: '-',
             ];
         });
     }
@@ -43,9 +44,11 @@ class DailyAttendanceSummaryExport implements FromCollection, WithHeadings, Shou
     {
         return [
             'اسم المجموعة',
+            'إجمالي الطلاب',
             'حاضر',
             'غائب',
             'غائب بعذر',
+            'لم يحدد',
         ];
     }
 
@@ -66,7 +69,7 @@ class DailyAttendanceSummaryExport implements FromCollection, WithHeadings, Shou
                 // Add translated date as a heading using the selected date
                 $selectedDate = Carbon::parse($this->date)->locale('ar')->translatedFormat('l, j F Y');
                 $sheet->insertNewRowBefore(1, 1);
-                $sheet->mergeCells('A1:D1');
+                $sheet->mergeCells('A1:F1');
                 $sheet->setCellValue('A1', 'تقرير الحضور ليوم: ' . $selectedDate);
 
                 // Style the heading
@@ -74,16 +77,26 @@ class DailyAttendanceSummaryExport implements FromCollection, WithHeadings, Shou
                 $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
                 // Style the original headings row (which is now row 2)
-                $sheet->getStyle('A2:D2')->getFont()->setBold(true);
+                $sheet->getStyle('A2:F2')->getFont()->setBold(true);
 
                 if ($sheet->getHighestRow() < 3) {
                     return;
                 }
+
                 // Color the data rows
                 foreach ($sheet->getRowIterator(3) as $row) {
-                    $presentCell = 'B' . $row->getRowIndex();
-                    $absentCell = 'C' . $row->getRowIndex();
-                    $absentWithReasonCell = 'D' . $row->getRowIndex();
+                    $rowIndex = $row->getRowIndex();
+                    $totalStudentsCell = 'B' . $rowIndex;
+                    $presentCell = 'C' . $rowIndex;
+                    $absentCell = 'D' . $rowIndex;
+                    $absentWithReasonCell = 'E' . $rowIndex;
+                    $notSpecifiedCell = 'F' . $rowIndex;
+
+                    // Color for total students (blue)
+                    $sheet->getStyle($totalStudentsCell)->getFill()
+                        ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                        ->getStartColor()->setARGB('BDD7EE');
+                    $sheet->getStyle($totalStudentsCell)->getFont()->getColor()->setARGB('1F4E79');
 
                     // Color for present (green)
                     $sheet->getStyle($presentCell)->getFill()
@@ -102,6 +115,12 @@ class DailyAttendanceSummaryExport implements FromCollection, WithHeadings, Shou
                         ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
                         ->getStartColor()->setARGB('FFEB9C');
                     $sheet->getStyle($absentWithReasonCell)->getFont()->getColor()->setARGB('9C6500');
+
+                    // Color for not specified (gray)
+                    $sheet->getStyle($notSpecifiedCell)->getFill()
+                        ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                        ->getStartColor()->setARGB('D9D9D9');
+                    $sheet->getStyle($notSpecifiedCell)->getFont()->getColor()->setARGB('595959');
                 }
             },
         ];

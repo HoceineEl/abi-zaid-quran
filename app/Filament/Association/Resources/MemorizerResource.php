@@ -409,6 +409,19 @@ class MemorizerResource extends Resource
                     ->label('بدون أستاذ')
                     ->toggle()
                     ->query(fn (Builder $query) => $query->whereDoesntHave('teacher')),
+
+                Filter::make('created_after')
+                    ->label('تاريخ الإنشاء بعد')
+                    ->form([
+                        DatePicker::make('created_after')
+                            ->label('تم إنشاؤه بعد'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query->when(
+                            $data['created_after'],
+                            fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                        );
+                    }),
             ])
             ->modifyQueryUsing(function (Builder $query) {
                 $query

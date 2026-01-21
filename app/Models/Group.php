@@ -123,15 +123,17 @@ class Group extends Model
         }
 
         return $query
-            ->whereHas('students.progresses', function ($query) use ($date) {
-                $query->where('date', $date);
-            })
             ->withCount('students')
             ->with(['students.progresses' => function ($query) use ($date) {
                 $query->where('date', $date);
             }])
             ->get()
+            ->filter(function ($group) {
+                return $group->students_count > 0;
+            })
             ->map(function ($group) {
+                $totalStudents = $group->students_count;
+
                 // Count present students (status='memorized')
                 $presentCount = $group->students->filter(function ($student) {
                     return $student->progresses->where('status', 'memorized')->isNotEmpty();
@@ -151,12 +153,17 @@ class Group extends Model
                     })->isNotEmpty();
                 })->count();
 
+                // Count students with no status specified for this date
+                $notSpecifiedCount = $totalStudents - $presentCount - $absentWithoutReasonCount - $absentWithReasonCount;
+
                 return [
                     'id' => $group->id,
                     'name' => $group->name,
                     'present' => $presentCount,
                     'absent' => $absentWithoutReasonCount,
                     'absent_with_reason' => $absentWithReasonCount,
+                    'not_specified' => $notSpecifiedCount,
+                    'total_students' => $totalStudents,
                 ];
             });
     }

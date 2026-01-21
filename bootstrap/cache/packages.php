@@ -220,11 +220,11 @@
       0 => 'RyanChandler\\BladeCaptureDirective\\BladeCaptureDirectiveServiceProvider',
     ),
   ),
-  'ryangjchandler/blade-tabler-icons' => 
+  'secondnetwork/blade-tabler-icons' => 
   array (
     'providers' => 
     array (
-      0 => 'RyanChandler\\TablerIcons\\BladeTablerIconsServiceProvider',
+      0 => 'secondnetwork\\TablerIcons\\BladeTablerIconsServiceProvider',
     ),
   ),
   'silviolleite/laravelpwa' => 
