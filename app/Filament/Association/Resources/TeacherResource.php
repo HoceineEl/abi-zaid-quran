@@ -116,13 +116,13 @@ class TeacherResource extends Resource
                 Filter::make('created_after')
                     ->label('تاريخ الإنشاء بعد')
                     ->form([
-                        DatePicker::make('created_after')
+                        \Filament\Forms\Components\DateTimePicker::make('created_after')
                             ->label('تم إنشاؤه بعد'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query->when(
                             $data['created_after'],
-                            fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                            fn (Builder $query, $date): Builder => $query->where('created_at', '>=', $date),
                         );
                     }),
             ])
