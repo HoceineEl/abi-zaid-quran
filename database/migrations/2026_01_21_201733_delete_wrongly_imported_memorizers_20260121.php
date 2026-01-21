@@ -10,10 +10,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Only run on 2026-01-21 to fix wrongly imported memorizers
+        // Only run on 2026-01-21 to fix wrongly imported memorizers after 22:00
         if (now()->format('Y-m-d') === '2026-01-21') {
             DB::table('memorizers')
-                ->whereDate('created_at', '2026-01-21')
+                ->where('created_at', '>=', '2026-01-21 22:00:00')
                 ->delete();
         }
     }
