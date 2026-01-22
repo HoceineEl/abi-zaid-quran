@@ -74,7 +74,7 @@ class ListStudentDisconnections extends ListRecords
                 ->color('success')
                 ->modalWidth('5xl')
                 ->modalHeading('إضافة الطلاب المنقطعين')
-                ->modalDescription('سيتم إضافة الطلاب من المجموعات النشطة (لديها تقدم في آخر 7 أيام) الذين لديهم ثلاثة أيام أو أكثر غياب متتالية إلى قائمة الانقطاع.')
+                ->modalDescription('سيتم إضافة الطلاب من المجموعات النشطة (لديها تقدم في آخر 7 أيام) الذين لديهم يومان أو أكثر غياب متتالية (خلال آخر 15 يوم) إلى قائمة الانقطاع.')
                 ->form([
                     \Filament\Forms\Components\Select::make('excluded_groups')
                         ->label('استثناء المجموعات')
@@ -227,7 +227,7 @@ class ListStudentDisconnections extends ListRecords
         } else {
             Notification::make()
                 ->title('لا يوجد طلاب منقطعين')
-                ->body('لا يوجد طلاب لديهم ثلاثة أيام أو أكثر غياب متتالية في المجموعات النشطة.')
+                ->body('لا يوجد طلاب لديهم يومان أو أكثر غياب متتالية في المجموعات النشطة.')
                 ->info()
                 ->send();
         }

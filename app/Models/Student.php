@@ -235,7 +235,8 @@ class Student extends Model
         $threshold = config('students.disconnection.consecutive_absent_days_threshold', 3);
 
         // Only consider students with at least the configured consecutive absent days
-        if ($this->getCurrentConsecutiveAbsentDays() < $threshold) {
+        $consecutiveAbsentDays = $this->getCurrentConsecutiveAbsentDays();
+        if ($consecutiveAbsentDays < $threshold) {
             return null;
         }
 
@@ -257,24 +258,35 @@ class Student extends Model
             ->orderBy('date', 'desc')
             ->get();
 
-        $absentCount = 0;
+        // If student has progress records, find the threshold absent date
+        if ($recentProgresses->isNotEmpty()) {
+            $absentCount = 0;
 
-        foreach ($recentProgresses as $progress) {
-            // Skip null status records (WhatsApp reminder sent, pending)
-            if ($progress->status === null) {
-                continue;
-            }
-
-            // Only count explicit absence records without reason
-            if ($progress->status === 'absent' && (int)$progress->with_reason === 0) {
-                $absentCount++;
-                if ($absentCount === $threshold) {
-                    return $progress->date;
+            foreach ($recentProgresses as $progress) {
+                // Skip null status records (WhatsApp reminder sent, pending)
+                if ($progress->status === null) {
+                    continue;
                 }
-            } else {
-                // Stop when we find memorized or absent with reason
-                break;
+
+                // Only count explicit absence records without reason
+                if ($progress->status === 'absent' && (int)$progress->with_reason === 0) {
+                    $absentCount++;
+                    if ($absentCount === $threshold) {
+                        return $progress->date;
+                    }
+                } else {
+                    // Stop when we find memorized or absent with reason
+                    break;
+                }
             }
+        }
+
+        // Fallback: If no personal progress but group was working, use the first group working day
+        // This handles students who never had any progress recorded
+        $groupWorkingDates = $this->getGroupWorkingDates(15);
+        if ($groupWorkingDates->isNotEmpty()) {
+            // Return the oldest working date (student was absent since then)
+            return $groupWorkingDates->last();
         }
 
         return null;
@@ -322,7 +334,20 @@ class Student extends Model
             ->orderBy('date', 'desc')
             ->get();
 
+        // If no personal progress, check if the GROUP was working
         if ($recentProgresses->isEmpty()) {
+            // Check if the group had any activity - if yes, student is essentially absent
+            $groupHadActivity = $this->group?->progresses()
+                ->whereBetween('date', [$startDate, $endDate])
+                ->exists();
+
+            if ($groupHadActivity) {
+                // Count working days in the group as absent days for this student
+                return $this->group->progresses()
+                    ->whereBetween('date', [$startDate, $endDate])
+                    ->distinct('date')
+                    ->count('date');
+            }
             return 0;
         }
 

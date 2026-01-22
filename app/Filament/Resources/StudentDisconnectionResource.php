@@ -155,6 +155,29 @@ class StudentDisconnectionResource extends Resource
                             : 'لا يوجد حضور'
                     ),
 
+                Tables\Columns\TextColumn::make('warning_level')
+                    ->label('مستوى الإنذار')
+                    ->state(function (StudentDisconnection $record): string {
+                        $consecutiveDays = $record->student->getCurrentConsecutiveAbsentDays();
+                        if ($consecutiveDays >= 3) {
+                            return 'إنذار ثاني (أكثر من 3 أيام)';
+                        } elseif ($consecutiveDays >= 2) {
+                            return 'إنذار أول (يومان)';
+                        }
+                        return 'لا يوجد إنذار';
+                    })
+                    ->badge()
+                    ->color(function (StudentDisconnection $record): string {
+                        $consecutiveDays = $record->student->getCurrentConsecutiveAbsentDays();
+                        if ($consecutiveDays >= 3) {
+                            return 'danger';
+                        } elseif ($consecutiveDays >= 2) {
+                            return 'warning';
+                        }
+                        return 'gray';
+                    })
+                    ->sortable(),
+
                 Tables\Columns\TextColumn::make('disconnection_duration')
                     ->label('مدة الانقطاع')
                     ->state(function (StudentDisconnection $record): string {
