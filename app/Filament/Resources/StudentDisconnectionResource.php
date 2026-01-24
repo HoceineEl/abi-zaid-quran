@@ -159,19 +159,19 @@ class StudentDisconnectionResource extends Resource
                     ->label('مستوى الإنذار')
                     ->state(function (StudentDisconnection $record): string {
                         $consecutiveDays = $record->student->getCurrentConsecutiveAbsentDays();
-                        if ($consecutiveDays >= 3) {
-                            return 'إنذار ثاني (أكثر من 3 أيام)';
-                        } elseif ($consecutiveDays >= 2) {
-                            return 'إنذار أول (يومان)';
+                        if ($consecutiveDays >= 5) {
+                            return 'إنذار ثاني (5 أيام أو أكثر)';
+                        } elseif ($consecutiveDays >= 3) {
+                            return 'إنذار أول (3-4 أيام)';
                         }
                         return 'لا يوجد إنذار';
                     })
                     ->badge()
                     ->color(function (StudentDisconnection $record): string {
                         $consecutiveDays = $record->student->getCurrentConsecutiveAbsentDays();
-                        if ($consecutiveDays >= 3) {
+                        if ($consecutiveDays >= 5) {
                             return 'danger';
-                        } elseif ($consecutiveDays >= 2) {
+                        } elseif ($consecutiveDays >= 3) {
                             return 'warning';
                         }
                         return 'gray';
