@@ -99,9 +99,10 @@ class MemorizerResource extends Resource
                             ->image()
                             ->avatar()
                             ->directory('memorizers-photos')
-                            ->maxSize(1024)
-                            ->maxFiles(1)
-                            ->imageEditor()
+                            ->maxSize(512)
+                            ->imageResizeMode('cover')
+                            ->imageResizeTargetWidth(200)
+                            ->imageResizeTargetHeight(200)
                             ->label('الصورة'),
                         Toggle::make('exempt')
                             ->label('معفى من الدفع')
