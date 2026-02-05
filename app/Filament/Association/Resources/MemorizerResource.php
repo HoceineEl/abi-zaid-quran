@@ -443,7 +443,6 @@ class MemorizerResource extends Resource
         return [
             'index' => Pages\ListMemorizers::route('/'),
             'create' => Pages\CreateMemorizer::route('/create'),
-            'edit' => Pages\EditMemorizer::route('/{record}/edit'),
         ];
     }
 
