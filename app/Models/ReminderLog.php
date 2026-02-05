@@ -17,13 +17,13 @@ class ReminderLog extends Model
 
  
 
-    protected static function boot()
+    protected static function booted(): void
     {
-        parent::boot();
-
         static::creating(function ($model) {
             $model->created_by = auth()->id();
         });
+        static::created(fn(ReminderLog $log) => $log->memorizer?->clearReminderCache());
+        static::deleted(fn(ReminderLog $log) => $log->memorizer?->clearReminderCache());
     }
 
     public function createdBy(): BelongsTo

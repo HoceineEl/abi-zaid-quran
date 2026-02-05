@@ -30,11 +30,7 @@ class Memorizer extends Model
 
     protected $appends = [
         'number',
-        'has_payment_this_month',
-        'has_reminder_this_month'
     ];
-
-    protected $with = ['payments', 'reminderLogs'];
 
     public function number(): Attribute
     {
@@ -65,19 +61,47 @@ class Memorizer extends Model
     public function hasPaymentThisMonth(): Attribute
     {
         return Attribute::make(
-            get: fn() => $this->payments->where('payment_date', '>=', now()->startOfMonth())
-                ->where('payment_date', '<=', now()->endOfMonth())
-                ->isNotEmpty() || $this->exempt,
+            get: fn() => cache()->remember(
+                $this->getPaymentCacheKey(),
+                now()->endOfMonth(),
+                fn() => $this->payments()->whereYear('payment_date', now()->year)
+                    ->whereMonth('payment_date', now()->month)
+                    ->exists() || $this->exempt
+            ),
         );
     }
 
     public function hasReminderThisMonth(): Attribute
     {
         return Attribute::make(
-            get: fn() => $this->reminderLogs->where('created_at', '>=', now()->startOfMonth())
-                ->where('created_at', '<=', now()->endOfMonth())
-                ->isNotEmpty(),
+            get: fn() => cache()->remember(
+                $this->getReminderCacheKey(),
+                now()->endOfMonth(),
+                fn() => $this->reminderLogs()->whereYear('created_at', now()->year)
+                    ->whereMonth('created_at', now()->month)
+                    ->exists()
+            ),
         );
+    }
+
+    public function getPaymentCacheKey(): string
+    {
+        return "memorizer:{$this->id}:has_payment:" . now()->format('Y-m');
+    }
+
+    public function getReminderCacheKey(): string
+    {
+        return "memorizer:{$this->id}:has_reminder:" . now()->format('Y-m');
+    }
+
+    public function clearPaymentCache(): void
+    {
+        cache()->forget($this->getPaymentCacheKey());
+    }
+
+    public function clearReminderCache(): void
+    {
+        cache()->forget($this->getReminderCacheKey());
     }
 
     public function group(): BelongsTo

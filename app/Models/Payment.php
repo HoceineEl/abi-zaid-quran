@@ -10,10 +10,15 @@ class Payment extends Model
 {
     use HasFactory;
 
-
     protected $casts = [
         'payment_date' => 'date',
     ];
+
+    protected static function booted(): void
+    {
+        static::created(fn(Payment $payment) => $payment->memorizer?->clearPaymentCache());
+        static::deleted(fn(Payment $payment) => $payment->memorizer?->clearPaymentCache());
+    }
 
     public function memorizer(): BelongsTo
     {
