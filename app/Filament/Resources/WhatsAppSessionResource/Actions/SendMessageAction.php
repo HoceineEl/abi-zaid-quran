@@ -2,9 +2,10 @@
 
 namespace App\Filament\Resources\WhatsAppSessionResource\Actions;
 
+use App\Enums\WhatsAppMessageStatus;
+use App\Jobs\SendWhatsAppMessageJob;
 use App\Models\WhatsAppMessageHistory;
 use App\Models\WhatsAppSession;
-use App\Services\WhatsAppService;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Tables\Actions\Action;
@@ -41,45 +42,24 @@ class SendMessageAction extends Action
             ])
             ->action(function (WhatsAppSession $record, array $data) {
                 try {
-                    if (!$record->isConnected()) {
+                    if (! $record->isConnected()) {
                         throw new \Exception('جلسة واتساب غير متصلة');
                     }
 
-                    // Create message history record as queued
-                    $messageHistory = WhatsAppMessageHistory::create([
+                    WhatsAppMessageHistory::create([
                         'session_id' => $record->id,
                         'sender_user_id' => auth()->id(),
                         'recipient_phone' => $data['recipient'],
                         'message_type' => 'text',
                         'message_content' => $data['message'],
-                        'status' => 'queued',
+                        'status' => WhatsAppMessageStatus::QUEUED,
                     ]);
 
-                    // Use defer() to send the message asynchronously
-                    defer(function () use ($record, $data, $messageHistory) {
-                        try {
-                            $whatsappService = app(WhatsAppService::class);
-                            $result = $whatsappService->sendTextMessage(
-                                $record->id,
-                                $data['recipient'],
-                                $data['message']
-                            );
-
-                            // Update message history as sent
-                            $messageHistory->update([
-                                'status' => 'sent',
-                                'whatsapp_message_id' => $result[0]['messageId'] ?? null,
-                                'sent_at' => now(),
-                            ]);
-
-                        } catch (\Exception $e) {
-                            // Update message history as failed
-                            $messageHistory->update([
-                                'status' => 'failed',
-                                'error_message' => $e->getMessage(),
-                            ]);
-                        }
-                    });
+                    SendWhatsAppMessageJob::dispatch(
+                        $record->id,
+                        $data['recipient'],
+                        $data['message'],
+                    );
 
                     Notification::make()
                         ->title('تم جدولة الرسالة للإرسال!')

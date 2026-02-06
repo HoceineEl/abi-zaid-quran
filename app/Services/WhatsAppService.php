@@ -2,10 +2,9 @@
 
 namespace App\Services;
 
-use App\Enums\WhatsAppConnectionStatus;
 use App\Enums\WhatsAppMessageStatus;
-use App\Models\WhatsAppSession;
 use App\Models\WhatsAppMessageHistory;
+use App\Models\WhatsAppSession;
 use App\Traits\WhatsApp\SessionManagement;
 use App\Traits\WhatsApp\UtilityOperations;
 use GuzzleHttp\Client;
@@ -17,6 +16,7 @@ use Illuminate\Support\Facades\Log;
 class WhatsAppService
 {
     use SessionManagement, UtilityOperations;
+
     protected $client;
 
     protected $apiUrl;
@@ -24,11 +24,12 @@ class WhatsAppService
     protected $accessToken;
 
     protected string $baseUrl;
+
     protected ?string $masterKey;
 
     public function __construct()
     {
-        $this->client = new Client();
+        $this->client = new Client;
         // Legacy WhatsApp API (for templates)
         $this->apiUrl = config('services.whatsapp.api_url');
         $this->accessToken = config('services.whatsapp.access_token');
@@ -49,7 +50,7 @@ class WhatsAppService
     {
         // Add suffix for local development environment
         if (app()->environment('local')) {
-            return $sessionId . '_local_abizaid';
+            return $sessionId.'_local_abizaid';
         }
 
         return (string) $sessionId;
@@ -192,7 +193,7 @@ class WhatsAppService
         $formattedSessionId = $this->formatSessionId($sessionId);
         $token = Cache::get("whatsapp_token_{$sessionId}");
 
-        if (!$token) {
+        if (! $token) {
             throw new \Exception("Session token not found for session {$sessionId}");
         }
 
@@ -228,7 +229,7 @@ class WhatsAppService
                 return $result;
             }
 
-            throw new \Exception("HTTP {$response->status()}: " . $response->body());
+            throw new \Exception("HTTP {$response->status()}: ".$response->body());
         } catch (\Exception $e) {
             Log::error('Failed to send WhatsApp message', [
                 'session_id' => $sessionId,
@@ -241,10 +242,8 @@ class WhatsAppService
 
     public function queueMessage(WhatsAppSession $session, string $to, string $message, string $type = 'text'): void
     {
-        // Format phone number using the phone helper (remove + sign)
         $formattedPhone = str_replace('+', '', phone($to, 'MA')->formatE164());
 
-        // Store message history
         WhatsAppMessageHistory::create([
             'session_id' => $session->id,
             'sender_user_id' => auth()->id(),
@@ -253,6 +252,13 @@ class WhatsAppService
             'message_content' => $message,
             'status' => WhatsAppMessageStatus::QUEUED,
         ]);
+
+        \App\Jobs\SendWhatsAppMessageJob::dispatch(
+            $session->id,
+            $formattedPhone,
+            $message,
+            $type,
+        );
 
         Log::info('WhatsApp message queued for delivery', [
             'session_id' => $session->id,
@@ -271,8 +277,9 @@ class WhatsAppService
             // First try to get a fresh QR code by calling the status endpoint
             $result = $this->getSessionStatus($session->id);
 
-            if (isset($result['qr']) && !empty($result['qr'])) {
+            if (isset($result['qr']) && ! empty($result['qr'])) {
                 $session->updateQrCode($result['qr']);
+
                 return;
             }
 
@@ -285,8 +292,9 @@ class WhatsAppService
 
                 if ($response->successful()) {
                     $qrData = $response->json();
-                    if (isset($qrData['qr']) && !empty($qrData['qr'])) {
+                    if (isset($qrData['qr']) && ! empty($qrData['qr'])) {
                         $session->updateQrCode($qrData['qr']);
+
                         return;
                     }
                 }
@@ -299,7 +307,7 @@ class WhatsAppService
 
             throw new \Exception('No QR code available for session');
         } catch (\Exception $e) {
-            throw new \Exception('Failed to refresh QR code: ' . $e->getMessage());
+            throw new \Exception('Failed to refresh QR code: '.$e->getMessage());
         }
     }
 

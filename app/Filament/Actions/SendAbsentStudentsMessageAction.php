@@ -4,13 +4,10 @@ namespace App\Filament\Actions;
 
 use App\Classes\Core;
 use App\Enums\WhatsAppMessageStatus;
-use App\Helpers\PhoneHelper;
+use App\Jobs\SendWhatsAppMessageJob;
 use App\Models\GroupMessageTemplate;
-use App\Models\Student;
 use App\Models\WhatsAppMessageHistory;
 use App\Models\WhatsAppSession;
-use App\Services\WhatsAppService;
-use App\Traits\HandlesWhatsAppProgress;
 use Filament\Forms;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Get;
@@ -21,7 +18,6 @@ use Illuminate\Support\Facades\Log;
 
 class SendAbsentStudentsMessageAction extends Action
 {
-    use HandlesWhatsAppProgress;
     public static function getDefaultName(): ?string
     {
         return 'send_absent_students_message';
@@ -34,7 +30,7 @@ class SendAbsentStudentsMessageAction extends Action
         $this->label('إرسال رسالة تذكير للغائبين')
             ->icon('heroicon-o-chat-bubble-oval-left')
             ->color('danger')
-            ->form(function() {
+            ->form(function () {
                 $fields = [];
                 $isAdmin = auth()->user()->isAdministrator();
                 $ownerRecord = $this->getLivewire()->ownerRecord ?? $this->getRecord();
@@ -44,7 +40,6 @@ class SendAbsentStudentsMessageAction extends Action
                     $defaultTemplate = $ownerRecord->messageTemplates()->wherePivot('is_default', true)->first();
                 }
 
-                // Only show template selection for admins
                 if ($isAdmin) {
                     $fields[] = Forms\Components\Select::make('template_id')
                         ->label('اختر قالب الرسالة')
@@ -53,6 +48,7 @@ class SendAbsentStudentsMessageAction extends Action
                                 return $ownerRecord->messageTemplates()->pluck('group_message_templates.name', 'group_message_templates.id')
                                     ->prepend('رسالة مخصصة', 'custom');
                             }
+
                             return ['custom' => 'رسالة مخصصة'];
                         })
                         ->default(function () use ($defaultTemplate) {
@@ -61,8 +57,7 @@ class SendAbsentStudentsMessageAction extends Action
                         ->reactive();
                 }
 
-                // Show message field for admins when custom is selected, or always for non-admins without default template
-                $showMessageField = $isAdmin || !$defaultTemplate;
+                $showMessageField = $isAdmin || ! $defaultTemplate;
 
                 if ($showMessageField) {
                     $defaultMessage = $defaultTemplate ? $defaultTemplate->content : 'السلام عليكم ورحمة الله وبركاته، {student_name} لم تنس واجب اليوم، لعل المانع خير.';
@@ -73,7 +68,7 @@ class SendAbsentStudentsMessageAction extends Action
                         ->label('الرسالة')
                         ->required()
                         ->rows(4)
-                        ->hidden(fn(Get $get) => $isAdmin && $get('template_id') !== 'custom');
+                        ->hidden(fn (Get $get) => $isAdmin && $get('template_id') !== 'custom');
                 }
 
                 return $fields;
@@ -83,15 +78,11 @@ class SendAbsentStudentsMessageAction extends Action
             });
     }
 
-    /**
-     * Send messages to absent students
-     */
     protected function sendMessagesToAbsentStudents(array $data): void
     {
         $ownerRecord = $this->getLivewire()->ownerRecord ?? $this->getRecord();
         $selectedDate = $this->getSelectedDate();
 
-        // Get absent students
         $absentStudents = $this->getAbsentStudents($ownerRecord, $selectedDate);
 
         if ($absentStudents->isEmpty()) {
@@ -100,22 +91,19 @@ class SendAbsentStudentsMessageAction extends Action
                 ->body('لم يتم العثور على طلاب غائبين في التاريخ المحدد')
                 ->warning()
                 ->send();
+
             return;
         }
 
-        // Get the message content
-        $messageTemplate = $this->getMessageTemplate($data, $ownerRecord);
+        $messageTemplate = $this->resolveMessageTemplate($data, $ownerRecord);
 
-        $this->sendViaWhatsAppWeb($absentStudents, $messageTemplate, $data, $ownerRecord);
+        $this->dispatchMessages($absentStudents, $messageTemplate, $ownerRecord);
     }
 
-    /**
-     * Get absent students for the selected date
-     */
     protected function getAbsentStudents($ownerRecord, string $selectedDate): Collection
     {
-        if (!$ownerRecord || !method_exists($ownerRecord, 'students')) {
-            return collect();
+        if (! $ownerRecord || ! method_exists($ownerRecord, 'students')) {
+            return new Collection;
         }
 
         return $ownerRecord->students->filter(function ($student) use ($selectedDate) {
@@ -127,34 +115,27 @@ class SendAbsentStudentsMessageAction extends Action
         });
     }
 
-    /**
-     * Get the selected date from table filters or default to today
-     */
     protected function getSelectedDate(): string
     {
         $livewire = $this->getLivewire();
         if (method_exists($livewire, 'getTableFilters') && isset($livewire->tableFilters['date']['value'])) {
             return $livewire->tableFilters['date']['value'];
         }
+
         return now()->format('Y-m-d');
     }
 
-    /**
-     * Get the message template content
-     */
-    protected function getMessageTemplate(array $data, $ownerRecord): string
+    protected function resolveMessageTemplate(array $data, $ownerRecord): string
     {
         $isAdmin = auth()->user()->isAdministrator();
 
-        // For non-admins, always use default template if available
-        if (!$isAdmin && $ownerRecord && method_exists($ownerRecord, 'messageTemplates')) {
+        if (! $isAdmin && $ownerRecord && method_exists($ownerRecord, 'messageTemplates')) {
             $defaultTemplate = $ownerRecord->messageTemplates()->wherePivot('is_default', true)->first();
             if ($defaultTemplate) {
                 return $defaultTemplate->content;
             }
         }
 
-        // For admins or when no default template
         if (isset($data['template_id']) && $data['template_id'] === 'custom') {
             return $data['message'];
         }
@@ -169,115 +150,67 @@ class SendAbsentStudentsMessageAction extends Action
         return $data['message'] ?? 'السلام عليكم، لم تنس واجب اليوم، لعل المانع خير.';
     }
 
-    /**
-     * Send messages via WhatsApp Web (new service with defer)
-     */
-    protected function sendViaWhatsAppWeb(Collection $absentStudents, string $messageTemplate, array $data, $ownerRecord): void
+    protected function dispatchMessages(Collection $absentStudents, string $messageTemplate, $ownerRecord): void
     {
-        // Get the current user's active session
         $session = WhatsAppSession::getUserSession(auth()->id());
 
-        if (!$session || !$session->isConnected()) {
+        if (! $session || ! $session->isConnected()) {
             Notification::make()
                 ->title('جلسة واتساب غير متصلة')
                 ->body('يرجى التأكد من أن لديك جلسة واتساب متصلة قبل إرسال الرسائل')
                 ->danger()
                 ->send();
+
             return;
         }
 
-        // Use defer() to process all messages asynchronously
-        defer(function () use ($absentStudents, $messageTemplate, $ownerRecord, $session) {
-            $messagesSent = 0;
-            $messagesQueued = 0;
-            $messageIndex = 0;
+        $messagesQueued = 0;
 
-            foreach ($absentStudents as $student) {
-                // Process message template with variables
-                $processedMessage = Core::processMessageTemplate($messageTemplate, $student, $ownerRecord);
+        foreach ($absentStudents as $student) {
+            $processedMessage = Core::processMessageTemplate($messageTemplate, $student, $ownerRecord);
 
-                // Clean phone number using phone helper (remove + sign)
-                try {
-                    $phoneNumber = str_replace('+', '', phone($student->phone, 'MA')->formatE164());
-                } catch (\Exception $e) {
-                    $phoneNumber = null;
-                }
-
-                if (!$phoneNumber) {
-                    Log::warning('Invalid phone number for student', [
-                        'student_id' => $student->id,
-                        'student_name' => $student->name,
-                        'phone' => $student->phone,
-                    ]);
-                    continue;
-                }
-
-                try {
-                    // Create message history record as queued
-                    $messageHistory = WhatsAppMessageHistory::create([
-                        'session_id' => $session->id,
-                        'sender_user_id' => auth()->id(),
-                        'recipient_phone' => $phoneNumber,
-                        'message_type' => 'text',
-                        'message_content' => $processedMessage,
-                        'status' => WhatsAppMessageStatus::QUEUED,
-                    ]);
-
-                    // Calculate staggered delay based on message position for rate limiting
-                    $delaySeconds = ceil($messageIndex / 10) * 0.5; // 0.5 second delay for every 10 messages
-
-                    // Minimal rate limiting: Only add delay for batches to prevent spam detection
-                    if ($delaySeconds > 0) {
-                        usleep($delaySeconds * 1000000); // Convert to microseconds for sub-second delays
-                    }
-
-                    $whatsappService = app(WhatsAppService::class);
-                    $result = $whatsappService->sendTextMessage(
-                        $session->id,
-                        $phoneNumber,
-                        $processedMessage
-                    );
-
-                    // Update message history as sent
-                    $messageHistory->update([
-                        'status' => WhatsAppMessageStatus::SENT,
-                        'whatsapp_message_id' => $result[0]['messageId'] ?? null,
-                        'sent_at' => now(),
-                    ]);
-
-                    // Create or update progress record using trait
-                    $this->createWhatsAppProgressRecord($student);
-
-                    Log::info('WhatsApp message sent to absent student', [
-                        'student_phone' => $phoneNumber,
-                        'message_id' => $result[0]['messageId'] ?? null,
-                        'message_index' => $messageIndex,
-                        'delay_seconds' => $delaySeconds,
-                    ]);
-
-                    $messagesQueued++;
-                    $messageIndex++;
-
-                } catch (\Exception $e) {
-                    // Update message history as failed if it was created
-                    if (isset($messageHistory)) {
-                        $messageHistory->update([
-                            'status' => WhatsAppMessageStatus::FAILED,
-                            'error_message' => $e->getMessage(),
-                        ]);
-                    }
-
-                    Log::error('Failed to send WhatsApp message to absent student', [
-                        'student_phone' => $phoneNumber,
-                        'student_id' => $student->id,
-                        'error' => $e->getMessage(),
-                        'message_index' => $messageIndex,
-                    ]);
-                }
+            try {
+                $phoneNumber = str_replace('+', '', phone($student->phone, 'MA')->formatE164());
+            } catch (\Exception $e) {
+                $phoneNumber = null;
             }
-        });
 
-        $messagesQueued = $absentStudents->count();
+            if (! $phoneNumber) {
+                Log::warning('Invalid phone number for student', [
+                    'student_id' => $student->id,
+                    'phone' => $student->phone,
+                ]);
+
+                continue;
+            }
+
+            try {
+                WhatsAppMessageHistory::create([
+                    'session_id' => $session->id,
+                    'sender_user_id' => auth()->id(),
+                    'recipient_phone' => $phoneNumber,
+                    'message_type' => 'text',
+                    'message_content' => $processedMessage,
+                    'status' => WhatsAppMessageStatus::QUEUED,
+                ]);
+
+                SendWhatsAppMessageJob::dispatch(
+                    $session->id,
+                    $phoneNumber,
+                    $processedMessage,
+                    'text',
+                    $student->id,
+                    ['sender_user_id' => auth()->id()],
+                );
+
+                $messagesQueued++;
+            } catch (\Exception $e) {
+                Log::error('Failed to queue message for absent student', [
+                    'student_id' => $student->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
 
         Notification::make()
             ->title('تم جدولة الرسائل للإرسال!')
@@ -285,22 +218,4 @@ class SendAbsentStudentsMessageAction extends Action
             ->success()
             ->send();
     }
-
-    /**
-     * Send messages via legacy WhatsApp service (for compatibility)
-     */
-    protected function sendViaLegacyWhatsApp(Collection $absentStudents, string $messageTemplate, $ownerRecord): void
-    {
-        foreach ($absentStudents as $student) {
-            $processedMessage = Core::processMessageTemplate($messageTemplate, $student, $ownerRecord);
-            Core::sendSpecifMessageToStudent($student, $processedMessage);
-        }
-
-        Notification::make()
-            ->title('تم إرسال الرسائل!')
-            ->body("تم إرسال الرسائل لـ {$absentStudents->count()} طالب غائب")
-            ->success()
-            ->send();
-    }
-
 }
