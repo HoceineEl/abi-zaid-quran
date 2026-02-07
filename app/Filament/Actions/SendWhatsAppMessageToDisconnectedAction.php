@@ -6,12 +6,11 @@ use App\Classes\Core;
 use App\Enums\MessageResponseStatus;
 use App\Enums\WhatsAppMessageStatus;
 use App\Helpers\PhoneHelper;
+use App\Jobs\SendWhatsAppMessageJob;
 use App\Models\GroupMessageTemplate;
 use App\Models\StudentDisconnection;
 use App\Models\WhatsAppMessageHistory;
 use App\Models\WhatsAppSession;
-use App\Services\WhatsAppService;
-use App\Traits\HandlesWhatsAppProgress;
 use Filament\Forms;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Get;
@@ -22,8 +21,6 @@ use Illuminate\Support\Facades\Log;
 
 class SendWhatsAppMessageToDisconnectedAction extends Action
 {
-    use HandlesWhatsAppProgress;
-
     public static function getDefaultName(): ?string
     {
         return 'send_whatsapp_to_disconnected';
@@ -146,7 +143,7 @@ ARABIC;
 
         try {
             // Create message history record as queued
-            $messageHistory = WhatsAppMessageHistory::create([
+            WhatsAppMessageHistory::create([
                 'session_id' => $session->id,
                 'sender_user_id' => auth()->id(),
                 'recipient_phone' => $phoneNumber,
@@ -160,62 +157,19 @@ ARABIC;
                 ? MessageResponseStatus::WarningMessage
                 : MessageResponseStatus::ReminderMessage;
 
-            // Use defer() to send message asynchronously
-            defer(function () use ($session, $phoneNumber, $processedMessage, $messageHistory, $record, $messageResponseType, $student) {
-                try {
-                    $whatsappService = app(WhatsAppService::class);
-                    $result = $whatsappService->sendTextMessage(
-                        $session->id,
-                        $phoneNumber,
-                        $processedMessage
-                    );
-
-                    // Update message history as sent
-                    $messageHistory->update([
-                        'status' => WhatsAppMessageStatus::SENT,
-                        'whatsapp_message_id' => $result[0]['messageId'] ?? null,
-                        'sent_at' => now(),
-                    ]);
-
-                    // Auto-update disconnection record with contact date and message response
-                    $updateData = [
-                        'contact_date' => now()->format('Y-m-d'),
-                        'message_response' => $messageResponseType,
-                    ];
-
-                    // Set the appropriate message date based on type
-                    if ($messageResponseType === MessageResponseStatus::ReminderMessage) {
-                        $updateData['reminder_message_date'] = now()->format('Y-m-d');
-                    } elseif ($messageResponseType === MessageResponseStatus::WarningMessage) {
-                        $updateData['warning_message_date'] = now()->format('Y-m-d');
-                    }
-
-                    $record->update($updateData);
-
-                    // Create progress record
-                    $this->createWhatsAppProgressRecord($student);
-
-                    Log::info('WhatsApp message sent to disconnected student', [
-                        'student_id' => $student->id,
-                        'student_phone' => $phoneNumber,
-                        'message_type' => $data['message_type'],
-                        'message_id' => $result[0]['messageId'] ?? null,
-                    ]);
-
-                } catch (\Exception $e) {
-                    // Update message history as failed
-                    $messageHistory->update([
-                        'status' => WhatsAppMessageStatus::FAILED,
-                        'error_message' => $e->getMessage(),
-                    ]);
-
-                    Log::error('Failed to send WhatsApp message to disconnected student', [
-                        'student_id' => $student->id,
-                        'student_phone' => $phoneNumber,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-            });
+            // Dispatch the job to send the message with rate limiting
+            SendWhatsAppMessageJob::dispatch(
+                $session->id,
+                $phoneNumber,
+                $processedMessage,
+                'text',
+                $student->id,
+                [
+                    'sender_user_id' => auth()->id(),
+                    'disconnection_id' => $record->id,
+                    'message_response_type' => $messageResponseType->value,
+                ]
+            );
 
             Notification::make()
                 ->title('تم جدولة الرسالة للإرسال!')

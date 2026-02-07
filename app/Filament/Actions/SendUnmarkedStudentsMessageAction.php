@@ -4,14 +4,14 @@ namespace App\Filament\Actions;
 
 use App\Classes\Core;
 use App\Enums\WhatsAppMessageStatus;
+use App\Jobs\SendWhatsAppMessageJob;
 use App\Models\GroupMessageTemplate;
 use App\Models\Student;
 use App\Models\WhatsAppMessageHistory;
 use App\Models\WhatsAppSession;
-use App\Services\WhatsAppService;
-use App\Traits\HandlesWhatsAppProgress;
 use Filament\Forms;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Toggle;
 use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Filament\Tables\Actions\Action;
@@ -20,7 +20,6 @@ use Illuminate\Support\Facades\Log;
 
 class SendUnmarkedStudentsMessageAction extends Action
 {
-    use HandlesWhatsAppProgress;
     public static function getDefaultName(): ?string
     {
         return 'send_unmarked_students_message';
@@ -218,7 +217,7 @@ class SendUnmarkedStudentsMessageAction extends Action
     }
 
     /**
-     * Send messages via WhatsApp Web (new service with defer)
+     * Send messages via WhatsApp Web using queue jobs
      */
     protected function sendViaWhatsAppWeb(Collection $students, string $messageTemplate, array $data, $ownerRecord): void
     {
@@ -258,7 +257,7 @@ class SendUnmarkedStudentsMessageAction extends Action
 
             try {
                 // Create message history record as queued
-                $messageHistory = WhatsAppMessageHistory::create([
+                WhatsAppMessageHistory::create([
                     'session_id' => $session->id,
                     'sender_user_id' => auth()->id(),
                     'recipient_phone' => $phoneNumber,
@@ -267,43 +266,15 @@ class SendUnmarkedStudentsMessageAction extends Action
                     'status' => WhatsAppMessageStatus::QUEUED,
                 ]);
 
-                // Use defer() to send the message asynchronously
-                defer(function () use ($session, $phoneNumber, $processedMessage, $messageHistory, $student) {
-                    try {
-                        $whatsappService = app(WhatsAppService::class);
-                        $result = $whatsappService->sendTextMessage(
-                            $session->id,
-                            $phoneNumber,
-                            $processedMessage
-                        );
-
-                        // Update message history as sent
-                        $messageHistory->update([
-                            'status' => WhatsAppMessageStatus::SENT,
-                            'whatsapp_message_id' => $result[0]['messageId'] ?? null,
-                            'sent_at' => now(),
-                        ]);
-
-                        // Update existing progress (since student was already marked as absent)
-                        $this->createWhatsAppProgressRecord($student);
-
-                        Log::info('WhatsApp message sent to unmarked student', [
-                            'student_phone' => $phoneNumber,
-                            'message_id' => $result[0]['messageId'] ?? null,
-                        ]);
-                    } catch (\Exception $e) {
-                        // Update message history as failed
-                        $messageHistory->update([
-                            'status' => WhatsAppMessageStatus::FAILED,
-                            'error_message' => $e->getMessage(),
-                        ]);
-
-                        Log::error('Failed to send WhatsApp message to unmarked student', [
-                            'student_phone' => $phoneNumber,
-                            'error' => $e->getMessage(),
-                        ]);
-                    }
-                });
+                // Dispatch the job to send the message with rate limiting
+                SendWhatsAppMessageJob::dispatch(
+                    $session->id,
+                    $phoneNumber,
+                    $processedMessage,
+                    'text',
+                    $student->id,
+                    ['sender_user_id' => auth()->id()]
+                );
 
                 $messagesQueued++;
             } catch (\Exception $e) {
