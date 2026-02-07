@@ -5,12 +5,11 @@ namespace App\Filament\Actions;
 use App\Classes\Core;
 use App\Enums\WhatsAppMessageStatus;
 use App\Helpers\PhoneHelper;
+use App\Jobs\SendWhatsAppMessageJob;
 use App\Models\GroupMessageTemplate;
 use App\Models\Student;
 use App\Models\WhatsAppMessageHistory;
 use App\Models\WhatsAppSession;
-use App\Services\WhatsAppService;
-use App\Traits\HandlesWhatsAppProgress;
 use Filament\Forms;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Get;
@@ -21,7 +20,6 @@ use Illuminate\Support\Facades\Log;
 
 class SendReminderToUnmarkedStudentsAction extends Action
 {
-    use HandlesWhatsAppProgress;
     public static function getDefaultName(): ?string
     {
         return 'send_reminder_to_unmarked';
@@ -165,7 +163,7 @@ ARABIC;
     }
 
     /**
-     * Send reminder messages via WhatsApp Web (new service with defer)
+     * Send reminder messages via WhatsApp Web using queue jobs
      */
     protected function sendReminderViaWhatsAppWeb(Collection $students, string $messageTemplate, $ownerRecord): void
     {
@@ -182,7 +180,6 @@ ARABIC;
         }
 
         $messagesQueued = 0;
-        $messageIndex = 0;
 
         foreach ($students as $student) {
             // Process message template with variables
@@ -202,7 +199,7 @@ ARABIC;
 
             try {
                 // Create message history record as queued
-                $messageHistory = WhatsAppMessageHistory::create([
+                WhatsAppMessageHistory::create([
                     'session_id' => $session->id,
                     'sender_user_id' => auth()->id(),
                     'recipient_phone' => $phoneNumber,
@@ -211,59 +208,17 @@ ARABIC;
                     'status' => WhatsAppMessageStatus::QUEUED,
                 ]);
 
-                // Use defer() to send the message asynchronously with minimal rate limiting
-                defer(function () use ($session, $phoneNumber, $processedMessage, $messageHistory, $student, $messageIndex) {
-                    try {
-                        // Calculate staggered delay based on message position for rate limiting
-                        $delaySeconds = ceil($messageIndex / 10) * 0.5; // 0.5 second delay for every 10 messages
-
-                        // Minimal rate limiting: Only add delay for batches to prevent spam detection
-                        if ($delaySeconds > 0) {
-                            usleep($delaySeconds * 1000000); // Convert to microseconds for sub-second delays
-                        }
-
-                        $whatsappService = app(WhatsAppService::class);
-                        $result = $whatsappService->sendTextMessage(
-                            $session->id,
-                            $phoneNumber,
-                            $processedMessage
-                        );
-
-                        // Update message history as sent
-                        $messageHistory->update([
-                            'status' => WhatsAppMessageStatus::SENT,
-                            'whatsapp_message_id' => $result[0]['messageId'] ?? null,
-                            'sent_at' => now(),
-                        ]);
-
-                        // Create progress record using trait (since these are unmarked students, we always create)
-                        $this->createWhatsAppProgressRecord($student);
-
-                        Log::info('WhatsApp reminder sent to unmarked student', [
-                            'student_phone' => $phoneNumber,
-                            'message_id' => $result[0]['messageId'] ?? null,
-                            'message_index' => $messageIndex,
-                            'delay_seconds' => $delaySeconds,
-                        ]);
-
-                    } catch (\Exception $e) {
-                        // Update message history as failed
-                        $messageHistory->update([
-                            'status' => WhatsAppMessageStatus::FAILED,
-                            'error_message' => $e->getMessage(),
-                        ]);
-
-                        Log::error('Failed to send WhatsApp reminder to unmarked student', [
-                            'student_phone' => $phoneNumber,
-                            'error' => $e->getMessage(),
-                            'message_index' => $messageIndex,
-                            'delay_seconds' => $delaySeconds,
-                        ]);
-                    }
-                });
+                // Dispatch the job to send the message with rate limiting
+                SendWhatsAppMessageJob::dispatch(
+                    $session->id,
+                    $phoneNumber,
+                    $processedMessage,
+                    'text',
+                    $student->id,
+                    ['sender_user_id' => auth()->id()]
+                );
 
                 $messagesQueued++;
-                $messageIndex++;
 
             } catch (\Exception $e) {
                 Log::error('Failed to queue WhatsApp reminder for unmarked student', [
