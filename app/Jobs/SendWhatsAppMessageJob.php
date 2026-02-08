@@ -25,7 +25,9 @@ class SendWhatsAppMessageJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 3;
+    public int $tries = 5;
+
+    public int $maxExceptions = 3;
 
     public int $backoff = 5;
 
@@ -44,7 +46,7 @@ class SendWhatsAppMessageJob implements ShouldQueue
     {
         return [
             new WhatsAppRateLimited(config('whatsapp.messages_per_minute', 3)),
-            new WithoutOverlapping($this->to),
+            (new WithoutOverlapping($this->to))->expireAfter(120),
         ];
     }
 
@@ -57,7 +59,7 @@ class SendWhatsAppMessageJob implements ShouldQueue
                 $reason = $session ? 'Session not connected' : 'Session not found';
                 $this->updateMessageHistory(WhatsAppMessageStatus::FAILED, errorMessage: $reason);
 
-                return;
+                throw new \Exception($reason);
             }
 
             $result = $whatsappService->sendTextMessage(
