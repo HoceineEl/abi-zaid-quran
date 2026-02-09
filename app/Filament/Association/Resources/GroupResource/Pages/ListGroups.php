@@ -30,6 +30,7 @@ class ListGroups extends ListRecords
     {
         return [
             Actions\CreateAction::make()
+                ->slideOver()
                 ->hidden(fn() => auth()->user()->isTeacher()),
         ];
     }

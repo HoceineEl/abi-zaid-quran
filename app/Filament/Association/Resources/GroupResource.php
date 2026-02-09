@@ -111,6 +111,7 @@ class GroupResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
+                    ->slideOver()
                     ->hidden(fn() => auth()->user()->isTeacher()),
                 Tables\Actions\ViewAction::make(),
                 Action::make('export_students_payment')
@@ -194,8 +195,6 @@ class GroupResource extends Resource
         }
         return [
             'index' => Pages\ListGroups::route('/'),
-            'create' => Pages\CreateGroup::route('/create'),
-            'edit' => Pages\EditGroup::route('/{record}/edit'),
             'view' => Pages\ViewGroup::route('/{record}'),
         ];
     }
