@@ -17,7 +17,7 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Filament\Forms\Components\DatePicker;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Hash;
+
 use Filament\Forms\Components\Hidden;
 
 class TeacherResource extends Resource
@@ -55,9 +55,9 @@ class TeacherResource extends Resource
                 TextInput::make('password')
                     ->label('كلمة المرور')
                     ->password()
+                    ->revealable()
                     ->required(fn($record) => ! $record)
-                    ->dehydrated(fn($state) => filled($state))
-                    ->dehydrateStateUsing(fn($state) => Hash::make($state)),
+                    ->dehydrated(fn($state) => filled($state)),
 
                 TextInput::make('phone')
                     ->label('رقم الهاتف')
