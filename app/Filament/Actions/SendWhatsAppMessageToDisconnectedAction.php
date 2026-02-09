@@ -157,7 +157,8 @@ ARABIC;
                 ? MessageResponseStatus::WarningMessage
                 : MessageResponseStatus::ReminderMessage;
 
-            // Dispatch the job to send the message with rate limiting
+            $delay = SendWhatsAppMessageJob::getStaggeredDelay($session->id);
+
             SendWhatsAppMessageJob::dispatch(
                 $session->id,
                 $phoneNumber,
@@ -168,8 +169,8 @@ ARABIC;
                     'sender_user_id' => auth()->id(),
                     'disconnection_id' => $record->id,
                     'message_response_type' => $messageResponseType->value,
-                ]
-            );
+                ],
+            )->delay(now()->addSeconds($delay));
 
             Notification::make()
                 ->title('تم جدولة الرسالة للإرسال!')
@@ -193,20 +194,14 @@ ARABIC;
 
     protected function getMessageContent(array $data, $group): string
     {
-        $isAdmin = auth()->user()->isAdministrator();
-
-        // For non-admins, use default template if available
-        if (!$isAdmin && $group && method_exists($group, 'messageTemplates')) {
-            $defaultTemplate = $group->messageTemplates()
-                ->wherePivot('is_default', true)
-                ->first();
+        if (!auth()->user()->isAdministrator() && $group && method_exists($group, 'messageTemplates')) {
+            $defaultTemplate = $group->messageTemplates()->wherePivot('is_default', true)->first();
             if ($defaultTemplate) {
                 return $defaultTemplate->content;
             }
         }
 
-        // For admins or when no default template
-        if (isset($data['template_id']) && $data['template_id'] === 'custom') {
+        if (($data['template_id'] ?? null) === 'custom') {
             return $data['message'];
         }
 

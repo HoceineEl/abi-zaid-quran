@@ -110,15 +110,16 @@ class SendMessageToSelectedUsersAction extends BulkAction
                     'status' => WhatsAppMessageStatus::QUEUED,
                 ]);
 
-                // Dispatch the job to send the message with rate limiting
+                $delay = SendWhatsAppMessageJob::getStaggeredDelay($session->id);
+
                 SendWhatsAppMessageJob::dispatch(
                     $session->id,
                     $phoneNumber,
                     $messageContent,
                     'text',
                     null,
-                    ['sender_user_id' => auth()->id()]
-                );
+                    ['sender_user_id' => auth()->id()],
+                )->delay(now()->addSeconds($delay));
 
                 $messagesQueued++;
 

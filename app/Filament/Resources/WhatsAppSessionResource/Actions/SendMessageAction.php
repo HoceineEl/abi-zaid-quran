@@ -55,11 +55,13 @@ class SendMessageAction extends Action
                         'status' => WhatsAppMessageStatus::QUEUED,
                     ]);
 
+                    $delay = SendWhatsAppMessageJob::getStaggeredDelay($record->id);
+
                     SendWhatsAppMessageJob::dispatch(
                         $record->id,
                         $data['recipient'],
                         $data['message'],
-                    );
+                    )->delay(now()->addSeconds($delay));
 
                     Notification::make()
                         ->title('تم جدولة الرسالة للإرسال!')

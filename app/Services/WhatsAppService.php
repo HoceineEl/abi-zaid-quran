@@ -253,12 +253,14 @@ class WhatsAppService
             'status' => WhatsAppMessageStatus::QUEUED,
         ]);
 
+        $delay = \App\Jobs\SendWhatsAppMessageJob::getStaggeredDelay($session->id);
+
         \App\Jobs\SendWhatsAppMessageJob::dispatch(
             $session->id,
             $formattedPhone,
             $message,
             $type,
-        );
+        )->delay(now()->addSeconds($delay));
 
         Log::info('WhatsApp message queued for delivery', [
             'session_id' => $session->id,

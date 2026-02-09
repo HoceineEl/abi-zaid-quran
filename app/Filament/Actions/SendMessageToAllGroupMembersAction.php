@@ -153,42 +153,28 @@ class SendMessageToAllGroupMembersAction extends Action
 
     protected function getMessageTemplateForGroup(array $data, Group $group): string
     {
-        $isAdmin = auth()->user()->isAdministrator();
+        $defaultMessage = 'السلام عليكم ورحمة الله وبركاته\n{student_name}، رسالة عامة من مجموعة {group_name}.\nبارك الله فيكم وزادكم حرصا.';
 
-        if (! $isAdmin) {
-            $defaultTemplate = $group->messageTemplates()->wherePivot('is_default', true)->first();
-            if ($defaultTemplate) {
-                return $defaultTemplate->content;
-            }
-            $firstTemplate = $group->messageTemplates()->first();
-            if ($firstTemplate) {
-                return $firstTemplate->content;
-            }
-
-            return 'السلام عليكم ورحمة الله وبركاته\n{student_name}، رسالة عامة من مجموعة {group_name}.\nبارك الله فيكم وزادكم حرصا.';
+        if (! auth()->user()->isAdministrator()) {
+            return $this->getGroupDefaultTemplate($group) ?? $defaultMessage;
         }
 
         return match ($data['template_source'] ?? 'group_default') {
-            'group_default' => $this->getGroupDefaultTemplate($group),
-            'global_template' => GroupMessageTemplate::find($data['global_template_id'])?->content
-                ?? 'السلام عليكم ورحمة الله وبركاته\n{student_name}، رسالة عامة من مجموعة {group_name}.\nبارك الله فيكم وزادكم حرصا.',
+            'group_default' => $this->getGroupDefaultTemplate($group) ?? $defaultMessage,
+            'global_template' => GroupMessageTemplate::find($data['global_template_id'])?->content ?? $defaultMessage,
             'custom' => $data['message'],
-            default => 'السلام عليكم ورحمة الله وبركاته\n{student_name}، رسالة عامة من مجموعة {group_name}.\nبارك الله فيكم وزادكم حرصا.',
+            default => $defaultMessage,
         };
     }
 
-    protected function getGroupDefaultTemplate(Group $group): string
+    protected function getGroupDefaultTemplate(Group $group): ?string
     {
         $defaultTemplate = $group->messageTemplates()->wherePivot('is_default', true)->first();
         if ($defaultTemplate) {
             return $defaultTemplate->content;
         }
-        $firstTemplate = $group->messageTemplates()->first();
-        if ($firstTemplate) {
-            return $firstTemplate->content;
-        }
 
-        return 'السلام عليكم ورحمة الله وبركاته\n{student_name}، رسالة عامة من مجموعة {group_name}.\nبارك الله فيكم وزادكم حرصا.';
+        return $group->messageTemplates()->first()?->content;
     }
 
     protected function dispatchMessages(Collection $studentsWithGroups, array $data): int
@@ -213,12 +199,7 @@ class SendMessageToAllGroupMembersAction extends Action
 
             $messageTemplate = $this->getMessageTemplateForGroup($data, $group);
             $processedMessage = Core::processMessageTemplate($messageTemplate, $student, $group);
-
-            try {
-                $phoneNumber = str_replace('+', '', phone($student->phone, 'MA')->formatE164());
-            } catch (\Exception $e) {
-                $phoneNumber = null;
-            }
+            $phoneNumber = $this->formatPhoneNumber($student->phone);
 
             if (! $phoneNumber) {
                 Log::warning('Invalid phone number for student in group message', [
@@ -240,6 +221,8 @@ class SendMessageToAllGroupMembersAction extends Action
                     'status' => WhatsAppMessageStatus::QUEUED,
                 ]);
 
+                $delay = SendWhatsAppMessageJob::getStaggeredDelay($session->id);
+
                 SendWhatsAppMessageJob::dispatch(
                     $session->id,
                     $phoneNumber,
@@ -247,7 +230,7 @@ class SendMessageToAllGroupMembersAction extends Action
                     'text',
                     $student->id,
                     ['sender_user_id' => auth()->id()],
-                );
+                )->delay(now()->addSeconds($delay));
 
                 $messagesQueued++;
             } catch (\Exception $e) {
@@ -260,5 +243,14 @@ class SendMessageToAllGroupMembersAction extends Action
         }
 
         return $messagesQueued;
+    }
+
+    protected function formatPhoneNumber(string $phone): ?string
+    {
+        try {
+            return str_replace('+', '', phone($phone, 'MA')->formatE164());
+        } catch (\Exception $e) {
+            return null;
+        }
     }
 }

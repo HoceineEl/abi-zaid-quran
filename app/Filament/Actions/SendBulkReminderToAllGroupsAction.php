@@ -165,57 +165,30 @@ class SendBulkReminderToAllGroupsAction extends Action
             ->send();
     }
 
-    /**
-     * Get the message template content for a specific group
-     */
     protected function getMessageTemplateForGroup(array $data, Group $group): string
     {
-        $isAdmin = auth()->user()->isAdministrator();
+        $defaultMessage = 'السلام عليكم ورحمة الله وبركاته\n{student_name}، نذكركم بالواجب المقرر اليوم في مجموعة {group_name}، لعل المانع خير.\nبارك الله فيكم وزادكم حرصا.';
 
-        // For non-admins, always use group's default template if available
-        if (!$isAdmin) {
-            $defaultTemplate = $group->messageTemplates()->wherePivot('is_default', true)->first();
-            if ($defaultTemplate) {
-                return $defaultTemplate->content;
-            }
-            // Fallback to first template if no default
-            $firstTemplate = $group->messageTemplates()->first();
-            if ($firstTemplate) {
-                return $firstTemplate->content;
-            }
-            // Fallback to default message
-            return 'السلام عليكم ورحمة الله وبركاته\n{student_name}، نذكركم بالواجب المقرر اليوم في مجموعة {group_name}، لعل المانع خير.\nبارك الله فيكم وزادكم حرصا.';
+        if (!auth()->user()->isAdministrator()) {
+            return $this->getGroupDefaultTemplate($group) ?? $defaultMessage;
         }
 
-        // Admin logic for template selection
-        switch ($data['template_source'] ?? 'group_default') {
-            case 'group_default':
-                // Use group's default template
-                $defaultTemplate = $group->messageTemplates()->wherePivot('is_default', true)->first();
-                if ($defaultTemplate) {
-                    return $defaultTemplate->content;
-                }
-                // Fallback to first template if no default
-                $firstTemplate = $group->messageTemplates()->first();
-                if ($firstTemplate) {
-                    return $firstTemplate->content;
-                }
-                // Fallback to default message
-                return 'السلام عليكم ورحمة الله وبركاته\n{student_name}، نذكركم بالواجب المقرر اليوم في مجموعة {group_name}، لعل المانع خير.\nبارك الله فيكم وزادكم حرصا.';
+        return match ($data['template_source'] ?? 'group_default') {
+            'group_default' => $this->getGroupDefaultTemplate($group) ?? $defaultMessage,
+            'global_template' => GroupMessageTemplate::find($data['global_template_id'])?->content ?? $defaultMessage,
+            'custom' => $data['message'],
+            default => $defaultMessage,
+        };
+    }
 
-            case 'global_template':
-                $template = GroupMessageTemplate::find($data['global_template_id']);
-                if ($template) {
-                    return $template->content;
-                }
-                return 'السلام عليكم ورحمة الله وبركاته\n{student_name}، نذكركم بالواجب المقرر اليوم في مجموعة {group_name}، لعل المانع خير.\nبارك الله فيكم وزادكم حرصا.';
-
-            case 'custom':
-                return $data['message'];
-
-            default:
-                return 'السلام عليكم ورحمة الله وبركاته\n{student_name}، نذكركم بالواجب المقرر اليوم في مجموعة {group_name}، لعل المانع خير.\nبارك الله فيكم وزادكم حرصا.';
+    protected function getGroupDefaultTemplate(Group $group): ?string
+    {
+        $defaultTemplate = $group->messageTemplates()->wherePivot('is_default', true)->first();
+        if ($defaultTemplate) {
+            return $defaultTemplate->content;
         }
+
+        return $group->messageTemplates()->first()?->content;
     }
 
     /**
@@ -271,15 +244,16 @@ class SendBulkReminderToAllGroupsAction extends Action
                     'status' => WhatsAppMessageStatus::QUEUED,
                 ]);
 
-                // Dispatch the job to send the message with rate limiting
+                $delay = SendWhatsAppMessageJob::getStaggeredDelay($session->id);
+
                 SendWhatsAppMessageJob::dispatch(
                     $session->id,
                     $phoneNumber,
                     $processedMessage,
                     'text',
                     $student->id,
-                    ['sender_user_id' => auth()->id()]
-                );
+                    ['sender_user_id' => auth()->id()],
+                )->delay(now()->addSeconds($delay));
 
                 $messagesQueued++;
 

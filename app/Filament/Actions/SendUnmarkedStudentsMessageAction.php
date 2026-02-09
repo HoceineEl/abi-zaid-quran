@@ -186,23 +186,16 @@ class SendUnmarkedStudentsMessageAction extends Action
         return now()->format('Y-m-d');
     }
 
-    /**
-     * Get the message template content
-     */
     protected function getMessageTemplate(array $data, $ownerRecord): string
     {
-        $isAdmin = auth()->user()->isAdministrator();
-
-        // For non-admins, always use default template if available
-        if (!$isAdmin && $ownerRecord && method_exists($ownerRecord, 'messageTemplates')) {
+        if (!auth()->user()->isAdministrator() && $ownerRecord && method_exists($ownerRecord, 'messageTemplates')) {
             $defaultTemplate = $ownerRecord->messageTemplates()->wherePivot('is_default', true)->first();
             if ($defaultTemplate) {
                 return $defaultTemplate->content;
             }
         }
 
-        // For admins or when no default template
-        if (isset($data['template_id']) && $data['template_id'] === 'custom') {
+        if (($data['template_id'] ?? null) === 'custom') {
             return $data['message'];
         }
 
@@ -236,15 +229,8 @@ class SendUnmarkedStudentsMessageAction extends Action
         $messagesQueued = 0;
 
         foreach ($students as $student) {
-            // Process message template with variables
             $processedMessage = Core::processMessageTemplate($messageTemplate, $student, $ownerRecord);
-
-            // Clean phone number using phone helper (remove + sign)
-            try {
-                $phoneNumber = str_replace('+', '', phone($student->phone, 'MA')->formatE164());
-            } catch (\Exception $e) {
-                $phoneNumber = null;
-            }
+            $phoneNumber = $this->formatPhoneNumber($student->phone);
 
             if (!$phoneNumber) {
                 Log::warning('Invalid phone number for student', [
@@ -266,15 +252,16 @@ class SendUnmarkedStudentsMessageAction extends Action
                     'status' => WhatsAppMessageStatus::QUEUED,
                 ]);
 
-                // Dispatch the job to send the message with rate limiting
+                $delay = SendWhatsAppMessageJob::getStaggeredDelay($session->id);
+
                 SendWhatsAppMessageJob::dispatch(
                     $session->id,
                     $phoneNumber,
                     $processedMessage,
                     'text',
                     $student->id,
-                    ['sender_user_id' => auth()->id()]
-                );
+                    ['sender_user_id' => auth()->id()],
+                )->delay(now()->addSeconds($delay));
 
                 $messagesQueued++;
             } catch (\Exception $e) {
@@ -292,44 +279,12 @@ class SendUnmarkedStudentsMessageAction extends Action
             ->send();
     }
 
-    /**
-     * Send messages via legacy WhatsApp service (for compatibility)
-     */
-    protected function sendViaLegacyWhatsApp(Collection $students, string $messageTemplate, $ownerRecord): void
+    protected function formatPhoneNumber(string $phone): ?string
     {
-        foreach ($students as $student) {
-            $processedMessage = Core::processMessageTemplate($messageTemplate, $student, $ownerRecord);
-            Core::sendSpecifMessageToStudent($student, $processedMessage);
+        try {
+            return str_replace('+', '', phone($phone, 'MA')->formatE164());
+        } catch (\Exception $e) {
+            return null;
         }
-
-        Notification::make()
-            ->title('تم إرسال الرسائل!')
-            ->body("تم تسجيل {$students->count()} طالب كغائبين وإرسال الرسائل لهم")
-            ->success()
-            ->send();
-    }
-
-    /**
-     * Clean and format phone number for WhatsApp
-     */
-    protected function cleanPhoneNumber(string $phone): ?string
-    {
-        // Remove any spaces, dashes or special characters
-        $number = preg_replace('/[^0-9]/', '', $phone);
-
-        // Handle different Moroccan number formats
-        if (strlen($number) === 9 && in_array(substr($number, 0, 1), ['6', '7'])) {
-            // If number starts with 6 or 7 and is 9 digits
-            return '212' . $number;
-        } elseif (strlen($number) === 10 && in_array(substr($number, 0, 2), ['06', '07'])) {
-            // If number starts with 06 or 07 and is 10 digits
-            return '212' . substr($number, 1);
-        } elseif (strlen($number) === 12 && substr($number, 0, 3) === '212') {
-            // If number already has 212 country code
-            return $number;
-        }
-
-        // Return null for invalid numbers
-        return null;
     }
 }

@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Log;
 class WhatsAppRateLimited
 {
     public function __construct(
-        protected int $maxPerMinute = 3,
+        protected int $maxPerMinute = 5,
         protected int $decaySeconds = 60
     ) {}
 
@@ -30,18 +30,6 @@ class WhatsAppRateLimited
             return;
         }
 
-        $randomDelay = rand(
-            config('whatsapp.delay_min', 10),
-            config('whatsapp.delay_max', 30),
-        );
-
-        Log::debug('WhatsApp adding random delay before send', [
-            'session_id' => $job->sessionId,
-            'delay_seconds' => $randomDelay,
-        ]);
-
-        sleep($randomDelay);
-
         $this->hit($key);
 
         $next($job);
@@ -52,10 +40,12 @@ class WhatsAppRateLimited
         return Cache::get($key, 0) >= $this->maxPerMinute;
     }
 
-    protected function hit(string $key): int
+    protected function hit(string $key): void
     {
-        Cache::add($key, 0, $this->decaySeconds);
+        if (! Cache::has($key)) {
+            Cache::put($key, 0, $this->decaySeconds);
+        }
 
-        return Cache::increment($key);
+        Cache::increment($key);
     }
 }

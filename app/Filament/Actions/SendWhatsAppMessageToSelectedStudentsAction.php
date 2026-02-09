@@ -111,20 +111,18 @@ class SendWhatsAppMessageToSelectedStudentsAction extends BulkAction
 
     protected function resolveMessageTemplate(array $data): string
     {
-        $isAdmin = auth()->user()->isAdministrator();
-
-        if ($this->ownerRecord && ! $isAdmin) {
+        if ($this->ownerRecord && ! auth()->user()->isAdministrator()) {
             $defaultTemplate = $this->ownerRecord->messageTemplates()->wherePivot('is_default', true)->first();
             if ($defaultTemplate) {
                 return $defaultTemplate->content;
             }
         }
 
-        if ($isAdmin && isset($data['template_id'])) {
-            if ($data['template_id'] === 'custom') {
-                return $data['message'];
-            }
+        if (($data['template_id'] ?? null) === 'custom') {
+            return $data['message'];
+        }
 
+        if (isset($data['template_id'])) {
             $template = GroupMessageTemplate::find($data['template_id']);
             if ($template) {
                 return $template->content;
@@ -159,16 +157,11 @@ class SendWhatsAppMessageToSelectedStudentsAction extends BulkAction
                 }
             }
 
-            $messageContent = $messageTemplate;
-            if ($this->ownerRecord) {
-                $messageContent = Core::processMessageTemplate($messageTemplate, $student, $this->ownerRecord);
-            }
+            $messageContent = $this->ownerRecord
+                ? Core::processMessageTemplate($messageTemplate, $student, $this->ownerRecord)
+                : $messageTemplate;
 
-            try {
-                $phoneNumber = str_replace('+', '', phone($student->phone, 'MA')->formatE164());
-            } catch (\Exception $e) {
-                $phoneNumber = null;
-            }
+            $phoneNumber = $this->formatPhoneNumber($student->phone);
 
             if (! $phoneNumber) {
                 $failedPhones[] = $student->name;
@@ -191,6 +184,8 @@ class SendWhatsAppMessageToSelectedStudentsAction extends BulkAction
                     ],
                 ]);
 
+                $delay = SendWhatsAppMessageJob::getStaggeredDelay($session->id);
+
                 SendWhatsAppMessageJob::dispatch(
                     $session->id,
                     $phoneNumber,
@@ -198,7 +193,7 @@ class SendWhatsAppMessageToSelectedStudentsAction extends BulkAction
                     'text',
                     $student->id,
                     ['sender_user_id' => auth()->id()],
-                );
+                )->delay(now()->addSeconds($delay));
 
                 $messagesQueued++;
             } catch (\Exception $e) {
@@ -221,5 +216,14 @@ class SendWhatsAppMessageToSelectedStudentsAction extends BulkAction
             ->body($notificationBody)
             ->success()
             ->send();
+    }
+
+    protected function formatPhoneNumber(string $phone): ?string
+    {
+        try {
+            return str_replace('+', '', phone($phone, 'MA')->formatE164());
+        } catch (\Exception $e) {
+            return null;
+        }
     }
 }

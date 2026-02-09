@@ -132,6 +132,8 @@ ARABIC
                     'status' => WhatsAppMessageStatus::QUEUED,
                 ]);
 
+                $delay = SendWhatsAppMessageJob::getStaggeredDelay($session->id);
+
                 SendWhatsAppMessageJob::dispatch(
                     $session->id,
                     $phoneNumber,
@@ -143,7 +145,7 @@ ARABIC
                         'disconnection_id' => $disconnection->id,
                         'message_response_type' => $messageResponseType->value,
                     ],
-                );
+                )->delay(now()->addSeconds($delay));
 
                 $messagesQueued++;
             } catch (\Exception $e) {
@@ -163,13 +165,11 @@ ARABIC
 
     protected function resolveMessageContent(array $data): string
     {
-        $isAdmin = auth()->user()->isAdministrator();
-
-        if ($isAdmin && isset($data['template_id']) && $data['template_id'] === 'custom') {
+        if (($data['template_id'] ?? null) === 'custom') {
             return $data['message'];
         }
 
-        if ($isAdmin && isset($data['template_id'])) {
+        if (isset($data['template_id'])) {
             $template = GroupMessageTemplate::find($data['template_id']);
             if ($template) {
                 return $template->content;

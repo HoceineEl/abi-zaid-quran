@@ -127,16 +127,14 @@ class SendAbsentStudentsMessageAction extends Action
 
     protected function resolveMessageTemplate(array $data, $ownerRecord): string
     {
-        $isAdmin = auth()->user()->isAdministrator();
-
-        if (! $isAdmin && $ownerRecord && method_exists($ownerRecord, 'messageTemplates')) {
+        if (! auth()->user()->isAdministrator() && $ownerRecord && method_exists($ownerRecord, 'messageTemplates')) {
             $defaultTemplate = $ownerRecord->messageTemplates()->wherePivot('is_default', true)->first();
             if ($defaultTemplate) {
                 return $defaultTemplate->content;
             }
         }
 
-        if (isset($data['template_id']) && $data['template_id'] === 'custom') {
+        if (($data['template_id'] ?? null) === 'custom') {
             return $data['message'];
         }
 
@@ -168,12 +166,7 @@ class SendAbsentStudentsMessageAction extends Action
 
         foreach ($absentStudents as $student) {
             $processedMessage = Core::processMessageTemplate($messageTemplate, $student, $ownerRecord);
-
-            try {
-                $phoneNumber = str_replace('+', '', phone($student->phone, 'MA')->formatE164());
-            } catch (\Exception $e) {
-                $phoneNumber = null;
-            }
+            $phoneNumber = $this->formatPhoneNumber($student->phone);
 
             if (! $phoneNumber) {
                 Log::warning('Invalid phone number for student', [
@@ -194,6 +187,8 @@ class SendAbsentStudentsMessageAction extends Action
                     'status' => WhatsAppMessageStatus::QUEUED,
                 ]);
 
+                $delay = SendWhatsAppMessageJob::getStaggeredDelay($session->id);
+
                 SendWhatsAppMessageJob::dispatch(
                     $session->id,
                     $phoneNumber,
@@ -201,7 +196,7 @@ class SendAbsentStudentsMessageAction extends Action
                     'text',
                     $student->id,
                     ['sender_user_id' => auth()->id()],
-                );
+                )->delay(now()->addSeconds($delay));
 
                 $messagesQueued++;
             } catch (\Exception $e) {
@@ -217,5 +212,14 @@ class SendAbsentStudentsMessageAction extends Action
             ->body("تم جدولة {$messagesQueued} رسالة لإرسالها للطلاب الغائبين")
             ->success()
             ->send();
+    }
+
+    protected function formatPhoneNumber(string $phone): ?string
+    {
+        try {
+            return str_replace('+', '', phone($phone, 'MA')->formatE164());
+        } catch (\Exception $e) {
+            return null;
+        }
     }
 }
