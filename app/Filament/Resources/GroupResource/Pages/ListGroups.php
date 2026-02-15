@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\GroupResource\Pages;
 
+use App\Filament\Actions\CheckWhatsAppStatusAction;
 use App\Filament\Resources\GroupResource;
 use App\Models\Group;
 use App\Models\Student;
@@ -41,6 +42,7 @@ class ListGroups extends ListRecords
         return [
             Actions\CreateAction::make()
                 ->visible(auth()->user()->isAdministrator()),
+            CheckWhatsAppStatusAction::make(),
         ];
     }
 

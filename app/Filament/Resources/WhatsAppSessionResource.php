@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Classes\BaseResource;
 use App\Enums\WhatsAppConnectionStatus;
+use App\Filament\Actions\CheckWhatsAppStatusAction;
 use App\Filament\Resources\WhatsAppSessionResource\Actions\SendMessageAction;
 use App\Filament\Resources\WhatsAppSessionResource\Pages;
 use App\Models\WhatsAppSession;
@@ -185,66 +186,7 @@ class WhatsAppSessionResource extends BaseResource
             ->label('فحص الحالة')
             ->icon('heroicon-o-arrow-path')
             ->color('info')
-            ->action(function (WhatsAppSession $record) {
-                try {
-                    $whatsappService = app(WhatsAppService::class);
-                    $result = $whatsappService->getSessionStatus($record->id);
-
-                    $apiStatus = strtoupper($result['status'] ?? 'DISCONNECTED');
-                    $oldStatus = $record->status;
-
-                    // Map API status to model status using the enum
-                    $modelStatus = WhatsAppConnectionStatus::fromApiStatus($apiStatus);
-
-                    // Update record based on status
-                    if ($apiStatus === 'CONNECTED') {
-                        $record->markAsConnected($result);
-                    } elseif ($apiStatus === 'DISCONNECTED') {
-                        $record->markAsDisconnected();
-
-                        if (isset($result['detail']) && str_contains($result['detail'], 'not found')) {
-                            Notification::make()
-                                ->title('الجلسة غير موجودة')
-                                ->body('الجلسة غير موجودة على خادم API')
-                                ->warning()
-                                ->send();
-
-                            return;
-                        }
-                    } else {
-                        // For CREATING, CONNECTING, PENDING, GENERATING_QR
-                        $record->update([
-                            'status' => $modelStatus,
-                            'session_data' => $result,
-                            'last_activity_at' => now(),
-                        ]);
-
-                        // Update QR code if provided
-                        if (isset($result['qr']) && ! empty($result['qr'])) {
-                            $record->updateQrCode($result['qr']);
-                        }
-
-                        // Update cached token if available
-                        if (isset($result['token']) && ! empty($result['token'])) {
-                            Cache::put("whatsapp_token_{$record->id}", $result['token'], now()->addHours(24));
-                        }
-                    }
-
-                    $statusLabel = $modelStatus->getLabel();
-
-                    Notification::make()
-                        ->title('تم تحديث الحالة')
-                        ->body("الحالة الحالية: {$statusLabel}")
-                        ->success()
-                        ->send();
-                } catch (\Exception $e) {
-                    Notification::make()
-                        ->title('فشل في فحص الحالة')
-                        ->body($e->getMessage())
-                        ->danger()
-                        ->send();
-                }
-            });
+            ->action(fn (WhatsAppSession $record) => CheckWhatsAppStatusAction::checkAndUpdateStatus($record));
     }
 
     public static function getShowQrCodeAction(): Action
