@@ -16,6 +16,7 @@ use App\Models\GroupMessageTemplate;
 use App\Models\Message;
 use App\Models\Student;
 use App\Models\User;
+use App\Services\AttendanceReportService;
 use Filament\Forms;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Forms\Components\Actions\Action as FormAction;
@@ -221,31 +222,10 @@ class GroupResource extends Resource
                     ->label('تصدير كشف الحضور')
                     ->icon('heroicon-o-share')
                     ->color('success')
-                    ->action(function (Group $record, ListRecords $livewire) {
-                        // Get students with attendance information
-                        $students = StudentsRelationManager::getSortedStudentsForAttendanceReport($record);
-
-                        // Calculate presence percentage
-                        $totalStudents = $students->count();
-                        $presentStudents = $students->where('attendance_count', '>', 0)->count();
-                        $presencePercentage = $totalStudents > 0 ? round(($presentStudents / $totalStudents) * 100) : 0;
-
-                        $html = view('components.students-export-table', [
-                            'showAttendanceRemark' => true,
-                            'students' => $students,
-                            'group' => $record,
-                            'presencePercentage' => $presencePercentage,
-                        ])->render();
-
-                        // Dispatch the export event
-                        $livewire->dispatch('export-table', [
-                            'showAttendanceRemark' => true,
-                            'html' => $html,
-                            'groupName' => $record->name,
-                            'presencePercentage' => $presencePercentage,
-                            'dateRange' => 'آخر 30 يوم'
-                        ]);
-                    }),
+                    ->action(fn(Group $record, ListRecords $livewire) => $livewire->dispatch(
+                        'export-table',
+                        AttendanceReportService::prepareGroupExportData($record)
+                    )),
                 ActionGroup::make([
                     // Tables\Actions\Action::make('send_whatsapp_group')
                     //     ->label('أرسل رسالة للغائبين')
@@ -313,6 +293,15 @@ class GroupResource extends Resource
                     }),
             ])
             ->bulkActions([
+                Tables\Actions\BulkAction::make('bulk_export_attendance')
+                    ->label('تصدير كشف الحضور')
+                    ->icon('heroicon-o-share')
+                    ->color('success')
+                    ->action(fn($records, ListRecords $livewire) => $livewire->dispatch(
+                        'export-tables-bulk',
+                        ['groups' => AttendanceReportService::prepareBulkExportData($records)]
+                    ))
+                    ->deselectRecordsAfterCompletion(),
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\BulkAction::make('toggle_quran_group')
                         ->label('تبديل حالة مجموعة القرآن')

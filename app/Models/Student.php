@@ -132,30 +132,23 @@ class Student extends Model
     {
         return Attribute::make(
             get: function () {
-                $recentProgresses = $this->progresses()
-                    ->latest('date')
-                    ->limit(30)
-                    ->get();
+                $recentProgresses = $this->relationLoaded('progresses')
+                    ? $this->progresses->sortByDesc('date')->take(30)
+                    : $this->progresses()->latest('date')->limit(30)->get();
 
-                $absenceCount = $recentProgresses->where('status', 'absent')
-                    ->where(function ($item) {
-                        return (int)$item->with_reason === 0;
-                    })
+                $absenceCount = $recentProgresses
+                    ->where('status', 'absent')
+                    ->filter(fn($item) => (int)$item->with_reason === 0)
                     ->count();
 
-                if ($absenceCount === 0) {
-                    return ['label' => 'ممتاز', 'days' => $absenceCount, 'color' => '#28a745'];
-                } elseif ($absenceCount >= 1 && $absenceCount <= 3) {
-                    return ['label' => 'جيد', 'days' => $absenceCount, 'color' => '#5cb85c'];
-                } elseif ($absenceCount >= 4 && $absenceCount <= 5) {
-                    return ['label' => 'حسن', 'days' => $absenceCount, 'color' => '#8fd19e'];
-                } elseif ($absenceCount >= 6 && $absenceCount <= 7) {
-                    return ['label' => 'لا بأس به', 'days' => $absenceCount, 'color' => '#ffc107'];
-                } elseif ($absenceCount >= 8 && $absenceCount <= 10) {
-                    return ['label' => 'متوسط', 'days' => $absenceCount, 'color' => '#fd7e14'];
-                } else {
-                    return ['label' => 'ضعيف', 'days' => $absenceCount, 'color' => '#dc3545'];
-                }
+                return match (true) {
+                    $absenceCount === 0 => ['label' => 'ممتاز', 'days' => $absenceCount, 'color' => '#28a745'],
+                    $absenceCount <= 3 => ['label' => 'جيد', 'days' => $absenceCount, 'color' => '#5cb85c'],
+                    $absenceCount <= 5 => ['label' => 'حسن', 'days' => $absenceCount, 'color' => '#8fd19e'],
+                    $absenceCount <= 7 => ['label' => 'لا بأس به', 'days' => $absenceCount, 'color' => '#ffc107'],
+                    $absenceCount <= 10 => ['label' => 'متوسط', 'days' => $absenceCount, 'color' => '#fd7e14'],
+                    default => ['label' => 'ضعيف', 'days' => $absenceCount, 'color' => '#dc3545'],
+                };
             }
         );
     }
@@ -324,47 +317,54 @@ class Student extends Model
 
     public function getCurrentConsecutiveAbsentDays(): int
     {
-        // Get date range: last 15 days (today - 14 days to today)
         $startDate = now()->subDays(14)->format('Y-m-d');
         $endDate = now()->format('Y-m-d');
 
-        // Get progress records within the last 15 days, ordered by date DESC
-        $recentProgresses = $this->progresses()
-            ->whereBetween('date', [$startDate, $endDate])
-            ->orderBy('date', 'desc')
-            ->get();
-
-        // If no personal progress, check if the GROUP was working
-        if ($recentProgresses->isEmpty()) {
-            // Check if the group had any activity - if yes, student is essentially absent
-            $groupHadActivity = $this->group?->progresses()
+        $recentProgresses = $this->relationLoaded('progresses')
+            ? $this->progresses
                 ->whereBetween('date', [$startDate, $endDate])
-                ->exists();
+                ->sortByDesc('date')
+                ->values()
+            : $this->progresses()
+                ->whereBetween('date', [$startDate, $endDate])
+                ->orderBy('date', 'desc')
+                ->get();
 
-            if ($groupHadActivity) {
-                // Count working days in the group as absent days for this student
-                return $this->group->progresses()
-                    ->whereBetween('date', [$startDate, $endDate])
-                    ->distinct('date')
-                    ->count('date');
-            }
+        if ($recentProgresses->isEmpty()) {
+            return $this->countGroupWorkingDays($startDate, $endDate);
+        }
+
+        return $this->countConsecutiveAbsences($recentProgresses);
+    }
+
+    private function countGroupWorkingDays(string $startDate, string $endDate): int
+    {
+        $groupHadActivity = $this->group?->progresses()
+            ->whereBetween('date', [$startDate, $endDate])
+            ->exists();
+
+        if (!$groupHadActivity) {
             return 0;
         }
 
+        return $this->group->progresses()
+            ->whereBetween('date', [$startDate, $endDate])
+            ->distinct('date')
+            ->count('date');
+    }
+
+    private function countConsecutiveAbsences($progresses): int
+    {
         $consecutiveAbsentDays = 0;
 
-        // Check from most recent date backwards
-        foreach ($recentProgresses as $progress) {
-            // Skip null status records (WhatsApp reminder sent, pending) - continue counting
+        foreach ($progresses as $progress) {
             if ($progress->status === null) {
                 continue;
             }
 
-            // Only count explicit absence records without reason
             if ($progress->status === 'absent' && (int)$progress->with_reason === 0) {
                 $consecutiveAbsentDays++;
             } else {
-                // Stop counting when we find a present day (memorized status) or absent with reason
                 break;
             }
         }

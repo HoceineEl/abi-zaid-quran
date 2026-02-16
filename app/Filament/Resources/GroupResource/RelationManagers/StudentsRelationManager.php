@@ -312,40 +312,10 @@ class StudentsRelationManager extends RelationManager
                     ->icon('heroicon-o-share')
                     ->size(ActionSize::Small)
                     ->color('success')
-                    ->action(function () {
-                        $students = self::getSortedStudentsForAttendanceReport($this->ownerRecord);
-
-                        // Calculate presence percentage (excluding absent with reason from the total count)
-                        // Only count students who are present or absent without reason
-                        $countableStudents = $students->filter(function ($student) {
-                            // Include present students
-                            if ($student->attendance_count > 0) {
-                                return true;
-                            }
-                            // Include absent without reason students
-                            $todayProgress = $student->today_progress;
-                            return !($todayProgress && $todayProgress->status === 'absent' && $todayProgress->with_reason === true);
-                        });
-
-                        $totalStudents = $countableStudents->count();
-                        $presentStudents = $countableStudents->where('attendance_count', '>', 0)->count();
-                        $presencePercentage = $totalStudents > 0 ? round(($presentStudents / $totalStudents) * 100) : 0;
-
-                        $html = view('components.students-export-table', [
-                            'showAttendanceRemark' => true,
-                            'students' => $students,
-                            'group' => $this->ownerRecord,
-                            'presencePercentage' => $presencePercentage,
-                        ])->render();
-
-                        $this->dispatch('export-table', [
-                            'showAttendanceRemark' => true,
-                            'html' => $html,
-                            'groupName' => $this->ownerRecord->name,
-                            'presencePercentage' => $presencePercentage,
-                            'dateRange' => 'آخر 30 يوم'
-                        ]);
-                    }),
+                    ->action(fn() => $this->dispatch(
+                        'export-table',
+                        \App\Services\AttendanceReportService::prepareGroupExportData($this->ownerRecord)
+                    )),
                 Action::make('import_whatsapp_attendance')
                     ->label('التحضير بسجل الواتساب')
                     ->icon('heroicon-o-chat-bubble-left-right')
@@ -1298,53 +1268,36 @@ MSG;
             }])
             ->get();
 
-        // First sort by today's attendance status (present first)
-        $students = $students->sortByDesc('attendance_count');
+        $presentStudents = $students->filter(fn($student) => $student->attendance_count > 0);
+        $absentStudents = $students->filter(fn($student) => self::isAbsentWithoutReason($student, $date));
 
-        // Then prepare and sort by attendance remark within each group
-        // Mark as present only if attendance_count > 0 (status = 'memorized')
-        // Exclude students with absence by reason from being counted as absent
-        $presentStudents = $students->filter(function ($student) use ($date) {
-            return $student->attendance_count > 0;
-        })->values();
+        $sortedPresent = self::sortByAttendanceRemark($presentStudents);
+        $sortedAbsent = self::sortByAttendanceRemark($absentStudents);
 
-        $absentStudents = $students->filter(function ($student) use ($date) {
-            // Only count as absent if attendance_count = 0 AND not absent with reason
-            if ($student->attendance_count > 0) {
-                return false;
-            }
-            // Check if student is absent with reason for this date
-            $todayProgress = $student->progresses->where('date', $date)->first();
-            return !($todayProgress && $todayProgress->status === 'absent' && $todayProgress->with_reason === true);
-        })->values();
-
-        // Sort present students by attendance remark
-        $sortedPresent = $presentStudents->sortBy(function ($student) {
-            $remarkScores = [
-                'ممتاز' => 1,
-                'جيد' => 2,
-                'حسن' => 3,
-                'لا بأس به' => 4,
-                'متوسط' => 5,
-                'ضعيف' => 6
-            ];
-            return $remarkScores[$student->attendanceRemark['label']] ?? 7;
-        })->values();
-
-        // Sort absent students by attendance remark
-        $sortedAbsent = $absentStudents->sortBy(function ($student) {
-            $remarkScores = [
-                'ممتاز' => 1,
-                'جيد' => 2,
-                'حسن' => 3,
-                'لا بأس به' => 4,
-                'متوسط' => 5,
-                'ضعيف' => 6
-            ];
-            return $remarkScores[$student->attendanceRemark['label']] ?? 7;
-        })->values();
-
-        // Combine the sorted collections
         return $sortedPresent->concat($sortedAbsent);
+    }
+
+    private static function isAbsentWithoutReason(Student $student, string $date): bool
+    {
+        if ($student->attendance_count > 0) {
+            return false;
+        }
+
+        $todayProgress = $student->progresses->where('date', $date)->first();
+        return !($todayProgress && $todayProgress->status === 'absent' && $todayProgress->with_reason === true);
+    }
+
+    private static function sortByAttendanceRemark($students)
+    {
+        $remarkScores = [
+            'ممتاز' => 1,
+            'جيد' => 2,
+            'حسن' => 3,
+            'لا بأس به' => 4,
+            'متوسط' => 5,
+            'ضعيف' => 6
+        ];
+
+        return $students->sortBy(fn($student) => $remarkScores[$student->attendanceRemark['label']] ?? 7)->values();
     }
 }
