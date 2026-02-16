@@ -16,7 +16,6 @@ use Filament\Tables\Actions\Action as TableAction;
 use Filament\Tables\Columns\ViewColumn;
 use Filament\Tables\Enums\ActionsPosition;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Cache;
 
 class WhatsAppSessionResource extends BaseResource
 {
@@ -76,7 +75,6 @@ class WhatsAppSessionResource extends BaseResource
                     $whatsappService = app(WhatsAppService::class);
                     $result = $whatsappService->refreshQrCode($record);
 
-                    // Check if we got a QR code
                     if (! empty($record->fresh()->qr_code)) {
                         Notification::make()
                             ->title('تم تحديث رمز QR بنجاح')
@@ -107,10 +105,8 @@ class WhatsAppSessionResource extends BaseResource
             ->color('success')
             ->visible(fn (WhatsAppSession $record) => $record->status->canStartSession())
             ->action(function (WhatsAppSession $record) {
-                $whatsappService = app(WhatsAppService::class);
-
                 try {
-                    // Use async start - returns immediately, polling handles QR retrieval
+                    $whatsappService = app(WhatsAppService::class);
                     $whatsappService->startSessionAsync($record);
 
                     $record->refresh();
@@ -158,10 +154,9 @@ class WhatsAppSessionResource extends BaseResource
                     ->maxLength(255),
             ])
             ->action(function (array $data) {
-                // Delete all existing sessions for this user with cascade
                 WhatsAppSession::where('user_id', auth()->id())->delete();
 
-                $session = WhatsAppSession::create([
+                WhatsAppSession::create([
                     'user_id' => auth()->id(),
                     'name' => $data['name'],
                     'status' => WhatsAppConnectionStatus::DISCONNECTED,
@@ -197,14 +192,12 @@ class WhatsAppSessionResource extends BaseResource
             ->color('info')
             ->visible(fn (WhatsAppSession $record) => $record->status->canShowQrCode())
             ->modalContent(function (WhatsAppSession $record) {
-                // Try to refresh QR code if needed
                 if ($record->status->canShowQrCode() && ! $record->qr_code) {
                     try {
                         $whatsappService = app(WhatsAppService::class);
                         $whatsappService->refreshQrCode($record);
-                        $record->refresh(); // Reload the model
-                    } catch (\Exception $e) {
-                        // Silent fail, will show no QR available message
+                        $record->refresh();
+                    } catch (\Exception) {
                     }
                 }
 
@@ -231,9 +224,7 @@ class WhatsAppSessionResource extends BaseResource
             ->action(function (WhatsAppSession $record) {
                 try {
                     $whatsappService = app(WhatsAppService::class);
-                    $result = $whatsappService->logout($record);
-
-                    $record->markAsDisconnected();
+                    $whatsappService->logout($record);
 
                     Notification::make()
                         ->title('تم تسجيل الخروج بنجاح')

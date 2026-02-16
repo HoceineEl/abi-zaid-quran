@@ -6,7 +6,6 @@ use App\Enums\WhatsAppConnectionStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -56,10 +55,6 @@ class WhatsAppSession extends Model
 
         if ($sessionData !== null) {
             $updateData['session_data'] = $sessionData;
-
-            if (isset($sessionData['token']) && ! empty($sessionData['token'])) {
-                Cache::put("whatsapp_token_{$this->id}", $sessionData['token'], now()->addHours(24));
-            }
         }
 
         $this->update($updateData);
@@ -67,8 +62,6 @@ class WhatsAppSession extends Model
 
     public function markAsDisconnected(): void
     {
-        Cache::forget("whatsapp_token_{$this->id}");
-
         $this->update([
             'status' => WhatsAppConnectionStatus::DISCONNECTED,
             'connected_at' => null,
@@ -78,7 +71,6 @@ class WhatsAppSession extends Model
 
     public function updateQrCode(?string $qrCode): void
     {
-        // Let the service handle QR code cleaning
         $service = app(\App\Services\WhatsAppService::class);
         $cleanedQrCode = $service->cleanQrCodeData($qrCode);
 
@@ -91,11 +83,6 @@ class WhatsAppSession extends Model
     public function getQrCodeData(): ?string
     {
         return $this->qr_code;
-    }
-
-    public function getSessionToken(): ?string
-    {
-        return $this->session_data['token'] ?? null;
     }
 
     public function scopeActive($query)
@@ -123,20 +110,12 @@ class WhatsAppSession extends Model
             ->first();
     }
 
-    /**
-     * Delete session with proper cleanup
-     */
-    public function delete()
+    public function delete(): ?bool
     {
         try {
             DB::transaction(function () {
-                // Clear cached data
-                $this->clearCachedTokens();
-
-                // Try to logout from service
                 $this->tryLogoutFromService();
 
-                // Delete the session (cascade will handle message histories)
                 parent::delete();
             });
 
@@ -151,17 +130,6 @@ class WhatsAppSession extends Model
         }
     }
 
-    /**
-     * Force delete session with cleanup (same as delete now due to cascade)
-     */
-    public function forceDeleteWithRelated(): bool
-    {
-        return $this->delete();
-    }
-
-    /**
-     * Try to logout from WhatsApp service
-     */
     protected function tryLogoutFromService(): void
     {
         try {
@@ -170,34 +138,18 @@ class WhatsAppSession extends Model
                 $whatsappService->logout($this);
             }
         } catch (\Exception $e) {
-            \Log::warning('Failed to logout from WhatsApp service during deletion', [
+            Log::warning('Failed to logout from WhatsApp service during deletion', [
                 'session_id' => $this->id,
                 'error' => $e->getMessage(),
             ]);
         }
     }
 
-    /**
-     * Clear all cached tokens and data for this session
-     */
-    protected function clearCachedTokens(): void
-    {
-        Cache::forget("whatsapp_token_{$this->id}");
-        Cache::forget("last_poll_{$this->id}");
-        Cache::forget("poll_count_{$this->id}");
-        Cache::forget("error_count_{$this->id}");
-    }
-
-    /**
-     * Boot method to handle model events
-     */
     protected static function boot()
     {
         parent::boot();
 
-        // When a session is being deleted, clean up related data
         static::deleting(function ($session) {
-            $session->clearCachedTokens();
             $session->tryLogoutFromService();
         });
     }

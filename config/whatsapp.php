@@ -1,8 +1,8 @@
 <?php
 
 return [
-    'api_url' => env('WHATSAPP_API_URL', 'http://localhost:3000'),
-    'api_token' => env('WHATSAPP_API_TOKEN'),
+    'api_url' => env('WHATSAPP_API_URL', 'http://localhost:8080'),
+    'api_key' => env('WHATSAPP_API_KEY'),
     'webhook_url' => env('WHATSAPP_WEBHOOK_URL'),
 
     // Anti-ban: Random delay range between messages (in seconds)

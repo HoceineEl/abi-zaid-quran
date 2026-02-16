@@ -35,13 +35,7 @@ enum WhatsAppConnectionStatus: string
 
     public function isActive(): bool
     {
-        return in_array($this, [
-            self::CONNECTED,
-            self::CREATING,
-            self::CONNECTING,
-            self::PENDING,
-            self::GENERATING_QR,
-        ]);
+        return $this !== self::DISCONNECTED;
     }
 
     public function canShowQrCode(): bool
@@ -56,25 +50,20 @@ enum WhatsAppConnectionStatus: string
 
     public static function fromApiStatus(string $apiStatus): self
     {
-        return match (strtoupper($apiStatus)) {
-            'CONNECTED' => self::CONNECTED,
-            'GENERATING_QR' => self::GENERATING_QR,
-            'CREATING' => self::CREATING,
-            'CONNECTING' => self::CONNECTING,
-            'PENDING' => self::PENDING,
-            'DISCONNECTED' => self::DISCONNECTED,
+        return match (strtolower($apiStatus)) {
+            'open', 'connected' => self::CONNECTED,
+            'connecting' => self::CONNECTING,
+            'close', 'closed', 'disconnected' => self::DISCONNECTED,
+            'generating_qr' => self::GENERATING_QR,
+            'creating' => self::CREATING,
+            'pending' => self::PENDING,
             default => self::DISCONNECTED,
         };
     }
 
     public function canReloadQr(): bool
     {
-        return in_array($this, [
-            self::CREATING,
-            self::CONNECTING,
-            self::PENDING,
-            self::GENERATING_QR,
-        ]);
+        return $this->canShowQrCode();
     }
 
     public function canStartSession(): bool
@@ -84,42 +73,21 @@ enum WhatsAppConnectionStatus: string
 
     public function shouldPoll(): bool
     {
-        return in_array($this, [
-            self::CREATING,
-            self::CONNECTING,
-            self::PENDING,
-            self::GENERATING_QR,
-        ]);
+        return $this->canShowQrCode();
     }
 
     public function shouldShowQrCode(): bool
     {
-        return in_array($this, [
-            self::CREATING,
-            self::CONNECTING,
-            self::PENDING,
-            self::GENERATING_QR,
-        ]);
+        return $this->canShowQrCode();
     }
 
     public function canLogout(): bool
     {
-        return in_array($this, [
-            self::CONNECTED,
-            self::CREATING,
-            self::CONNECTING,
-            self::PENDING,
-            self::GENERATING_QR,
-        ]);
+        return $this->isActive();
     }
 
-    /**
-     * Check if transition to a new status is valid.
-     * This prevents invalid status changes like going from DISCONNECTED to CONNECTED directly.
-     */
     public function canTransitionTo(self $newStatus): bool
     {
-        // Same status is always allowed
         if ($this === $newStatus) {
             return true;
         }
@@ -164,18 +132,15 @@ enum WhatsAppConnectionStatus: string
         return in_array($newStatus, $validTransitions[$this->value] ?? []);
     }
 
-    /**
-     * Get the polling interval in milliseconds for this status.
-     */
     public function getPollingInterval(): int
     {
         return match ($this) {
-            self::CREATING => 2000,       // Fast polling when creating
-            self::CONNECTING => 2000,     // Fast polling when connecting
-            self::GENERATING_QR => 3000,  // Slightly slower for QR generation
-            self::PENDING => 5000,        // QR is shown, waiting for scan
-            self::CONNECTED => 30000,     // Health check every 30 seconds
-            self::DISCONNECTED => 0,      // No polling when disconnected
+            self::CREATING => 2000,
+            self::CONNECTING => 2000,
+            self::GENERATING_QR => 3000,
+            self::PENDING => 5000,
+            self::CONNECTED => 30000,
+            self::DISCONNECTED => 0,
         };
     }
 }

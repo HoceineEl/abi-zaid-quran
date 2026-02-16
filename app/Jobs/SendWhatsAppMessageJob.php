@@ -45,12 +45,6 @@ class SendWhatsAppMessageJob implements ShouldQueue
         $this->onQueue('whatsapp');
     }
 
-    /**
-     * Calculate staggered delay for message dispatch.
-     *
-     * Uses an atomic counter per session to assign each message a unique position,
-     * spacing them by the configured interval. The counter auto-expires after 10 minutes.
-     */
     public static function getStaggeredDelay(string $sessionId): int
     {
         $counterKey = "whatsapp_batch_counter:{$sessionId}";
@@ -64,7 +58,6 @@ class SendWhatsAppMessageJob implements ShouldQueue
             return 0;
         }
 
-        // Each message gets a random delay between min and max, cumulated by position
         return ($position - 1) * rand($delayMin, $delayMax);
     }
 
@@ -79,17 +72,17 @@ class SendWhatsAppMessageJob implements ShouldQueue
     public function handle(WhatsAppService $whatsappService): void
     {
         try {
-            $this->validateSession();
+            $session = $this->validateSession();
 
             $result = $whatsappService->sendTextMessage(
-                $this->sessionId,
+                $session->name,
                 $this->to,
                 $this->message
             );
 
             $this->updateMessageHistory(
                 WhatsAppMessageStatus::SENT,
-                whatsappMessageId: $result[0]['messageId'] ?? null,
+                whatsappMessageId: $result['key']['id'] ?? null,
             );
 
             $this->onSuccess();
@@ -107,16 +100,23 @@ class SendWhatsAppMessageJob implements ShouldQueue
         }
     }
 
-    protected function validateSession(): void
+    protected function validateSession(): WhatsAppSession
     {
         $session = WhatsAppSession::find($this->sessionId);
 
-        if (! $session || ! $session->isConnected()) {
-            $reason = $session ? 'Session not connected' : 'Session not found';
-            $this->updateMessageHistory(WhatsAppMessageStatus::FAILED, errorMessage: $reason);
+        if (! $session) {
+            $this->updateMessageHistory(WhatsAppMessageStatus::FAILED, errorMessage: 'Session not found');
 
-            throw new \Exception($reason);
+            throw new \RuntimeException('Session not found');
         }
+
+        if (! $session->isConnected()) {
+            $this->updateMessageHistory(WhatsAppMessageStatus::FAILED, errorMessage: 'Session not connected');
+
+            throw new \RuntimeException('Session not connected');
+        }
+
+        return $session;
     }
 
     public function failed(Throwable $exception): void
@@ -176,16 +176,17 @@ class SendWhatsAppMessageJob implements ShouldQueue
         }
 
         $messageResponseType = MessageResponseStatus::tryFrom($this->metadata['message_response_type'] ?? '');
+        $date = now()->format('Y-m-d');
 
         $updateData = [
-            'contact_date' => now()->format('Y-m-d'),
+            'contact_date' => $date,
             'message_response' => $messageResponseType,
         ];
 
         if ($messageResponseType === MessageResponseStatus::ReminderMessage) {
-            $updateData['reminder_message_date'] = now()->format('Y-m-d');
+            $updateData['reminder_message_date'] = $date;
         } elseif ($messageResponseType === MessageResponseStatus::WarningMessage) {
-            $updateData['warning_message_date'] = now()->format('Y-m-d');
+            $updateData['warning_message_date'] = $date;
         }
 
         $disconnection->update($updateData);

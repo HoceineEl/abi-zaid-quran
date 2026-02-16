@@ -9,7 +9,6 @@ use App\Traits\WhatsApp\SessionManagement;
 use App\Traits\WhatsApp\UtilityOperations;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -17,55 +16,51 @@ class WhatsAppService
 {
     use SessionManagement, UtilityOperations;
 
-    protected $client;
-
-    protected $apiUrl;
-
-    protected $accessToken;
+    protected Client $client;
 
     protected string $baseUrl;
 
-    protected ?string $masterKey;
+    protected ?string $apiKey;
+
+    protected ?string $apiUrl;
+
+    protected ?string $accessToken;
 
     public function __construct()
     {
         $this->client = new Client;
-        // Legacy WhatsApp API (for templates)
+
+        // Legacy WhatsApp Cloud API (for templates via Core.php)
         $this->apiUrl = config('services.whatsapp.api_url');
         $this->accessToken = config('services.whatsapp.access_token');
 
-        // WhatsApp Web API configuration
-        $this->baseUrl = config('whatsapp.api_url', 'http://localhost:3000');
-        $this->masterKey = config('whatsapp.api_token');
+        // Evolution API configuration
+        $this->baseUrl = rtrim(config('whatsapp.api_url', 'http://localhost:8080'), '/');
+        $this->apiKey = config('whatsapp.api_key', '');
 
-        if (is_null($this->masterKey)) {
-            Log::warning('WhatsApp API token is null. Check whatsapp.api_token config.');
+        if (empty($this->apiKey)) {
+            Log::warning('WhatsApp API key is not configured. Check whatsapp.api_key config.');
         }
     }
 
-    /**
-     * Get the session ID with appropriate suffix for local development
-     */
-    protected function formatSessionId($sessionId): string
+    protected function getApiKey(): string
     {
-        // Add suffix for local development environment
-        if (app()->environment('local')) {
-            return $sessionId.'_local_abizaid';
+        if (empty($this->apiKey)) {
+            throw new \RuntimeException('WhatsApp API key is not configured.');
         }
 
-        return (string) $sessionId;
+        return $this->apiKey;
     }
 
-    protected function getMasterKey(): string
+    protected function evolutionHeaders(): array
     {
-        if (is_null($this->masterKey)) {
-            throw new \Exception('WhatsApp API token is not configured.');
-        }
-
-        return $this->masterKey;
+        return [
+            'apikey' => $this->getApiKey(),
+            'Content-Type' => 'application/json',
+        ];
     }
 
-    public function sendMessage($student, $message = null)
+    public function sendMessage($student, ?string $message = null): array
     {
         try {
             $response = $this->client->post($this->apiUrl, [
@@ -79,17 +74,12 @@ class WhatsAppService
                     'type' => 'template',
                     'template' => [
                         'name' => 'alert',
-                        'language' => [
-                            'code' => 'ar',
-                        ],
+                        'language' => ['code' => 'ar'],
                         'components' => [
                             [
                                 'type' => 'body',
                                 'parameters' => [
-                                    [
-                                        'type' => 'text',
-                                        'text' => $student->name,
-                                    ],
+                                    ['type' => 'text', 'text' => $student->name],
                                 ],
                             ],
                         ],
@@ -107,37 +97,8 @@ class WhatsAppService
         }
     }
 
-    public function sendVoiceMessage($student, $audioUrl)
+    public function sendCustomMessage($student, ?string $message = null): array
     {
-        try {
-            $response = $this->client->post($this->apiUrl, [
-                'headers' => [
-                    'Authorization' => 'Bearer '.$this->accessToken,
-                    'Content-Type' => 'application/json',
-                ],
-                'json' => [
-                    'messaging_product' => 'whatsapp',
-                    'to' => 'whatsapp:'.str_replace('+', '', phone($student->phone, 'MA')->formatE164()),
-                    'type' => 'audio',
-                    'audio' => [
-                        'link' => $audioUrl,
-                    ],
-                ],
-            ]);
-
-            return json_decode($response->getBody(), true);
-        } catch (RequestException $e) {
-            if ($e->hasResponse()) {
-                return json_decode($e->getResponse()->getBody()->getContents(), true);
-            }
-
-            return ['error' => $e->getMessage()];
-        }
-    }
-
-    public function sendCustomMessage($student, $message = null)
-    {
-
         try {
             $response = $this->client->post($this->apiUrl, [
                 'headers' => [
@@ -150,21 +111,13 @@ class WhatsAppService
                     'type' => 'template',
                     'template' => [
                         'name' => 'absence',
-                        'language' => [
-                            'code' => 'ar',
-                        ],
+                        'language' => ['code' => 'ar'],
                         'components' => [
                             [
                                 'type' => 'body',
                                 'parameters' => [
-                                    [
-                                        'type' => 'text',
-                                        'text' => $student->name,
-                                    ],
-                                    [
-                                        'type' => 'text',
-                                        'text' => $message,
-                                    ],
+                                    ['type' => 'text', 'text' => $student->name],
+                                    ['type' => 'text', 'text' => $message],
                                 ],
                             ],
                         ],
@@ -182,57 +135,75 @@ class WhatsAppService
         }
     }
 
-    // WhatsApp Web API Methods - now using SessionManagement and UtilityOperations traits
-
-    // getSessionStatus method is now provided by SessionManagement trait
-
-    // startSession method is now provided by SessionManagement trait
-
-    public function sendTextMessage(string $sessionId, string $to, string $message): array
+    public function sendTextMessage(string $instanceName, string $to, string $message): array
     {
-        $formattedSessionId = $this->formatSessionId($sessionId);
-        $token = Cache::get("whatsapp_token_{$sessionId}");
-
-        if (! $token) {
-            throw new \Exception("Session token not found for session {$sessionId}");
-        }
-
-        // Format phone number using the phone helper (remove + sign)
         $formattedPhone = str_replace('+', '', phone($to, 'MA')->formatE164());
 
         try {
-            $messageData = [
-                [
-                    'recipient_type' => 'individual',
-                    'to' => $formattedPhone,
-                    'type' => 'text',
-                    'text' => [
-                        'body' => $message,
-                    ],
-                ],
-            ];
-
-            $response = Http::withHeaders([
-                'Authorization' => "Bearer {$token}",
-                'Content-Type' => 'application/json',
-            ])->post("{$this->baseUrl}/api/v1/messages?sessionId={$formattedSessionId}", $messageData);
+            $response = Http::withHeaders($this->evolutionHeaders())
+                ->post("{$this->baseUrl}/message/sendText/{$instanceName}", [
+                    'number' => $formattedPhone,
+                    'text' => $message,
+                ]);
 
             if ($response->successful()) {
                 $result = $response->json();
 
                 Log::info('WhatsApp message sent', [
-                    'session_id' => $sessionId,
+                    'instance' => $instanceName,
                     'to' => $formattedPhone,
-                    'message_id' => $result[0]['messageId'] ?? null,
+                    'message_id' => $result['key']['id'] ?? null,
                 ]);
 
                 return $result;
             }
 
-            throw new \Exception("HTTP {$response->status()}: ".$response->body());
+            throw new \RuntimeException("HTTP {$response->status()}: ".$response->body());
         } catch (\Exception $e) {
             Log::error('Failed to send WhatsApp message', [
-                'session_id' => $sessionId,
+                'instance' => $instanceName,
+                'to' => $to,
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
+        }
+    }
+
+    public function sendMediaMessage(string $instanceName, string $to, string $mediaUrl, string $mediaType = 'image', ?string $caption = null): array
+    {
+        $formattedPhone = str_replace('+', '', phone($to, 'MA')->formatE164());
+
+        try {
+            $payload = [
+                'number' => $formattedPhone,
+                'mediatype' => $mediaType,
+                'media' => $mediaUrl,
+            ];
+
+            if ($caption) {
+                $payload['caption'] = $caption;
+            }
+
+            $response = Http::withHeaders($this->evolutionHeaders())
+                ->post("{$this->baseUrl}/message/sendMedia/{$instanceName}", $payload);
+
+            if ($response->successful()) {
+                $result = $response->json();
+
+                Log::info('WhatsApp media message sent', [
+                    'instance' => $instanceName,
+                    'to' => $formattedPhone,
+                    'media_type' => $mediaType,
+                    'message_id' => $result['key']['id'] ?? null,
+                ]);
+
+                return $result;
+            }
+
+            throw new \RuntimeException("HTTP {$response->status()}: ".$response->body());
+        } catch (\Exception $e) {
+            Log::error('Failed to send WhatsApp media message', [
+                'instance' => $instanceName,
                 'to' => $to,
                 'error' => $e->getMessage(),
             ]);
@@ -269,49 +240,28 @@ class WhatsAppService
         ]);
     }
 
-    // deleteSession method is now provided by SessionManagement trait
-
-    // getSessionToken method is now provided by SessionManagement trait
-
     public function refreshQrCode(WhatsAppSession $session): void
     {
         try {
-            // First try to get a fresh QR code by calling the status endpoint
-            $result = $this->getSessionStatus($session->id);
+            $instanceName = $session->name;
 
-            if (isset($result['qr']) && ! empty($result['qr'])) {
-                $session->updateQrCode($result['qr']);
+            $response = Http::withHeaders($this->evolutionHeaders())
+                ->get("{$this->baseUrl}/instance/connect/{$instanceName}");
 
-                return;
-            }
+            if ($response->successful()) {
+                $result = $response->json();
+                $base64Qr = $result['base64'] ?? null;
 
-            // If no QR code in status, try to trigger a refresh by requesting QR generation
-            try {
-                $response = Http::withHeaders([
-                    'X-Master-Key' => $this->getMasterKey(),
-                    'Content-Type' => 'application/json',
-                ])->post("{$this->baseUrl}/api/v1/sessions/{$session->id}/qr");
+                if ($base64Qr) {
+                    $session->updateQrCode($base64Qr);
 
-                if ($response->successful()) {
-                    $qrData = $response->json();
-                    if (isset($qrData['qr']) && ! empty($qrData['qr'])) {
-                        $session->updateQrCode($qrData['qr']);
-
-                        return;
-                    }
+                    return;
                 }
-            } catch (\Exception $qrException) {
-                Log::warning('QR refresh endpoint failed', [
-                    'session_id' => $session->id,
-                    'error' => $qrException->getMessage(),
-                ]);
             }
 
-            throw new \Exception('No QR code available for session');
+            throw new \RuntimeException('No QR code available for instance');
         } catch (\Exception $e) {
-            throw new \Exception('Failed to refresh QR code: '.$e->getMessage());
+            throw new \RuntimeException('Failed to refresh QR code: '.$e->getMessage());
         }
     }
-
-    // logout method is now provided by SessionManagement trait
 }
