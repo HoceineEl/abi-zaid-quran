@@ -5,8 +5,6 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\StudentResource\Pages;
 use App\Models\Group;
 use App\Models\Student;
-use App\Enums\MessageResponseStatus;
-use App\Tables\Columns\StudentProgress;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -110,6 +108,7 @@ class StudentResource extends Resource
                     ->searchable(),
             ])
             ->actions([
+                Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\Action::make('add_disconnection')
                     ->label('إضافة انقطاع')
@@ -141,6 +140,14 @@ class StudentResource extends Resource
             ]);
     }
 
+    public static function getWidgets(): array
+    {
+        return [
+            StudentResource\Widgets\StudentStatsOverview::class,
+            StudentResource\Widgets\StudentAttendanceChart::class,
+        ];
+    }
+
     public static function canAccess(): bool
     {
         return auth()->user()->isAdministrator();
@@ -158,6 +165,7 @@ class StudentResource extends Resource
         return [
             'index' => Pages\ListStudents::route('/'),
             'create' => Pages\CreateStudent::route('/create'),
+            'view' => Pages\ViewStudent::route('/{record}'),
             'edit' => Pages\EditStudent::route('/{record}/edit'),
         ];
     }
