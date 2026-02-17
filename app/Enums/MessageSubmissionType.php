@@ -48,4 +48,18 @@ enum MessageSubmissionType: string implements HasLabel, HasColor, HasIcon, HasDe
             self::Both => 'سيتم إعتبار الطلاب الذين أرسلوا وسائط صوتية أو رسائل نصية كحاضرين',
         };
     }
+
+    /**
+     * WhatsApp messageType values accepted for attendance.
+     *
+     * @return string[]
+     */
+    public function whatsappMessageTypes(): array
+    {
+        return match ($this) {
+            self::Media => ['audioMessage'],
+            self::Text => ['conversation', 'extendedTextMessage'],
+            self::Both => ['audioMessage', 'conversation', 'extendedTextMessage'],
+        };
+    }
 }

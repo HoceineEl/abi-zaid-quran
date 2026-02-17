@@ -3,6 +3,7 @@
 namespace App\Traits\WhatsApp;
 
 use App\Models\WhatsAppSession;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -102,7 +103,9 @@ trait UtilityOperations
     {
         try {
             $response = Http::withHeaders($this->evolutionHeaders())
-                ->get("{$this->baseUrl}/group/fetchAllGroups/{$instanceName}");
+                ->get("{$this->baseUrl}/group/fetchAllGroups/{$instanceName}", [
+                    'getParticipants' => 'false',
+                ]);
 
             if ($response->successful()) {
                 $groups = $response->json();
@@ -221,6 +224,137 @@ trait UtilityOperations
 
             throw $e;
         }
+    }
+
+    public function findGroupMessages(string $instanceName, string $groupJid, ?string $dateFrom = null, ?string $dateTo = null, int $limit = 200): array
+    {
+        try {
+            $where = ['remoteJid' => $groupJid];
+
+            if ($dateFrom || $dateTo) {
+                $where['messageTimestamp'] = array_filter([
+                    'gte' => $dateFrom ? Carbon::parse($dateFrom)->startOfDay()->toISOString() : null,
+                    'lte' => $dateTo ? Carbon::parse($dateTo)->endOfDay()->toISOString() : null,
+                ]);
+            }
+
+            $response = Http::withHeaders($this->evolutionHeaders())
+                ->post("{$this->baseUrl}/chat/findMessages/{$instanceName}", [
+                    'where' => $where,
+                    'page' => 1,
+                    'offset' => $limit,
+                ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $records = $data['messages']['records'] ?? $data['records'] ?? $data;
+
+                if (! is_array($records)) {
+                    $records = [];
+                }
+
+                Log::info('WhatsApp group messages retrieved', [
+                    'instance' => $instanceName,
+                    'group_jid' => $groupJid,
+                    'messages_count' => count($records),
+                ]);
+
+                return $records;
+            }
+
+            throw new \RuntimeException("HTTP {$response->status()}: ".$response->body());
+        } catch (\Exception $e) {
+            Log::error('Failed to find WhatsApp group messages', [
+                'instance' => $instanceName,
+                'group_jid' => $groupJid,
+                'error' => $e->getMessage(),
+            ]);
+
+            throw $e;
+        }
+    }
+
+    public function getGroupAttendeesForDate(string $instanceName, string $groupJid, string $date, array $allowedMessageTypes = ['audioMessage']): array
+    {
+        $lidToPhone = $this->buildLidToPhoneMap($instanceName, $groupJid);
+        $messages = $this->findGroupMessages($instanceName, $groupJid, $date, $date);
+
+        $senderPhones = collect($messages)
+            ->filter(function (array $message) use ($groupJid, $allowedMessageTypes): bool {
+                $key = $message['key'] ?? [];
+
+                return ($key['remoteJid'] ?? '') === $groupJid
+                    && ! ($key['fromMe'] ?? false)
+                    && in_array($message['messageType'] ?? '', $allowedMessageTypes, true);
+            })
+            ->map(fn (array $message) => $this->resolveMessageSenderPhone($message, $lidToPhone))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        Log::info('WhatsApp group attendees extracted for date', [
+            'instance' => $instanceName,
+            'group_jid' => $groupJid,
+            'date' => $date,
+            'attendees_count' => count($senderPhones),
+        ]);
+
+        return $senderPhones;
+    }
+
+    /**
+     * Resolve the sender phone number from a WhatsApp group message.
+     */
+    protected function resolveMessageSenderPhone(array $message, array $lidToPhone): ?string
+    {
+        $key = $message['key'] ?? [];
+
+        // participantAlt has the @s.whatsapp.net format (most reliable)
+        $participantAlt = $key['participantAlt'] ?? null;
+        if ($participantAlt && str_contains($participantAlt, '@s.whatsapp.net')) {
+            return $this->stripWhatsAppSuffix($participantAlt);
+        }
+
+        // participant may have @s.whatsapp.net or @lid
+        $participant = $key['participant'] ?? null;
+        if ($participant) {
+            if (str_contains($participant, '@s.whatsapp.net')) {
+                return $this->stripWhatsAppSuffix($participant);
+            }
+
+            $lid = str_replace('@lid', '', $participant);
+
+            return $lidToPhone[$lid] ?? null;
+        }
+
+        // Fallback: pushName may contain LID in some Evolution API versions
+        $pushName = $message['pushName'] ?? null;
+
+        return ($pushName && isset($lidToPhone[$pushName])) ? $lidToPhone[$pushName] : null;
+    }
+
+    protected function buildLidToPhoneMap(string $instanceName, string $groupJid): array
+    {
+        $participants = $this->getGroupParticipants($instanceName, $groupJid);
+        $participantsList = $participants['participants'] ?? $participants;
+
+        $map = [];
+        foreach ($participantsList as $p) {
+            $lid = str_replace('@lid', '', $p['id'] ?? '');
+            $phone = $this->stripWhatsAppSuffix($p['phoneNumber'] ?? '');
+
+            if ($lid && $phone) {
+                $map[$lid] = $phone;
+            }
+        }
+
+        return $map;
+    }
+
+    protected function stripWhatsAppSuffix(string $jid): string
+    {
+        return str_replace('@s.whatsapp.net', '', $jid);
     }
 
     public function addParticipantsToGroup(string $instanceName, string $groupJid, array $phoneNumbers): array

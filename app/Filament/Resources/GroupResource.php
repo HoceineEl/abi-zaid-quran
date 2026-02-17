@@ -15,8 +15,11 @@ use App\Filament\Resources\GroupResource\RelationManagers\StudentsRelationManage
 use App\Models\Group;
 use App\Models\GroupMessageTemplate;
 use App\Models\User;
+use App\Models\WhatsAppSession;
 use App\Services\AttendanceReportService;
+use App\Services\WhatsAppService;
 use Filament\Forms;
+use Filament\Forms\Components\Actions\Action as FormAction;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -86,6 +89,50 @@ class GroupResource extends Resource
                             ->options(MessageSubmissionType::class)
                             ->inline()
                             ->default(MessageSubmissionType::Media),
+                    ]),
+                Forms\Components\Select::make('whatsapp_group_jid')
+                    ->label('مجموعة واتساب المرتبطة')
+                    ->placeholder('لم يتم ربط مجموعة واتساب')
+                    ->options(fn () => self::fetchWhatsAppGroups())
+                    ->searchable()
+                    ->helperText('اربط هذه المجموعة بمجموعة واتساب للحضور التلقائي')
+                    ->suffixActions([
+                        FormAction::make('refresh_whatsapp_groups')
+                            ->icon('heroicon-o-arrow-path')
+                            ->tooltip('تحديث قائمة المجموعات')
+                            ->color('gray')
+                            ->action(function ($component) {
+                                self::clearWhatsAppGroupsCache();
+
+                                $groups = self::fetchWhatsAppGroups();
+
+                                if (empty($groups)) {
+                                    Notification::make()
+                                        ->warning()
+                                        ->title('لا يمكن جلب مجموعات واتساب')
+                                        ->body('تأكد من أن جلسة واتساب متصلة فعلياً')
+                                        ->send();
+
+                                    return;
+                                }
+
+                                $component->options($groups);
+
+                                Notification::make()
+                                    ->success()
+                                    ->title('تم تحديث قائمة المجموعات')
+                                    ->body('تم العثور على '.count($groups).' مجموعة')
+                                    ->send();
+                            }),
+                        FormAction::make('unlink_whatsapp_group')
+                            ->icon('heroicon-o-x-mark')
+                            ->tooltip('إلغاء ربط مجموعة واتساب')
+                            ->color('danger')
+                            ->requiresConfirmation()
+                            ->modalHeading('إلغاء ربط مجموعة واتساب')
+                            ->modalDescription('هل أنت متأكد من إلغاء ربط مجموعة واتساب؟')
+                            ->visible(fn (Get $get) => filled($get('whatsapp_group_jid')))
+                            ->action(fn (Set $set) => $set('whatsapp_group_jid', null)),
                     ]),
                 Forms\Components\TagsInput::make('ignored_names_phones')
                     ->label('أسماء وأرقام مستثناة من التسجيل')
@@ -475,5 +522,31 @@ class GroupResource extends Resource
     public static function getNavigationBadge(): ?string
     {
         return static::getModel()::count();
+    }
+
+    protected static function fetchWhatsAppGroups(): array
+    {
+        $cacheKey = 'whatsapp_groups_user_'.auth()->id();
+
+        return cache()->remember($cacheKey, now()->addMinutes(10), function () {
+            try {
+                $session = WhatsAppSession::getUserSession(auth()->id());
+
+                if (! $session?->isConnected()) {
+                    return [];
+                }
+
+                return collect(app(WhatsAppService::class)->getSessionGroups($session->name))
+                    ->pluck('subject', 'id')
+                    ->all();
+            } catch (\Exception) {
+                return [];
+            }
+        });
+    }
+
+    protected static function clearWhatsAppGroupsCache(): void
+    {
+        cache()->forget('whatsapp_groups_user_'.auth()->id());
     }
 }
