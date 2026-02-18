@@ -17,8 +17,8 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Filament\Forms\Components\DatePicker;
 use Illuminate\Database\Eloquent\Builder;
-
 use Filament\Forms\Components\Hidden;
+use STS\FilamentImpersonate\Tables\Actions\Impersonate;
 
 class TeacherResource extends Resource
 {
@@ -127,6 +127,8 @@ class TeacherResource extends Resource
                     }),
             ])
             ->actions([
+                Impersonate::make()
+                    ->redirectTo('/teacher'),
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
             ])

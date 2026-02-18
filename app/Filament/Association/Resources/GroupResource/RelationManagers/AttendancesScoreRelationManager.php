@@ -57,11 +57,12 @@ class AttendancesScoreRelationManager extends RelationManager
 
         // Eager load only needed attendance attributes
         $this->ownerRecord->loadMissing(['memorizers' => function ($query) use ($dateRange) {
-            $query->with(['attendances:id,memorizer_id,date,check_in_time,score' => function ($query) use ($dateRange) {
-                $query->whereBetween('date', [
-                    $dateRange->getStartDate()->format('Y-m-d'),
-                    $dateRange->getEndDate()->format('Y-m-d')
-                ]);
+            $query->with(['attendances' => function ($query) use ($dateRange) {
+                $query->select('id', 'memorizer_id', 'date', 'check_in_time', 'score', 'notes', 'custom_note')
+                    ->whereBetween('date', [
+                        $dateRange->getStartDate()->format('Y-m-d'),
+                        $dateRange->getEndDate()->format('Y-m-d')
+                    ]);
             }]);
         }]);
 

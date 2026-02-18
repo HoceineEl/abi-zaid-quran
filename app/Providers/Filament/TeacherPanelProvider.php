@@ -69,7 +69,6 @@ class TeacherPanelProvider extends PanelProvider
             ])
             ->renderHook(
                 PanelsRenderHook::BODY_START,
-
                 fn() => view('components.attendance-export-scripts')
             )
             ->renderHook(PanelsRenderHook::BODY_START, fn() => view('components.vcf-download-scripts'));

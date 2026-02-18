@@ -165,6 +165,7 @@ class GroupResource extends Resource
                 AttendancesScoreRelationManager::class,
             ];
         }
+
         return [
             MemorizersRelationManager::class,
             AttendancesRelationManager::class,
@@ -172,27 +173,27 @@ class GroupResource extends Resource
             PaymentsRelationManager::class,
         ];
     }
+
     public static function getEloquentQuery(): Builder
     {
-        if (auth()->user()->isTeacher()) {
-            $today = strtolower(now()->format('l')); // Get current day name in lowercase
+        $query = parent::getEloquentQuery()
+            ->with('teacher')
+            ->withCount('memorizers');
 
-            return parent::getEloquentQuery()
-                ->where(function ($query) use ($today) {
-                    $query->where('teacher_id', auth()->user()->id)
-                        ->whereJsonContains('days', $today);
-                });
+        if (auth()->user()->isTeacher()) {
+            $today = strtolower(now()->format('l'));
+
+            return $query->where(function ($q) use ($today) {
+                $q->where('teacher_id', auth()->user()->id)
+                    ->whereJsonContains('days', $today);
+            });
         }
-        return parent::getEloquentQuery();
+
+        return $query;
     }
+
     public static function getPages(): array
     {
-        if (auth()->check() && auth()->user()->isTeacher()) {
-            return [
-                'index' => Pages\ListGroups::route('/'),
-                'view' => Pages\ViewGroup::route('/{record}'),
-            ];
-        }
         return [
             'index' => Pages\ListGroups::route('/'),
             'view' => Pages\ViewGroup::route('/{record}'),

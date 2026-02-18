@@ -119,4 +119,20 @@ class User extends Authenticatable implements FilamentUser
     {
         return $this->hasMany(MemoGroup::class, 'teacher_id');
     }
+
+    /**
+     * Check if this user can impersonate other users.
+     */
+    public function canImpersonate(): bool
+    {
+        return $this->isAdministrator();
+    }
+
+    /**
+     * Check if this user can be impersonated.
+     */
+    public function canBeImpersonated(): bool
+    {
+        return $this->isTeacher();
+    }
 }

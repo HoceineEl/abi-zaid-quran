@@ -47,19 +47,19 @@ Route::middleware('auth')->group(function () {
 
 
 
-    Route::get('/send-absence-whatsapp/{number}/{message}/{memorizer_id}', function ($number, $message, $memorizer_id) {
-        $message = urldecode($message);
-        $memorizer = Memorizer::find($memorizer_id);
-        // Create reminder log
+    Route::get('/send-absence-whatsapp/{memorizer_id}', function ($memorizer_id) {
+        $memorizer = Memorizer::findOrFail($memorizer_id);
+        $phone = preg_replace('/[^0-9]/', '', $memorizer->phone ?? $memorizer->guardian?->phone ?? '');
+        $message = $memorizer->getMessageToSend('absence');
+
         $memorizer->reminderLogs()->create([
             'type' => 'absence',
-            'phone_number' => $number,
-            'message' => '',
+            'phone_number' => $phone,
+            'message' => mb_substr($message, 0, 50),
             'is_parent' => true,
         ]);
-        dd($memorizer);
-        $message = urlencode($message);
-        return view('redirects.whatsapp', ['number' => $number, 'message' => $message]);
+
+        return view('redirects.whatsapp', ['number' => $phone, 'message' => rawurlencode($message)]);
     })->name('memorizer-absence-whatsapp');
 
     Route::get('/send-trouble-whatsapp/{number}/{message}/{memorizer_id}', function ($number, $message, $memorizer_id) {

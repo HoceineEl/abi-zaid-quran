@@ -24,12 +24,12 @@ use App\Filament\Association\Resources\GroupResource;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Support\Enums\ActionSize;
+use Filament\Support\Enums\IconSize;
 use App\Models\User;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Actions\Action as ActionsAction;
 use Filament\Support\Colors\Color;
 use Filament\Tables\Actions\ActionGroup;
-use Illuminate\Support\Str;
 
 class AttendanceTeacherRelationManager extends RelationManager
 {
@@ -106,7 +106,9 @@ class AttendanceTeacherRelationManager extends RelationManager
                 Action::make('mark_present')
                     ->tooltip('تسجيل حضور')
                     ->label('')
-                    ->size('xl')
+                    ->size(ActionSize::ExtraLarge)
+                    ->iconSize(IconSize::Large)
+                    ->extraAttributes(['class' => '[&_svg]:w-8 [&_svg]:h-8'])
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->hidden(function (Memorizer $record) {
@@ -133,7 +135,9 @@ class AttendanceTeacherRelationManager extends RelationManager
                 Action::make('mark_absent')
                     ->tooltip('تسجيل غياب')
                     ->label('')
-                    ->size('xl')
+                    ->size(ActionSize::ExtraLarge)
+                    ->iconSize(IconSize::Large)
+                    ->extraAttributes(['class' => '[&_svg]:w-8 [&_svg]:h-8'])
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
                     ->hidden(function (Memorizer $record) {
@@ -181,28 +185,15 @@ class AttendanceTeacherRelationManager extends RelationManager
                             return;
                         }
 
-                        // Clean phone number and prepare message
-                        $phone = preg_replace('/[^0-9]/', '', $phone);
-                        $originalMessage = $record->getMessageToSend('absence');
-                        $message = urlencode($originalMessage);
-
-                        // Use route helper for consistent URL generation
-                        $whatsappUrl = "https://wa.me/{$phone}?text={$message}";
-
-                        $record->reminderLogs()->create([
-                            'type' => 'absence',
-                            'phone_number' => $record->phone,
-                            'is_parent' => true,
-                            'message' => Str::of($originalMessage)->limit(50),
-                        ]);
-
-
-                        return redirect()->away($whatsappUrl);
+                        return redirect(route('memorizer-absence-whatsapp', $record->id));
                     }),
 
                 Action::make('clear_attendance')
                     ->tooltip('إلغاء التسجيل')
                     ->label('')
+                    ->size(ActionSize::ExtraLarge)
+                    ->iconSize(IconSize::Large)
+                    ->extraAttributes(['class' => '[&_svg]:w-8 [&_svg]:h-8'])
                     ->icon('heroicon-o-trash')
                     ->color('gray')
                     ->hidden(function (Memorizer $record) {
@@ -441,6 +432,29 @@ class AttendanceTeacherRelationManager extends RelationManager
                             ->send();
                     }),
 
+                BulkAction::make('revert_attendance_bulk')
+                    ->label('إلغاء التسجيل')
+                    ->icon('heroicon-o-arrow-uturn-left')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->modalHeading('تأكيد إلغاء التسجيل الجماعي')
+                    ->modalDescription('هل أنت متأكد من إلغاء تسجيل الحضور/الغياب للطلاب المحددين؟')
+                    ->modalSubmitActionLabel('تأكيد الإلغاء')
+                    ->action(function ($livewire) {
+                        $records = $livewire->getSelectedTableRecords();
+                        $records = Memorizer::find($records);
+                        $records->each(function (Memorizer $memorizer) {
+                            $memorizer->attendances()
+                                ->whereDate('date', now()->toDateString())
+                                ->delete();
+                        });
+
+                        Notification::make()
+                            ->title('تم إلغاء التسجيل بنجاح للطلاب المحددين')
+                            ->success()
+                            ->send();
+                    }),
+
                 BulkAction::make('send_whatsapp_bulk')
                     ->label('إرسال رسائل واتساب')
                     ->icon('heroicon-o-chat-bubble-left-ellipsis')
@@ -499,9 +513,10 @@ class AttendanceTeacherRelationManager extends RelationManager
 
     public static function sendNotificationAction(): Action
     {
-        return      Action::make('send_whatsapp')
+        return Action::make('send_whatsapp')
             ->tooltip('إرسال رسالة واتساب')
             ->label('')
+            ->size(ActionSize::ExtraLarge)
             ->icon('tabler-message-circle')
             ->color('success')
             ->hidden(function (Memorizer $record) {
@@ -579,10 +594,15 @@ class AttendanceTeacherRelationManager extends RelationManager
                 }
                 $phone = preg_replace('/[^0-9]/', '', $phone);
                 $originalMessage = $data['message'];
-                $message = urlencode($originalMessage);
-                $whatsappUrl = route('memorizer-' . $data['message_type'] . '-whatsapp', [$phone, $message, $record->id]);
 
-                return redirect($whatsappUrl);
+                $record->reminderLogs()->create([
+                    'type' => $data['message_type'],
+                    'phone_number' => $phone,
+                    'message' => mb_substr($originalMessage, 0, 50),
+                    'is_parent' => true,
+                ]);
+
+                return redirect()->away("https://wa.me/{$phone}?text=" . rawurlencode($originalMessage));
             });
     }
 }
