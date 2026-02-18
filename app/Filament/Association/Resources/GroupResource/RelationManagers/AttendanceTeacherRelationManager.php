@@ -363,20 +363,27 @@ class AttendanceTeacherRelationManager extends RelationManager
                         $date = now()->format('Y-m-d');
 
                         $memorizers = $this->ownerRecord->memorizers()
-                            ->with(['attendances' => function ($query) use ($date) {
-                                $query->whereDate('date', $date);
-                            }])
+                            ->with(['attendances' => fn($q) => $q->whereDate('date', $date)])
                             ->get();
+
+                        $presentCount = $memorizers->filter(
+                            fn($m) => $m->attendances->first()?->check_in_time !== null
+                        )->count();
+
+                        $presencePercentage = $memorizers->count() > 0
+                            ? round(($presentCount / $memorizers->count()) * 100)
+                            : 0;
 
                         $html = view('components.attendance-export-table', [
                             'memorizers' => $memorizers,
-                            'group' => $this->ownerRecord,
-                            'date' => $date,
+                            'group'      => $this->ownerRecord,
+                            'date'       => $date,
                         ])->render();
 
                         $this->dispatch('export-table', [
-                            'html' => $html,
-                            'groupName' => $this->ownerRecord->name
+                            'html'               => $html,
+                            'groupName'          => $this->ownerRecord->name,
+                            'presencePercentage' => $presencePercentage,
                         ]);
                     })
             ])
