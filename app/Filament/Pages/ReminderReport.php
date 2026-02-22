@@ -3,7 +3,9 @@
 namespace App\Filament\Pages;
 
 use App\Enums\WhatsAppMessageStatus;
+use App\Helpers\PhoneHelper;
 use App\Models\Group;
+use App\Models\Student;
 use App\Models\WhatsAppMessageHistory;
 use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
@@ -15,7 +17,6 @@ use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
 
 class ReminderReport extends Page implements HasTable
 {
@@ -63,8 +64,14 @@ class ReminderReport extends Page implements HasTable
             return $cache[$key];
         }
 
+        $cleanedPhones = $group->students()->pluck('phone')
+            ->map(fn($phone) => PhoneHelper::cleanPhoneNumber($phone))
+            ->filter()
+            ->values()
+            ->toArray();
+
         $messages = WhatsAppMessageHistory::query()
-            ->whereIn('recipient_phone', $group->students()->pluck('phone'))
+            ->whereIn('recipient_phone', $cleanedPhones)
             ->whereDate('created_at', $date)
             ->with('sender')
             ->get();
@@ -132,22 +139,41 @@ class ReminderReport extends Page implements HasTable
                     ->form([
                         DatePicker::make('date')
                             ->label('التاريخ')
-                            ->default(now()->toDateString())
+                            ->default(fn() => WhatsAppMessageHistory::query()
+                                ->selectRaw('DATE(created_at) as date')
+                                ->orderByDesc('created_at')
+                                ->value('date') ?? now()->toDateString())
                             ->native(false)
                             ->maxDate(now()),
                     ])
                     ->query(function (Builder $query, array $data): void {
                         $date = $data['date'] ?? now()->toDateString();
 
-                        $query->whereHas('students', function (Builder $q) use ($date) {
-                            $q->whereExists(function ($subQuery) use ($date) {
-                                $subQuery->select(DB::raw(1))
-                                    ->from('whatsapp_message_histories')
-                                    ->whereColumn('whatsapp_message_histories.recipient_phone', 'students.phone')
-                                    ->whereDate('whatsapp_message_histories.created_at', $date)
-                                    ->whereNull('whatsapp_message_histories.deleted_at');
-                            });
-                        });
+                        // WA history stores cleaned phones (e.g. 212XXXXXXXXX),
+                        // students store raw phones (e.g. 0XXXXXXXXX), so we
+                        // resolve the match in PHP rather than a direct SQL column compare.
+                        $remindedPhones = WhatsAppMessageHistory::query()
+                            ->whereDate('created_at', $date)
+                            ->pluck('recipient_phone')
+                            ->toArray();
+
+                        if (empty($remindedPhones)) {
+                            $query->whereRaw('1 = 0');
+                            return;
+                        }
+
+                        $studentIds = Student::query()
+                            ->whereNotNull('phone')
+                            ->get(['id', 'phone'])
+                            ->filter(fn($s) => in_array(PhoneHelper::cleanPhoneNumber($s->phone), $remindedPhones))
+                            ->pluck('id');
+
+                        if ($studentIds->isEmpty()) {
+                            $query->whereRaw('1 = 0');
+                            return;
+                        }
+
+                        $query->whereHas('students', fn($q) => $q->whereIn('id', $studentIds));
                     })
                     ->indicateUsing(function (array $data): ?string {
                         if (! $data['date']) {
