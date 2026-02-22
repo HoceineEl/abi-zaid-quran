@@ -2,7 +2,7 @@
 
 namespace App\Filament\Pages;
 
-use App\Filament\Widgets\ReminderGroupsChart;
+use App\Filament\Widgets\ReminderGroupsTable;
 use App\Filament\Widgets\ReminderStatsOverview;
 use App\Models\Group;
 use App\Models\WhatsAppMessageHistory;
@@ -40,8 +40,6 @@ class ReminderReport extends Page
 
     public function mount(): void
     {
-        parent::mount();
-
         $this->filters['date'] = WhatsAppMessageHistory::query()
             ->selectRaw('DATE(created_at) as date')
             ->orderByDesc('created_at')
@@ -67,12 +65,23 @@ class ReminderReport extends Page
     protected function getHeaderWidgets(): array
     {
         return [
+            ReminderGroupsTable::class,
+        ];
+    }
+
+    protected function getFooterWidgets(): array
+    {
+        return [
             ReminderStatsOverview::class,
-            ReminderGroupsChart::class,
         ];
     }
 
     public function getHeaderWidgetsColumns(): int|string|array
+    {
+        return 1;
+    }
+
+    public function getFooterWidgetsColumns(): int|string|array
     {
         return 1;
     }
