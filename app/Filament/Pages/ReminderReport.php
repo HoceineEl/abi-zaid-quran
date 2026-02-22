@@ -36,13 +36,7 @@ class ReminderReport extends Page implements HasTable
 
     public static function canAccess(): bool
     {
-        $user = auth()->user();
-
-        if ($user->isAdministrator()) {
-            return true;
-        }
-
-        return Group::whereHas('managers', fn($q) => $q->where('users.id', $user->id))->exists();
+        return false;
     }
 
     private function getFilterDate(): string
