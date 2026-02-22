@@ -8,8 +8,6 @@ use App\Models\Student;
 use App\Models\User;
 use App\Models\WhatsAppMessageHistory;
 use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Columns\Layout\Split;
-use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\SelectFilter;
@@ -59,50 +57,31 @@ class ReminderGroupsTable extends BaseWidget
             ->query(
                 Group::query()->with('managers')
                     ->orderByRaw('CASE WHEN id IN (' . implode(',', $remindedGroupIds ?: [0]) . ') THEN 1 ELSE 0 END')
-                    ->orderBy('name')
+                    ->orderBy('created_at')
             )
-            ->contentGrid([
-                'default' => 1,
-                'sm' => 2,
-                'lg' => 3,
-                'xl' => 4,
-            ])
             ->columns([
-                Split::make([
-                    IconColumn::make('reminder_status')
-                        ->label('الحالة')
-                        ->state(fn (Group $record) => $remindedByGroup->get($record->id, 0) > 0)
-                        ->boolean()
-                        ->size(IconColumn\IconColumnSize::Large)
-                        ->grow(false),
+                IconColumn::make('reminder_status')
+                    ->label('')
+                    ->state(fn (Group $record) => $remindedByGroup->get($record->id, 0) > 0)
+                    ->boolean()
+                    ->size(IconColumn\IconColumnSize::Small),
 
-                    Stack::make([
-                        TextColumn::make('name')
-                            ->label('المجموعة')
-                            ->searchable()
-                            ->weight('bold')
-                            ->size(TextColumn\TextColumnSize::Large),
+                TextColumn::make('name')
+                    ->label('المجموعة')
+                    ->searchable()
+                    ->weight('bold')
+                    ->size(TextColumn\TextColumnSize::ExtraSmall)
+                    ->description(fn (Group $record) => $record->managers
+                        ->reject(fn ($m) => $m->isAdministrator() || in_array(trim($m->name), $hiddenManagers))
+                        ->pluck('name')
+                        ->join('، ') ?: 'بدون مشرف'),
 
-                        TextColumn::make('managers_names')
-                            ->label('المشرفين')
-                            ->state(fn (Group $record) => $record->managers
-                                ->reject(fn ($m) => $m->isAdministrator() || in_array(trim($m->name), $hiddenManagers))
-                                ->pluck('name')
-                                ->join('، ') ?: 'بدون مشرف')
-                            ->color('gray')
-                            ->size(TextColumn\TextColumnSize::Small)
-                            ->icon('heroicon-m-user')
-                            ->wrap(),
-                    ]),
-
-                    TextColumn::make('reminded_students')
-                        ->label('مُذكَّرين')
-                        ->state(fn (Group $record) => $remindedByGroup->get($record->id, 0))
-                        ->badge()
-                        ->color(fn ($state) => $state > 0 ? 'success' : 'danger')
-                        ->suffix(' طالب')
-                        ->grow(false),
-                ]),
+                TextColumn::make('reminded_students')
+                    ->label('مُذكَّرين')
+                    ->state(fn (Group $record) => $remindedByGroup->get($record->id, 0))
+                    ->badge()
+                    ->color(fn ($state) => $state > 0 ? 'success' : 'danger')
+                    ->suffix(' طالب'),
             ])
             ->filters([
                 TernaryFilter::make('reminder_status')

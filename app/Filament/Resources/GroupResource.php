@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Classes\Core;
 use App\Enums\MessageSubmissionType;
+use App\Exports\BulkGroupStudentsExport;
 use App\Exports\DailyAttendanceSummaryExport;
 use App\Filament\Actions\SendBulkReminderToAllGroupsAction;
 use App\Filament\Actions\SendMessageToAllGroupMembersAction;
@@ -13,22 +14,14 @@ use App\Filament\Resources\GroupResource\RelationManagers\ProgressesRelationMana
 use App\Filament\Resources\GroupResource\RelationManagers\StudentsRelationManager;
 use App\Models\Group;
 use App\Models\GroupMessageTemplate;
-use App\Models\Message;
-use App\Models\Student;
 use App\Models\User;
 use App\Services\AttendanceReportService;
 use Filament\Forms;
-use Illuminate\Database\Eloquent\Builder;
-use Filament\Forms\Components\Actions\Action as FormAction;
 use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Forms\Components\ToggleButtons;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
-use Filament\Forms\Set;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Resources\Resource;
@@ -37,8 +30,8 @@ use Filament\Tables\Actions\Action as ActionsAction;
 use Filament\Tables\Actions\ActionGroup;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Maatwebsite\Excel\Facades\Excel;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class GroupResource extends Resource
 {
@@ -56,27 +49,21 @@ class GroupResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('name')
+                TextInput::make('name')
                     ->label('الاسم')
                     ->required(),
                 Grid::make(3)
                     ->schema([
                         Toggle::make('custom_type')
                             ->label('نوع  خاص')
-                            ->formatStateUsing(function ($record) {
-                                if ($record?->type === 'half_page' || $record?->type === 'two_lines') {
-                                    return false;
-                                }
-
-                                return true;
-                            })
+                            ->formatStateUsing(fn ($record) => ! in_array($record?->type, ['half_page', 'two_lines']))
                             ->dehydrated(false)
                             ->reactive()
                             ->default(false),
                         Forms\Components\ToggleButtons::make('type')
                             ->label('نوع المجموعة')
                             ->inline()
-                            ->hidden(fn(Get $get) => $get('custom_type') === true)
+                            ->hidden(fn (Get $get) => $get('custom_type') === true)
                             ->options([
                                 'two_lines' => 'سطران',
                                 'half_page' => 'نصف صفحة',
@@ -85,7 +72,7 @@ class GroupResource extends Resource
                         TextInput::make('type')
                             ->label('نوع المجموعة')
                             ->reactive()
-                            ->hidden(fn(Get $get) => $get('custom_type') === false),
+                            ->hidden(fn (Get $get) => $get('custom_type') === false),
                         Toggle::make('is_onsite')
                             ->label('مجموعة الحصة الحضورية')
                             ->default(false),
@@ -112,18 +99,15 @@ class GroupResource extends Resource
                     ->dehydrated(false)
                     ->afterStateUpdated(function ($state, Group $record) {
                         if ($state && $record->exists) {
-                            // Sync the selected template and make it default
-                                    $record->messageTemplates()->sync([
-                                $state => ['is_default' => true]
-                                    ]);
+                            $record->messageTemplates()->sync([
+                                $state => ['is_default' => true],
+                            ]);
                         }
                     })
-                    ->default(function (?Group $record) {
-                        if (!$record || !$record->exists) {
-                            return null;
-                        }
-                        return $record->messageTemplates()->wherePivot('is_default', true)->first()?->id;
-                    })
+                    ->default(fn (?Group $record) => $record?->exists
+                        ? $record->messageTemplates()->wherePivot('is_default', true)->first()?->id
+                        : null
+                    )
                     ->createOptionForm([
                         Forms\Components\TextInput::make('name')
                             ->label('اسم القالب')
@@ -188,13 +172,10 @@ class GroupResource extends Resource
                     ->default('لا يوجد')
                     ->badge()
                     ->color('info')
-                    ->getStateUsing(function (?Group $record) {
-                        if (!$record) {
-                            return 'لا يوجد';
-                        }
-                        $defaultTemplate = $record->messageTemplates()->wherePivot('is_default', true)->first();
-                        return $defaultTemplate?->name ?? 'لا يوجد';
-                    }),
+                    ->getStateUsing(fn (?Group $record) => $record
+                        ?->messageTemplates()->wherePivot('is_default', true)->first()?->name
+                        ?? 'لا يوجد'
+                    ),
                 Tables\Columns\TextColumn::make('managers.name')
                     ->label('المشرفون')
                     ->badge(),
@@ -215,14 +196,14 @@ class GroupResource extends Resource
             ->filters([
                 Tables\Filters\TrashedFilter::make(),
             ])
-            ->recordUrl(fn(?Group $record) => $record ? GroupResource::getUrl('edit', ['record' => $record, 'activeRelationManager' => 0]) : null)
+            ->recordUrl(fn (?Group $record) => $record ? GroupResource::getUrl('edit', ['record' => $record, 'activeRelationManager' => 0]) : null)
             ->actions([
 
                 Tables\Actions\Action::make('export_attendance')
                     ->label('تصدير كشف الحضور')
                     ->icon('heroicon-o-share')
                     ->color('success')
-                    ->action(fn(Group $record, ListRecords $livewire) => $livewire->dispatch(
+                    ->action(fn (Group $record, ListRecords $livewire) => $livewire->dispatch(
                         'export-table',
                         AttendanceReportService::prepareGroupExportData($record)
                     )),
@@ -265,7 +246,7 @@ class GroupResource extends Resource
                     Tables\Actions\EditAction::make(),
                     Tables\Actions\RestoreAction::make(),
                     Tables\Actions\ForceDeleteAction::make(),
-                ])
+                ]),
             ])
             ->headerActions([
                 SendBulkReminderToAllGroupsAction::make()
@@ -285,11 +266,12 @@ class GroupResource extends Resource
                             ->helperText('اختر التاريخ المراد تصدير موجز الحضور له')
                             ->displayFormat('Y-m-d')
                             ->format('Y-m-d')
-                            ->native(false)
+                            ->native(false),
                     ])
                     ->action(function (array $data) {
                         $selectedDate = $data['export_date'];
-                        return Excel::download(new DailyAttendanceSummaryExport($selectedDate, auth()->id()), 'daily-attendance-summary-' . $selectedDate . '.xlsx');
+
+                        return Excel::download(new DailyAttendanceSummaryExport($selectedDate, auth()->id()), 'daily-attendance-summary-'.$selectedDate.'.xlsx');
                     }),
             ])
             ->bulkActions([
@@ -297,34 +279,45 @@ class GroupResource extends Resource
                     ->label('تصدير كشف الحضور')
                     ->icon('heroicon-o-share')
                     ->color('success')
-                    ->action(fn($records, ListRecords $livewire) => $livewire->dispatch(
+                    ->action(fn ($records, ListRecords $livewire) => $livewire->dispatch(
                         'export-tables-bulk',
                         ['groups' => AttendanceReportService::prepareBulkExportData($records)]
                     ))
+                    ->deselectRecordsAfterCompletion(),
+                Tables\Actions\BulkAction::make('bulk_export_students')
+                    ->label('تصدير قوائم الطلاب')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('info')
+                    ->hidden()
+                    ->action(function ($records) {
+                        $groups = $records->load(['students', 'managers']);
+
+                        return Excel::download(
+                            new BulkGroupStudentsExport($groups),
+                            'قوائم-الطلاب-'.now()->format('Y-m-d').'.xlsx',
+                        );
+                    })
                     ->deselectRecordsAfterCompletion(),
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\BulkAction::make('toggle_quran_group')
                         ->label('تبديل حالة مجموعة القرآن')
                         ->icon('heroicon-o-academic-cap')
-                        ->visible(fn() => auth()->user()->isAdministrator())
+                        ->visible(fn () => auth()->user()->isAdministrator())
                         ->color('warning')
                         ->requiresConfirmation()
                         ->modalHeading('تبديل حالة مجموعة القرآن')
                         ->modalDescription('سيتم تبديل حالة "مجموعة قرآن" للمجموعات المحددة')
                         ->modalSubmitActionLabel('تبديل الحالة')
                         ->action(function ($records) {
-                            $updatedCount = 0;
-
                             foreach ($records as $group) {
                                 $group->update([
-                                    'is_quran_group' => !$group->is_quran_group
+                                    'is_quran_group' => ! $group->is_quran_group,
                                 ]);
-                                $updatedCount++;
                             }
 
                             Notification::make()
                                 ->title('تم تبديل حالة مجموعة القرآن')
-                                ->body("تم تحديث {$updatedCount} مجموعة بنجاح")
+                                ->body("تم تحديث {$records->count()} مجموعة بنجاح")
                                 ->success()
                                 ->send();
                         })
@@ -332,7 +325,7 @@ class GroupResource extends Resource
                     Tables\Actions\BulkAction::make('set_template')
                         ->label('تعيين قالب رسالة')
                         ->icon('heroicon-o-chat-bubble-left-right')
-                        ->visible(fn() => auth()->user()->isAdministrator())
+                        ->visible(fn () => auth()->user()->isAdministrator())
                         ->color('primary')
                         ->form([
                             Forms\Components\Select::make('template_id')
@@ -350,7 +343,7 @@ class GroupResource extends Resource
                                 if ($templateId) {
                                     // Sync the selected template and make it default
                                     $group->messageTemplates()->sync([
-                                        $templateId => ['is_default' => true]
+                                        $templateId => ['is_default' => true],
                                     ]);
                                 } else {
                                     // Remove all templates
@@ -435,17 +428,13 @@ class GroupResource extends Resource
                                 ->required(),
                         ])
                         ->action(function (array $data, $records) {
-                            $managerIds = $data['managers'];
-                            $groupCount = 0;
-
                             foreach ($records as $group) {
-                                $group->managers()->syncWithoutDetaching($managerIds);
-                                $groupCount++;
+                                $group->managers()->syncWithoutDetaching($data['managers']);
                             }
 
                             Notification::make()
                                 ->title('تم تعيين المشرفين بنجاح')
-                                ->body("تم إضافة المشرفين إلى {$groupCount} مجموعة")
+                                ->body("تم إضافة المشرفين إلى {$records->count()} مجموعة")
                                 ->success()
                                 ->send();
                         })
