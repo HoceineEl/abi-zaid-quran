@@ -89,7 +89,11 @@ class GroupStudentsSheetExport implements FromCollection, ShouldAutoSize, WithEv
                     'half_page' => 'نصف صفحة',
                     default => $this->group->type,
                 };
-                $managers = $this->group->managers->pluck('name')->join('، ');
+                $hiddenManagers = ['يوسف يبا', 'محمد لحمايدي', 'زكرياء لعليجي'];
+                $filteredManagers = $this->group->managers->reject(fn ($m) => in_array(trim($m->name), $hiddenManagers));
+                $managers = $filteredManagers->isEmpty()
+                    ? $this->group->managers->pluck('name')->join('، ')
+                    : $filteredManagers->pluck('name')->join('، ');
                 $info = "نوع الحفظ: {$type}  |  عدد الطلاب: {$totalStudents}";
                 if ($managers) {
                     $info .= "  |  المشرفون: {$managers}";
