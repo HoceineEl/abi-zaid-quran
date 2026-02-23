@@ -78,7 +78,7 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ])
-            ->viteTheme('resources/css/filament/association/theme.css')
+            //->viteTheme('resources/css/filament/association/theme.css')
             ->renderHook(PanelsRenderHook::BODY_START, fn() => view('components.table-export-scripts'))
             ->renderHook(PanelsRenderHook::BODY_START, fn() => view('components.vcf-download-scripts'));
     }
