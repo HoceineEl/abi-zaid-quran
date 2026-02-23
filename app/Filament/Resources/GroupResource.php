@@ -25,6 +25,7 @@ use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Resources\Resource;
+use Filament\Support\Enums\ActionSize;
 use Filament\Tables;
 use Filament\Tables\Actions\Action as ActionsAction;
 use Filament\Tables\Actions\ActionGroup;
@@ -203,6 +204,7 @@ class GroupResource extends Resource
                     ->label('تصدير كشف الحضور')
                     ->icon('heroicon-o-share')
                     ->color('success')
+                    ->size(ActionSize::ExtraSmall)
                     ->action(fn (Group $record, ListRecords $livewire) => $livewire->dispatch(
                         'export-table',
                         AttendanceReportService::prepareGroupExportData($record)
@@ -251,12 +253,14 @@ class GroupResource extends Resource
             ->headerActions([
                 SendBulkReminderToAllGroupsAction::make()
                     ->hidden(),
-                SendMessageToAllGroupMembersAction::make(),
+                SendMessageToAllGroupMembersAction::make()
+                    ->size(ActionSize::ExtraSmall),
 
                 ActionsAction::make('export_daily_attendance_summary')
                     ->label('تصدير موجز الحضور اليومي')
                     ->icon('heroicon-o-document-arrow-down')
                     ->color('success')
+                    ->size(ActionSize::ExtraSmall)
                     // ->visible(fn() => auth()->user()->role === 'admin')
                     ->form([
                         Forms\Components\DatePicker::make('export_date')
@@ -279,6 +283,7 @@ class GroupResource extends Resource
                     ->label('تصدير كشف الحضور')
                     ->icon('heroicon-o-share')
                     ->color('success')
+                    ->size(ActionSize::ExtraSmall)
                     ->action(fn ($records, ListRecords $livewire) => $livewire->dispatch(
                         'export-tables-bulk',
                         ['groups' => AttendanceReportService::prepareBulkExportData($records)]
@@ -288,6 +293,7 @@ class GroupResource extends Resource
                     ->label('تصدير قوائم الطلاب')
                     ->icon('heroicon-o-document-arrow-down')
                     ->color('info')
+                    ->size(ActionSize::ExtraSmall)
                     ->action(function ($records) {
                         $groups = $records->load(['students', 'managers']);
 
