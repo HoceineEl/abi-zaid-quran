@@ -15,6 +15,8 @@ class ReminderStatsOverview extends BaseWidget
 {
     use InteractsWithPageFilters;
 
+    protected static bool $isDiscovered = false;
+
     protected static ?string $pollingInterval = null;
 
     protected function getStats(): array

@@ -21,6 +21,8 @@ class ReminderGroupsTable extends BaseWidget
 {
     use InteractsWithPageFilters;
 
+    protected static bool $isDiscovered = false;
+
     protected static ?string $heading = 'حالة التذكيرات لكل مجموعة';
 
     protected static ?string $pollingInterval = null;
