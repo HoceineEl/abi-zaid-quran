@@ -288,7 +288,6 @@ class GroupResource extends Resource
                     ->label('تصدير قوائم الطلاب')
                     ->icon('heroicon-o-document-arrow-down')
                     ->color('info')
-                    ->hidden()
                     ->action(function ($records) {
                         $groups = $records->load(['students', 'managers']);
 
