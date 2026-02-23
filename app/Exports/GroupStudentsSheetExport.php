@@ -30,7 +30,6 @@ class GroupStudentsSheetExport implements FromCollection, ShouldAutoSize, WithEv
                     'order' => $index + 1,
                     'name' => $student->name,
                     'phone' => $this->formatPhone($student->phone),
-                    'city' => $student->city ?: '-',
                     'test_1' => '',
                     'test_2' => '',
                     'test_3' => '',
@@ -44,7 +43,6 @@ class GroupStudentsSheetExport implements FromCollection, ShouldAutoSize, WithEv
             '#',
             'اسم الطالب',
             'رقم الهاتف',
-            'المدينة',
             'اختبار (..................)',
             'اختبار (..................)',
             'اختبار (..................)',
@@ -64,7 +62,7 @@ class GroupStudentsSheetExport implements FromCollection, ShouldAutoSize, WithEv
                 $sheet->setRightToLeft(true);
 
                 $totalStudents = $this->group->students()->count();
-                $lastCol = 'G';
+                $lastCol = 'F';
 
                 // Insert 4 header rows
                 $sheet->insertNewRowBefore(1, 4);
@@ -79,7 +77,7 @@ class GroupStudentsSheetExport implements FromCollection, ShouldAutoSize, WithEv
 
                 // Row 2: Teacher name (fillable)
                 $sheet->mergeCells("A2:{$lastCol}2");
-                $sheet->setCellValue('A2', 'اسم الأستاذ(ة): ........................................................');
+                $sheet->setCellValue('A2', '........................................................ :اسم الأستاذ(ة)');
                 $sheet->getStyle('A2')->getFont()->setBold(true)->setSize(13)->getColor()->setARGB('2F5496');
                 $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT)->setVertical(Alignment::VERTICAL_CENTER);
                 $sheet->getStyle('A2')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('EAF0F9');
@@ -139,9 +137,9 @@ class GroupStudentsSheetExport implements FromCollection, ShouldAutoSize, WithEv
                 }
 
                 // Style test result columns (E, F, G) with light yellow background
-                $sheet->getStyle("E6:G{$highestRow}")->getFill()
+                $sheet->getStyle("D6:F{$highestRow}")->getFill()
                     ->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFFDE7');
-                $sheet->getStyle("E6:G{$highestRow}")->getBorders()->getAllBorders()
+                $sheet->getStyle("D6:F{$highestRow}")->getBorders()->getAllBorders()
                     ->setBorderStyle(Border::BORDER_THIN)->getColor()->setARGB('E0C85A');
 
                 // Borders for the entire table
@@ -159,13 +157,12 @@ class GroupStudentsSheetExport implements FromCollection, ShouldAutoSize, WithEv
                 $sheet->getColumnDimension('A')->setWidth(6);
                 $sheet->getColumnDimension('B')->setAutoSize(true);
                 $sheet->getColumnDimension('C')->setWidth(16);
-                $sheet->getColumnDimension('D')->setAutoSize(true);
+                $sheet->getColumnDimension('D')->setWidth(22);
                 $sheet->getColumnDimension('E')->setWidth(22);
                 $sheet->getColumnDimension('F')->setWidth(22);
-                $sheet->getColumnDimension('G')->setWidth(22);
 
                 // Center align test columns
-                $sheet->getStyle("E6:G{$highestRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle("D6:F{$highestRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
                 // Summary row
                 $summaryRow = $highestRow + 1;
