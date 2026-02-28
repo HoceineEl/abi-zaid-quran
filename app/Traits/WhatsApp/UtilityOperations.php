@@ -2,62 +2,14 @@
 
 namespace App\Traits\WhatsApp;
 
-use App\Models\WhatsAppSession;
 use Carbon\Carbon;
+use Illuminate\Http\Client\Pool;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 trait UtilityOperations
 {
-    public function refreshQrCode(WhatsAppSession $session): array
-    {
-        try {
-            $instanceName = $session->name;
-            $result = $this->connectInstance($instanceName);
-            $base64Qr = $result['base64'] ?? null;
-
-            Log::info('Refresh QR: Got connect result', [
-                'instance' => $instanceName,
-                'has_qr' => ! empty($base64Qr),
-            ]);
-
-            if (empty($base64Qr)) {
-                $state = $this->getInstanceStatus($instanceName);
-                $currentState = $state['instance']['state'] ?? 'close';
-
-                if ($currentState === 'open') {
-                    Log::info('Instance is already connected, no QR needed', ['instance' => $instanceName]);
-
-                    return $state;
-                }
-
-                throw new \RuntimeException("No QR code available for instance {$instanceName}. State: {$currentState}");
-            }
-
-            $qrCode = $this->cleanQrCodeData($base64Qr);
-
-            $session->update([
-                'qr_code' => $qrCode,
-                'session_data' => $result,
-                'last_activity_at' => now(),
-            ]);
-
-            Log::info('WhatsApp QR code refreshed successfully', [
-                'instance' => $instanceName,
-                'has_qr_code' => ! empty($qrCode),
-            ]);
-
-            return $result;
-        } catch (\Exception $e) {
-            Log::error('Failed to refresh WhatsApp QR code', [
-                'instance' => $session->name,
-                'error' => $e->getMessage(),
-            ]);
-
-            throw $e;
-        }
-    }
-
     public function cleanQrCodeData(?string $qrData): ?string
     {
         if (empty($qrData)) {
@@ -79,6 +31,7 @@ trait UtilityOperations
     {
         try {
             $response = Http::withHeaders($this->evolutionHeaders())
+                ->timeout(15)
                 ->post("{$this->baseUrl}/chat/whatsappNumbers/{$instanceName}", [
                     'numbers' => [$number],
                 ]);
@@ -103,6 +56,7 @@ trait UtilityOperations
     {
         try {
             $response = Http::withHeaders($this->evolutionHeaders())
+                ->timeout(15)
                 ->get("{$this->baseUrl}/group/fetchAllGroups/{$instanceName}", [
                     'getParticipants' => 'false',
                 ]);
@@ -133,6 +87,7 @@ trait UtilityOperations
     {
         try {
             $response = Http::withHeaders($this->evolutionHeaders())
+                ->timeout(15)
                 ->get("{$this->baseUrl}/group/participants/{$instanceName}", [
                     'groupJid' => $groupJid,
                 ]);
@@ -164,6 +119,7 @@ trait UtilityOperations
     {
         try {
             $response = Http::withHeaders($this->evolutionHeaders())
+                ->timeout(15)
                 ->get("{$this->baseUrl}/group/inviteCode/{$instanceName}", [
                     'groupJid' => $groupJid,
                 ]);
@@ -196,6 +152,7 @@ trait UtilityOperations
     {
         try {
             $response = Http::withHeaders($this->evolutionHeaders())
+                ->timeout(15)
                 ->post("{$this->baseUrl}/group/create/{$instanceName}", [
                     'subject' => $name,
                     'description' => $description,
@@ -239,6 +196,7 @@ trait UtilityOperations
             }
 
             $response = Http::withHeaders($this->evolutionHeaders())
+                ->timeout(15)
                 ->post("{$this->baseUrl}/chat/findMessages/{$instanceName}", [
                     'where' => $where,
                     'page' => 1,
@@ -252,6 +210,12 @@ trait UtilityOperations
                 if (! is_array($records)) {
                     $records = [];
                 }
+
+                // The Evolution API may ignore the remoteJid filter — filter in PHP as fallback
+                $records = array_values(array_filter(
+                    $records,
+                    fn (array $msg) => ($msg['key']['remoteJid'] ?? '') === $groupJid,
+                ));
 
                 Log::info('WhatsApp group messages retrieved', [
                     'instance' => $instanceName,
@@ -276,8 +240,32 @@ trait UtilityOperations
 
     public function getGroupAttendeesForDate(string $instanceName, string $groupJid, string $date, array $allowedMessageTypes = ['audioMessage']): array
     {
-        $lidToPhone = $this->buildLidToPhoneMap($instanceName, $groupJid);
-        $messages = $this->findGroupMessages($instanceName, $groupJid, $date, $date);
+        $parsedDate = Carbon::parse($date);
+        $where = [
+            'remoteJid' => $groupJid,
+            'messageTimestamp' => [
+                'gte' => $parsedDate->copy()->startOfDay()->toISOString(),
+                'lte' => $parsedDate->copy()->endOfDay()->toISOString(),
+            ],
+        ];
+
+        $responses = Http::pool(fn (Pool $pool) => [
+            $pool->as('participants')
+                ->withHeaders($this->evolutionHeaders())
+                ->timeout(15)
+                ->get("{$this->baseUrl}/group/participants/{$instanceName}", ['groupJid' => $groupJid]),
+            $pool->as('messages')
+                ->withHeaders($this->evolutionHeaders())
+                ->timeout(15)
+                ->post("{$this->baseUrl}/chat/findMessages/{$instanceName}", [
+                    'where' => $where,
+                    'page' => 1,
+                    'offset' => 200,
+                ]),
+        ]);
+
+        $lidToPhone = $this->parseLidToPhoneMap($responses['participants'], $instanceName, $groupJid);
+        $messages = $this->parseMessageRecords($responses['messages'], $instanceName, $groupJid);
 
         $senderPhones = collect($messages)
             ->filter(function (array $message) use ($groupJid, $allowedMessageTypes): bool {
@@ -331,16 +319,29 @@ trait UtilityOperations
         // Fallback: pushName may contain LID in some Evolution API versions
         $pushName = $message['pushName'] ?? null;
 
-        return ($pushName && isset($lidToPhone[$pushName])) ? $lidToPhone[$pushName] : null;
+        return $lidToPhone[$pushName] ?? null;
     }
 
-    protected function buildLidToPhoneMap(string $instanceName, string $groupJid): array
+    /**
+     * Parse the participants API response into a LID -> phone number map.
+     */
+    protected function parseLidToPhoneMap(Response $response, string $instanceName, string $groupJid): array
     {
-        $participants = $this->getGroupParticipants($instanceName, $groupJid);
-        $participantsList = $participants['participants'] ?? $participants;
+        if (! $response->successful()) {
+            Log::error('Failed to get WhatsApp group participants', [
+                'instance' => $instanceName,
+                'group_jid' => $groupJid,
+                'status' => $response->status(),
+            ]);
 
+            return [];
+        }
+
+        $data = $response->json();
+        $participants = $data['participants'] ?? $data;
         $map = [];
-        foreach ($participantsList as $p) {
+
+        foreach ($participants as $p) {
             $lid = str_replace('@lid', '', $p['id'] ?? '');
             $phone = $this->stripWhatsAppSuffix($p['phoneNumber'] ?? '');
 
@@ -352,6 +353,27 @@ trait UtilityOperations
         return $map;
     }
 
+    /**
+     * Parse the messages API response into an array of message records.
+     */
+    protected function parseMessageRecords(Response $response, string $instanceName, string $groupJid): array
+    {
+        if (! $response->successful()) {
+            Log::error('Failed to find WhatsApp group messages', [
+                'instance' => $instanceName,
+                'group_jid' => $groupJid,
+                'status' => $response->status(),
+            ]);
+
+            return [];
+        }
+
+        $data = $response->json();
+        $records = $data['messages']['records'] ?? $data['records'] ?? $data;
+
+        return is_array($records) ? $records : [];
+    }
+
     protected function stripWhatsAppSuffix(string $jid): string
     {
         return str_replace('@s.whatsapp.net', '', $jid);
@@ -361,6 +383,7 @@ trait UtilityOperations
     {
         try {
             $response = Http::withHeaders($this->evolutionHeaders())
+                ->timeout(15)
                 ->post("{$this->baseUrl}/group/updateParticipant/{$instanceName}", [
                     'groupJid' => $groupJid,
                     'action' => 'add',
@@ -396,6 +419,7 @@ trait UtilityOperations
     {
         try {
             $response = Http::withHeaders($this->evolutionHeaders())
+                ->timeout(15)
                 ->post("{$this->baseUrl}/group/updateParticipant/{$instanceName}", [
                     'groupJid' => $groupJid,
                     'action' => 'promote',

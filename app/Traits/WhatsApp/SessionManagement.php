@@ -13,6 +13,7 @@ trait SessionManagement
     {
         try {
             $response = Http::withHeaders($this->evolutionHeaders())
+                ->timeout(15)
                 ->post("{$this->baseUrl}/instance/create", [
                     'instanceName' => $instanceName,
                     'qrcode' => true,
@@ -38,6 +39,7 @@ trait SessionManagement
     {
         try {
             $response = Http::withHeaders($this->evolutionHeaders())
+                ->timeout(15)
                 ->get("{$this->baseUrl}/instance/connect/{$instanceName}");
 
             if ($response->successful()) {
@@ -59,6 +61,7 @@ trait SessionManagement
     {
         try {
             $response = Http::withHeaders($this->evolutionHeaders())
+                ->timeout(15)
                 ->get("{$this->baseUrl}/instance/fetchInstances");
 
             if ($response->successful()) {
@@ -79,6 +82,7 @@ trait SessionManagement
     {
         try {
             $response = Http::withHeaders($this->evolutionHeaders())
+                ->timeout(15)
                 ->get("{$this->baseUrl}/instance/connectionState/{$instanceName}");
 
             if ($response->successful()) {
@@ -96,6 +100,11 @@ trait SessionManagement
         }
     }
 
+    protected function resolveApiState(array $apiResult): string
+    {
+        return $apiResult['instance']['state'] ?? $apiResult['state'] ?? 'close';
+    }
+
     /**
      * @deprecated Use getInstanceStatus() instead
      */
@@ -111,15 +120,37 @@ trait SessionManagement
 
             try {
                 $connectionState = $this->getInstanceStatus($instanceName);
+                $state = $this->resolveApiState($connectionState);
+                $modelStatus = WhatsAppConnectionStatus::fromApiStatus($state);
 
                 Log::info('Found existing instance', [
                     'instance' => $instanceName,
-                    'state' => $connectionState['instance']['state'] ?? 'unknown',
+                    'state' => $state,
                 ]);
 
-                $this->updateSessionFromApiStatus($session, $connectionState);
+                // Already connected — just sync DB and return
+                if ($modelStatus === WhatsAppConnectionStatus::CONNECTED) {
+                    $this->updateSessionFromApiStatus($session, $connectionState);
 
-                return $connectionState;
+                    return $connectionState;
+                }
+
+                // Instance exists but is disconnected — reconnect to get a fresh QR code
+                $connectResult = $this->connectInstance($instanceName);
+                $qrCode = $connectResult['base64'] ?? null;
+
+                $session->update([
+                    'status' => $qrCode ? WhatsAppConnectionStatus::PENDING : WhatsAppConnectionStatus::CONNECTING,
+                    'qr_code' => $qrCode ? $this->cleanQrCodeData($qrCode) : null,
+                    'last_activity_at' => now(),
+                ]);
+
+                Log::info('Reconnected existing instance, got QR', [
+                    'instance' => $instanceName,
+                    'has_qr' => ! empty($qrCode),
+                ]);
+
+                return $connectResult;
             } catch (\Exception $e) {
                 Log::info('Instance not found, creating new one', [
                     'instance' => $instanceName,
@@ -156,7 +187,7 @@ trait SessionManagement
 
     public function updateSessionFromApiStatus(WhatsAppSession $session, array $apiResult): void
     {
-        $state = $apiResult['instance']['state'] ?? $apiResult['state'] ?? 'close';
+        $state = $this->resolveApiState($apiResult);
         $modelStatus = WhatsAppConnectionStatus::fromApiStatus($state);
 
         Log::info('Updating session from API status', [
@@ -200,6 +231,7 @@ trait SessionManagement
     {
         try {
             $response = Http::withHeaders($this->evolutionHeaders())
+                ->timeout(15)
                 ->delete("{$this->baseUrl}/instance/delete/{$instanceName}");
 
             if ($response->successful()) {
@@ -223,6 +255,7 @@ trait SessionManagement
     {
         try {
             $response = Http::withHeaders($this->evolutionHeaders())
+                ->timeout(15)
                 ->delete("{$this->baseUrl}/instance/logout/{$instanceName}");
 
             if ($response->successful()) {

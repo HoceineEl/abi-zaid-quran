@@ -30,7 +30,7 @@ class SendWhatsAppMessageJob implements ShouldQueue
 
     public int $maxExceptions = 3;
 
-    public int $backoff = 5;
+    public array $backoff = [5, 15, 30];
 
     public int $timeout = 30;
 
@@ -47,18 +47,25 @@ class SendWhatsAppMessageJob implements ShouldQueue
 
     public static function getStaggeredDelay(string $sessionId): int
     {
-        $counterKey = "whatsapp_batch_counter:{$sessionId}";
+        $slotKey = "whatsapp_next_slot:{$sessionId}";
         $delayMin = (int) config('whatsapp.delay_min', 8);
         $delayMax = (int) config('whatsapp.delay_max', 20);
 
-        $position = Cache::increment($counterKey);
-        Cache::put($counterKey, $position, now()->addMinutes(10));
+        $now = now()->timestamp;
+        $nextSlot = (int) Cache::get($slotKey, $now);
 
-        if ($position <= 1) {
-            return 0;
+        // If the slot fell behind (e.g. idle session), catch up to now
+        if ($nextSlot < $now) {
+            $nextSlot = $now;
         }
 
-        return ($position - 1) * rand($delayMin, $delayMax);
+        // Delay from now until this message's slot
+        $delay = $nextSlot - $now;
+
+        // Advance the slot for the next message
+        Cache::put($slotKey, $nextSlot + rand($delayMin, $delayMax), now()->addMinutes(30));
+
+        return $delay;
     }
 
     public function middleware(): array

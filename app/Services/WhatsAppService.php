@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\WhatsAppMessageStatus;
+use App\Jobs\SendWhatsAppMessageJob;
 use App\Models\WhatsAppMessageHistory;
 use App\Models\WhatsAppSession;
 use App\Traits\WhatsApp\SessionManagement;
@@ -141,6 +142,7 @@ class WhatsAppService
 
         try {
             $response = Http::withHeaders($this->evolutionHeaders())
+                ->timeout(15)
                 ->post("{$this->baseUrl}/message/sendText/{$instanceName}", [
                     'number' => $formattedPhone,
                     'text' => $message,
@@ -185,6 +187,7 @@ class WhatsAppService
             }
 
             $response = Http::withHeaders($this->evolutionHeaders())
+                ->timeout(15)
                 ->post("{$this->baseUrl}/message/sendMedia/{$instanceName}", $payload);
 
             if ($response->successful()) {
@@ -224,9 +227,9 @@ class WhatsAppService
             'status' => WhatsAppMessageStatus::QUEUED,
         ]);
 
-        $delay = \App\Jobs\SendWhatsAppMessageJob::getStaggeredDelay($session->id);
+        $delay = SendWhatsAppMessageJob::getStaggeredDelay($session->id);
 
-        \App\Jobs\SendWhatsAppMessageJob::dispatch(
+        SendWhatsAppMessageJob::dispatch(
             $session->id,
             $formattedPhone,
             $message,
@@ -243,25 +246,23 @@ class WhatsAppService
     public function refreshQrCode(WhatsAppSession $session): void
     {
         try {
-            $instanceName = $session->name;
-
             $response = Http::withHeaders($this->evolutionHeaders())
-                ->get("{$this->baseUrl}/instance/connect/{$instanceName}");
+                ->timeout(15)
+                ->get("{$this->baseUrl}/instance/connect/{$session->name}");
 
-            if ($response->successful()) {
-                $result = $response->json();
-                $base64Qr = $result['base64'] ?? null;
+            $base64Qr = $response->successful() ? ($response->json()['base64'] ?? null) : null;
 
-                if ($base64Qr) {
-                    $session->updateQrCode($base64Qr);
+            if ($base64Qr) {
+                $session->updateQrCode($base64Qr);
 
-                    return;
-                }
+                return;
             }
 
             throw new \RuntimeException('No QR code available for instance');
+        } catch (\RuntimeException $e) {
+            throw $e;
         } catch (\Exception $e) {
-            throw new \RuntimeException('Failed to refresh QR code: '.$e->getMessage());
+            throw new \RuntimeException('Failed to refresh QR code: '.$e->getMessage(), previous: $e);
         }
     }
 }

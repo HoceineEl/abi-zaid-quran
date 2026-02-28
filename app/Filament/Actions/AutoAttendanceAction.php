@@ -72,15 +72,12 @@ class AutoAttendanceAction extends Action
                             ->students()
                             ->orderBy('order_no')
                             ->pluck('name', 'id'))
-                        ->default(function (Get $get) {
-                            return $this->fetchAndMatchAttendees($this->resolveDate($get))['matched_student_ids'];
-                        })
-                        ->descriptions(function (Get $get) {
-                            return $this->fetchAndMatchAttendees($this->resolveDate($get))['descriptions'];
-                        })
-                        ->disableOptionWhen(function (string $value, Get $get) {
-                            return in_array((int) $value, $this->fetchAndMatchAttendees($this->resolveDate($get))['already_present_ids']);
-                        })
+                        ->default(fn (Get $get) => $this->fetchAndMatchAttendees($this->resolveDate($get))['matched_student_ids'])
+                        ->descriptions(fn (Get $get) => $this->fetchAndMatchAttendees($this->resolveDate($get))['descriptions'])
+                        ->disableOptionWhen(fn (string $value, Get $get) => in_array(
+                            (int) $value,
+                            $this->fetchAndMatchAttendees($this->resolveDate($get))['already_present_ids'],
+                        ))
                         ->bulkToggleable()
                         ->columns(2)
                         ->required(),
@@ -90,53 +87,57 @@ class AutoAttendanceAction extends Action
 
     protected function fetchAndMatchAttendees(string $date): array
     {
+        static $cache = [];
+
+        if (isset($cache[$date])) {
+            return $cache[$date];
+        }
+
         $group = $this->getOwnerGroup();
         $students = $group->students()->orderBy('order_no')->get();
 
-        return once(function () use ($group, $students, $date) {
-            $senderPhones = $this->fetchWhatsAppSenders($group, $date);
+        $senderPhones = $this->fetchWhatsAppSenders($group, $date);
 
-            // O(1) lookup index: suffix -> phone
-            $senderIndex = PhoneHelper::buildSuffixIndex($senderPhones);
+        // O(1) lookup index: suffix -> phone
+        $senderIndex = PhoneHelper::buildSuffixIndex($senderPhones);
 
-            $existingPresentIds = $group->progresses()
-                ->where('date', $date)
-                ->where('status', 'memorized')
-                ->pluck('student_id')
-                ->flip()
-                ->all();
+        $existingPresentIds = $group->progresses()
+            ->where('date', $date)
+            ->where('status', 'memorized')
+            ->pluck('student_id')
+            ->flip()
+            ->all();
 
-            $matchedStudentIds = [];
-            $alreadyPresentIds = [];
-            $descriptions = [];
+        $matchedStudentIds = [];
+        $alreadyPresentIds = [];
+        $descriptions = [];
 
-            foreach ($students as $student) {
-                $phone = $student->phone;
+        foreach ($students as $student) {
+            $phone = $student->phone;
 
-                if (isset($existingPresentIds[$student->id])) {
-                    $alreadyPresentIds[] = $student->id;
-                    $matchedStudentIds[] = $student->id;
-                    $descriptions[$student->id] = "$phone — مسجل مسبقاً";
+            if (isset($existingPresentIds[$student->id])) {
+                $alreadyPresentIds[] = $student->id;
+                $matchedStudentIds[] = $student->id;
+                $descriptions[$student->id] = "$phone — مسجل مسبقاً";
 
-                    continue;
-                }
-
-                if (PhoneHelper::matchesAny($phone, $senderIndex)) {
-                    $matchedStudentIds[] = $student->id;
-                    $descriptions[$student->id] = "$phone — تم المطابقة من واتساب";
-                } else {
-                    $descriptions[$student->id] = $phone;
-                }
+                continue;
             }
 
-            return [
-                'matched_student_ids' => $matchedStudentIds,
-                'already_present_ids' => $alreadyPresentIds,
-                'descriptions' => $descriptions,
-                'matched_count' => count($matchedStudentIds),
-                'total_students' => $students->count(),
-            ];
-        });
+            if (PhoneHelper::matchesAny($phone, $senderIndex)) {
+                $matchedStudentIds[] = $student->id;
+                $descriptions[$student->id] = "$phone — تم المطابقة من واتساب";
+            } else {
+                $descriptions[$student->id] = $phone;
+            }
+        }
+
+        return $cache[$date] = [
+            'matched_student_ids' => $matchedStudentIds,
+            'already_present_ids' => $alreadyPresentIds,
+            'descriptions' => $descriptions,
+            'matched_count' => count($matchedStudentIds),
+            'total_students' => $students->count(),
+        ];
     }
 
     protected function fetchWhatsAppSenders(Group $group, string $date): array
