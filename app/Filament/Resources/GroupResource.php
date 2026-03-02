@@ -93,9 +93,10 @@ class GroupResource extends Resource
                 Forms\Components\Select::make('whatsapp_group_jid')
                     ->label('مجموعة واتساب المرتبطة')
                     ->placeholder('لم يتم ربط مجموعة واتساب')
-                    ->options(fn () => self::fetchWhatsAppGroups())
+                    ->options(fn () => auth()->user()?->isAdministrator() ? self::fetchWhatsAppGroups() : [])
                     ->searchable()
                     ->helperText('اربط هذه المجموعة بمجموعة واتساب للحضور التلقائي')
+                    ->hidden(fn () => ! auth()->user()?->isAdministrator())
                     ->suffixActions([
                         FormAction::make('refresh_whatsapp_groups')
                             ->icon('heroicon-o-arrow-path')
@@ -526,27 +527,31 @@ class GroupResource extends Resource
 
     protected static function fetchWhatsAppGroups(): array
     {
-        $cacheKey = 'whatsapp_groups_user_'.auth()->id();
+        try {
+            $session = WhatsAppSession::getUserSession(auth()->id());
 
-        return cache()->remember($cacheKey, now()->addMinutes(10), function () {
-            try {
-                $session = WhatsAppSession::getUserSession(auth()->id());
-
-                if (! $session?->isConnected()) {
-                    return [];
-                }
-
-                return collect(app(WhatsAppService::class)->getSessionGroups($session->name))
-                    ->pluck('subject', 'id')
-                    ->all();
-            } catch (\Exception) {
+            if (! $session?->isConnected()) {
                 return [];
             }
-        });
+
+            return collect(app(WhatsAppService::class)->getSessionGroups($session->name))
+                ->pluck('subject', 'id')
+                ->all();
+        } catch (\Exception) {
+            return [];
+        }
     }
 
     protected static function clearWhatsAppGroupsCache(): void
     {
-        cache()->forget('whatsapp_groups_user_'.auth()->id());
+        try {
+            $session = WhatsAppSession::getUserSession(auth()->id());
+
+            if ($session) {
+                app(WhatsAppService::class)->clearSessionGroupsCache($session->name);
+            }
+        } catch (\Exception) {
+            // Silently fail
+        }
     }
 }

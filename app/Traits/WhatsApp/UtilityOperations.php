@@ -5,6 +5,7 @@ namespace App\Traits\WhatsApp;
 use Carbon\Carbon;
 use Illuminate\Http\Client\Pool;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -52,19 +53,41 @@ trait UtilityOperations
         }
     }
 
+    /**
+     * Get session groups (cached). Returns only id and subject for each group.
+     */
     public function getSessionGroups(string $instanceName): array
+    {
+        $cacheKey = "whatsapp_groups_{$instanceName}";
+
+        return Cache::remember($cacheKey, now()->addMinutes(30), function () use ($instanceName) {
+            return $this->fetchSessionGroupsFromApi($instanceName);
+        });
+    }
+
+    /**
+     * Fetch groups directly from the Evolution API, returning only id and subject.
+     */
+    protected function fetchSessionGroupsFromApi(string $instanceName): array
     {
         try {
             $response = Http::withHeaders($this->evolutionHeaders())
-                ->timeout(15)
+                ->timeout(30)
                 ->get("{$this->baseUrl}/group/fetchAllGroups/{$instanceName}", [
                     'getParticipants' => 'false',
                 ]);
 
             if ($response->successful()) {
-                $groups = $response->json();
+                $groups = collect($response->json())
+                    ->map(fn (array $group) => [
+                        'id' => $group['id'] ?? '',
+                        'subject' => $group['subject'] ?? $group['name'] ?? '',
+                    ])
+                    ->filter(fn (array $group) => $group['id'] !== '')
+                    ->values()
+                    ->all();
 
-                Log::info('WhatsApp groups retrieved', [
+                Log::info('WhatsApp groups fetched from API', [
                     'instance' => $instanceName,
                     'groups_count' => count($groups),
                 ]);
@@ -81,6 +104,14 @@ trait UtilityOperations
 
             throw $e;
         }
+    }
+
+    /**
+     * Clear the cached groups for an instance.
+     */
+    public function clearSessionGroupsCache(string $instanceName): void
+    {
+        Cache::forget("whatsapp_groups_{$instanceName}");
     }
 
     public function getGroupParticipants(string $instanceName, string $groupJid): array
@@ -186,17 +217,31 @@ trait UtilityOperations
     public function findGroupMessages(string $instanceName, string $groupJid, ?string $dateFrom = null, ?string $dateTo = null, int $limit = 200): array
     {
         try {
-            $where = ['remoteJid' => $groupJid];
+            $where = [
+                'key' => ['remoteJid' => $groupJid],
+            ];
 
-            if ($dateFrom || $dateTo) {
-                $where['messageTimestamp'] = array_filter([
-                    'gte' => $dateFrom ? Carbon::parse($dateFrom)->startOfDay()->toISOString() : null,
-                    'lte' => $dateTo ? Carbon::parse($dateTo)->endOfDay()->toISOString() : null,
-                ]);
+            if ($dateFrom && $dateTo) {
+                $where['messageTimestamp'] = [
+                    'gte' => Carbon::parse($dateFrom)->startOfDay()->toISOString(),
+                    'lte' => Carbon::parse($dateTo)->endOfDay()->toISOString(),
+                ];
+            } elseif ($dateFrom) {
+                // Both gte and lte are required — default lte to end of today
+                $where['messageTimestamp'] = [
+                    'gte' => Carbon::parse($dateFrom)->startOfDay()->toISOString(),
+                    'lte' => now()->endOfDay()->toISOString(),
+                ];
+            } elseif ($dateTo) {
+                // Both gte and lte are required — default gte to epoch
+                $where['messageTimestamp'] = [
+                    'gte' => Carbon::createFromTimestamp(0)->toISOString(),
+                    'lte' => Carbon::parse($dateTo)->endOfDay()->toISOString(),
+                ];
             }
 
             $response = Http::withHeaders($this->evolutionHeaders())
-                ->timeout(15)
+                ->timeout(30)
                 ->post("{$this->baseUrl}/chat/findMessages/{$instanceName}", [
                     'where' => $where,
                     'page' => 1,
@@ -210,12 +255,6 @@ trait UtilityOperations
                 if (! is_array($records)) {
                     $records = [];
                 }
-
-                // The Evolution API may ignore the remoteJid filter — filter in PHP as fallback
-                $records = array_values(array_filter(
-                    $records,
-                    fn (array $msg) => ($msg['key']['remoteJid'] ?? '') === $groupJid,
-                ));
 
                 Log::info('WhatsApp group messages retrieved', [
                     'instance' => $instanceName,
@@ -242,7 +281,7 @@ trait UtilityOperations
     {
         $parsedDate = Carbon::parse($date);
         $where = [
-            'remoteJid' => $groupJid,
+            'key' => ['remoteJid' => $groupJid],
             'messageTimestamp' => [
                 'gte' => $parsedDate->copy()->startOfDay()->toISOString(),
                 'lte' => $parsedDate->copy()->endOfDay()->toISOString(),
@@ -252,11 +291,11 @@ trait UtilityOperations
         $responses = Http::pool(fn (Pool $pool) => [
             $pool->as('participants')
                 ->withHeaders($this->evolutionHeaders())
-                ->timeout(15)
+                ->timeout(30)
                 ->get("{$this->baseUrl}/group/participants/{$instanceName}", ['groupJid' => $groupJid]),
             $pool->as('messages')
                 ->withHeaders($this->evolutionHeaders())
-                ->timeout(15)
+                ->timeout(30)
                 ->post("{$this->baseUrl}/chat/findMessages/{$instanceName}", [
                     'where' => $where,
                     'page' => 1,
