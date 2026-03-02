@@ -302,12 +302,18 @@ trait UtilityOperations
                     'page' => 1,
                     'offset' => 200,
                 ]),
+            $pool->as('instance')
+                ->withHeaders($this->evolutionHeaders())
+                ->timeout(10)
+                ->get("{$this->baseUrl}/instance/connectionState/{$instanceName}"),
         ]);
 
         $participantsResponse = $responses['participants'] ?? null;
         $messagesResponse = $responses['messages'] ?? null;
+        $instanceResponse = $responses['instance'] ?? null;
 
         $lidToPhone = $this->resolveLidToPhoneMap($participantsResponse, $instanceName, $groupJid);
+        $ownerPhone = $this->resolveInstanceOwnerPhone($instanceResponse, $instanceName);
 
         $messages = ($messagesResponse instanceof Response)
             ? $this->parseMessageRecords($messagesResponse, $instanceName, $groupJid)
@@ -318,10 +324,9 @@ trait UtilityOperations
                 $key = $message['key'] ?? [];
 
                 return ($key['remoteJid'] ?? '') === $groupJid
-                    && ! ($key['fromMe'] ?? false)
                     && in_array($message['messageType'] ?? '', $allowedMessageTypes, true);
             })
-            ->map(fn (array $message) => $this->resolveMessageSenderPhone($message, $lidToPhone))
+            ->map(fn (array $message) => $this->resolveMessageSenderPhone($message, $lidToPhone, $ownerPhone))
             ->filter()
             ->unique()
             ->values()
@@ -333,6 +338,7 @@ trait UtilityOperations
             'date' => $date,
             'attendees_count' => count($senderPhones),
             'lid_map_size' => count($lidToPhone),
+            'owner_phone' => $ownerPhone,
         ]);
 
         return $senderPhones;
@@ -341,7 +347,7 @@ trait UtilityOperations
     /**
      * Resolve the sender phone number from a WhatsApp group message.
      */
-    protected function resolveMessageSenderPhone(array $message, array $lidToPhone): ?string
+    protected function resolveMessageSenderPhone(array $message, array $lidToPhone, ?string $ownerPhone = null): ?string
     {
         $key = $message['key'] ?? [];
 
@@ -359,14 +365,43 @@ trait UtilityOperations
             }
 
             $lid = str_replace('@lid', '', $participant);
+            $phone = $lidToPhone[$lid] ?? null;
+            if ($phone) {
+                return $phone;
+            }
+        }
 
-            return $lidToPhone[$lid] ?? null;
+        // fromMe messages are from the instance owner
+        if ($key['fromMe'] ?? false) {
+            return $ownerPhone;
         }
 
         // Fallback: pushName may contain LID in some Evolution API versions
         $pushName = $message['pushName'] ?? null;
 
         return $lidToPhone[$pushName] ?? null;
+    }
+
+    /**
+     * Extract the instance owner's phone from the connectionState response.
+     */
+    protected function resolveInstanceOwnerPhone(mixed $response, string $instanceName): ?string
+    {
+        if (! ($response instanceof Response) || ! $response->successful()) {
+            // Try fetching instance info directly
+            try {
+                $response = Http::withHeaders($this->evolutionHeaders())
+                    ->timeout(5)
+                    ->get("{$this->baseUrl}/instance/connectionState/{$instanceName}");
+            } catch (\Exception $e) {
+                return null;
+            }
+        }
+
+        $data = $response->json();
+        $ownerJid = $data['instance']['ownerJid'] ?? $data['ownerJid'] ?? null;
+
+        return $ownerJid ? $this->stripWhatsAppSuffix($ownerJid) : null;
     }
 
     /**
