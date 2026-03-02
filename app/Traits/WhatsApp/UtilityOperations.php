@@ -3,6 +3,7 @@
 namespace App\Traits\WhatsApp;
 
 use Carbon\Carbon;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Pool;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
@@ -291,11 +292,11 @@ trait UtilityOperations
         $responses = Http::pool(fn (Pool $pool) => [
             $pool->as('participants')
                 ->withHeaders($this->evolutionHeaders())
-                ->timeout(30)
+                ->timeout(15)
                 ->get("{$this->baseUrl}/group/participants/{$instanceName}", ['groupJid' => $groupJid]),
             $pool->as('messages')
                 ->withHeaders($this->evolutionHeaders())
-                ->timeout(30)
+                ->timeout(15)
                 ->post("{$this->baseUrl}/chat/findMessages/{$instanceName}", [
                     'where' => $where,
                     'page' => 1,
@@ -303,8 +304,14 @@ trait UtilityOperations
                 ]),
         ]);
 
-        $lidToPhone = $this->parseLidToPhoneMap($responses['participants'], $instanceName, $groupJid);
-        $messages = $this->parseMessageRecords($responses['messages'], $instanceName, $groupJid);
+        $participantsResponse = $responses['participants'] ?? null;
+        $messagesResponse = $responses['messages'] ?? null;
+
+        $lidToPhone = $this->resolveLidToPhoneMap($participantsResponse, $instanceName, $groupJid);
+
+        $messages = ($messagesResponse instanceof Response)
+            ? $this->parseMessageRecords($messagesResponse, $instanceName, $groupJid)
+            : [];
 
         $senderPhones = collect($messages)
             ->filter(function (array $message) use ($groupJid, $allowedMessageTypes): bool {
@@ -325,6 +332,7 @@ trait UtilityOperations
             'group_jid' => $groupJid,
             'date' => $date,
             'attendees_count' => count($senderPhones),
+            'lid_map_size' => count($lidToPhone),
         ]);
 
         return $senderPhones;
@@ -359,6 +367,47 @@ trait UtilityOperations
         $pushName = $message['pushName'] ?? null;
 
         return $lidToPhone[$pushName] ?? null;
+    }
+
+    /**
+     * Resolve LID-to-phone map: try pool response, fallback to sequential request, use cache as safety net.
+     */
+    protected function resolveLidToPhoneMap(mixed $poolResponse, string $instanceName, string $groupJid): array
+    {
+        $cacheKey = "whatsapp_lid_map_{$groupJid}";
+
+        // Try pool response first
+        if ($poolResponse instanceof Response) {
+            $map = $this->parseLidToPhoneMap($poolResponse, $instanceName, $groupJid);
+            if (! empty($map)) {
+                Cache::put($cacheKey, $map, now()->addHours(6));
+
+                return $map;
+            }
+        }
+
+        // Pool failed — try a separate sequential request
+        try {
+            $response = Http::withHeaders($this->evolutionHeaders())
+                ->timeout(10)
+                ->get("{$this->baseUrl}/group/participants/{$instanceName}", ['groupJid' => $groupJid]);
+
+            $map = $this->parseLidToPhoneMap($response, $instanceName, $groupJid);
+            if (! empty($map)) {
+                Cache::put($cacheKey, $map, now()->addHours(6));
+
+                return $map;
+            }
+        } catch (\Exception $e) {
+            Log::warning('Sequential participants fetch failed, using cache', [
+                'instance' => $instanceName,
+                'group_jid' => $groupJid,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        // Use cached map as last resort
+        return Cache::get($cacheKey, []);
     }
 
     /**

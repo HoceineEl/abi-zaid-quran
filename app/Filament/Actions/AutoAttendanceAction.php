@@ -12,6 +12,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Wizard\Step;
 use Filament\Forms\Get;
+use Filament\Forms\Set;
 use Filament\Notifications\Notification;
 use Filament\Tables\Actions\Action;
 use Illuminate\Support\Facades\Log;
@@ -54,7 +55,11 @@ class AutoAttendanceAction extends Action
                     Placeholder::make('accepted_message_types')
                         ->label('نوع الرسائل المقبولة للتسجيل')
                         ->content(fn () => ($this->getOwnerGroup()->message_submission_type ?? MessageSubmissionType::Media)->getLabel()),
-                ]),
+                ])
+                ->afterValidation(function (Get $get, Set $set) {
+                    $result = $this->fetchAndMatchAttendees($this->resolveDate($get));
+                    $set('student_ids', $result['matched_student_ids']);
+                }),
             Step::make('confirm_attendees')
                 ->label('تأكيد الحضور')
                 ->icon('heroicon-o-user-group')
@@ -72,7 +77,6 @@ class AutoAttendanceAction extends Action
                             ->students()
                             ->orderBy('order_no')
                             ->pluck('name', 'id'))
-                        ->default(fn (Get $get) => $this->fetchAndMatchAttendees($this->resolveDate($get))['matched_student_ids'])
                         ->descriptions(fn (Get $get) => $this->fetchAndMatchAttendees($this->resolveDate($get))['descriptions'])
                         ->disableOptionWhen(fn (string $value, Get $get) => in_array(
                             (int) $value,
