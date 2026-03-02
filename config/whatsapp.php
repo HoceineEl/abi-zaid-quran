@@ -6,8 +6,8 @@ return [
     'webhook_url' => env('WHATSAPP_WEBHOOK_URL'),
 
     // Anti-ban: Random delay range between messages (in seconds)
-    'delay_min' => env('WHATSAPP_DELAY_MIN', 8),
-    'delay_max' => env('WHATSAPP_DELAY_MAX', 20),
+    'delay_min' => env('WHATSAPP_DELAY_MIN', 5),
+    'delay_max' => env('WHATSAPP_DELAY_MAX', 10),
 
     // Rate limit: max messages per minute per session (safety net)
     'messages_per_minute' => env('WHATSAPP_MESSAGES_PER_MINUTE', 10),
