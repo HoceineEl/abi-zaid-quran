@@ -255,6 +255,7 @@ class StudentsRelationManager extends RelationManager
                             Forms\Components\Select::make('source_group_id')
                                 ->label('المجموعة المصدر')
                                 ->options(fn () => \App\Models\Group::where('id', '!=', $this->ownerRecord->id)->pluck('name', 'id'))
+                                ->searchable()
                                 ->required()
                                 ->reactive(),
                             Forms\Components\CheckboxList::make('student_ids')
