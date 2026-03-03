@@ -146,7 +146,7 @@ class WhatsAppSession extends Model
         }
     }
 
-    protected function clearRelatedCaches(): void
+    public function clearRelatedCaches(): void
     {
         app(\App\Services\WhatsAppService::class)->clearSessionGroupsCache($this->name);
     }
