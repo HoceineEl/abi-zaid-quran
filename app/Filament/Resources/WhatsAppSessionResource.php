@@ -56,6 +56,7 @@ class WhatsAppSessionResource extends BaseResource
                     self::getReloadQrAction(),
                     self::getShowQrCodeAction(),
                     self::getLogoutAction(),
+                    self::getClearCacheAction(),
                     self::getDeleteSessionAction(),
                     SendMessageAction::make(),
                 ])
@@ -271,6 +272,22 @@ class WhatsAppSessionResource extends BaseResource
                         ->danger()
                         ->send();
                 }
+            });
+    }
+
+    public static function getClearCacheAction(): Action
+    {
+        return Action::make('clear_cache')
+            ->label('مسح ذاكرة التخزين')
+            ->icon('heroicon-o-trash')
+            ->color('warning')
+            ->action(function (WhatsAppSession $record) {
+                $record->clearRelatedCaches();
+
+                Notification::make()
+                    ->success()
+                    ->title('تم مسح ذاكرة التخزين بنجاح')
+                    ->send();
             });
     }
 
