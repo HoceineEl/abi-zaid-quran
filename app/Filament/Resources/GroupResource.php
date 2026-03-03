@@ -93,8 +93,23 @@ class GroupResource extends Resource
                 Forms\Components\Select::make('whatsapp_group_jid')
                     ->label('مجموعة واتساب المرتبطة')
                     ->placeholder('لم يتم ربط مجموعة واتساب')
-                    ->options(fn () => auth()->user()?->isAdministrator() ? self::fetchWhatsAppGroups() : [])
                     ->searchable()
+                    ->getSearchResultsUsing(function (string $search): array {
+                        if (! auth()->user()?->isAdministrator()) {
+                            return [];
+                        }
+
+                        return collect(self::fetchWhatsAppGroups())
+                            ->filter(fn (string $subject) => str_contains($subject, $search))
+                            ->all();
+                    })
+                    ->getOptionLabelUsing(function (?string $value): ?string {
+                        if (! $value) {
+                            return null;
+                        }
+
+                        return self::fetchWhatsAppGroups()[$value] ?? $value;
+                    })
                     ->helperText('اربط هذه المجموعة بمجموعة واتساب للحضور التلقائي')
                     ->hidden(fn () => ! auth()->user()?->isAdministrator())
                     ->suffixActions([
@@ -102,7 +117,7 @@ class GroupResource extends Resource
                             ->icon('heroicon-o-arrow-path')
                             ->tooltip('تحديث قائمة المجموعات')
                             ->color('gray')
-                            ->action(function ($component) {
+                            ->action(function () {
                                 self::clearWhatsAppGroupsCache();
 
                                 $groups = self::fetchWhatsAppGroups();
@@ -116,8 +131,6 @@ class GroupResource extends Resource
 
                                     return;
                                 }
-
-                                $component->options($groups);
 
                                 Notification::make()
                                     ->success()
