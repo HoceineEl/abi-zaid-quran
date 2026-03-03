@@ -550,7 +550,7 @@ class GroupResource extends Resource
         try {
             $session = WhatsAppSession::getUserSession(auth()->id());
 
-            if (! $session?->isConnected()) {
+            if (! $session) {
                 return [];
             }
 

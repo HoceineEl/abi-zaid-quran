@@ -62,7 +62,14 @@ trait UtilityOperations
         $cacheKey = "whatsapp_groups_{$instanceName}";
 
         return Cache::remember($cacheKey, now()->addMinutes(30), function () use ($instanceName) {
-            return $this->fetchSessionGroupsFromApi($instanceName);
+            $groups = $this->fetchSessionGroupsFromApi($instanceName);
+
+            // Don't cache empty results — they indicate a transient issue
+            if (empty($groups)) {
+                throw new \RuntimeException('No groups returned from API');
+            }
+
+            return $groups;
         });
     }
 
@@ -71,40 +78,38 @@ trait UtilityOperations
      */
     protected function fetchSessionGroupsFromApi(string $instanceName): array
     {
-        try {
-            $response = Http::withHeaders($this->evolutionHeaders())
-                ->timeout(15)
-                ->get("{$this->baseUrl}/group/fetchAllGroups/{$instanceName}", [
-                    'getParticipants' => 'false',
-                ]);
-
-            if ($response->successful()) {
-                $groups = collect($response->json())
-                    ->map(fn (array $group) => [
-                        'id' => $group['id'] ?? '',
-                        'subject' => $group['subject'] ?? $group['name'] ?? '',
-                    ])
-                    ->filter(fn (array $group) => $group['id'] !== '')
-                    ->values()
-                    ->all();
-
-                Log::info('WhatsApp groups fetched from API', [
-                    'instance' => $instanceName,
-                    'groups_count' => count($groups),
-                ]);
-
-                return $groups;
-            }
-
-            throw new \RuntimeException("HTTP {$response->status()}: ".$response->body());
-        } catch (\Exception $e) {
-            Log::error('Failed to get WhatsApp groups', [
-                'instance' => $instanceName,
-                'error' => $e->getMessage(),
+        $response = Http::withHeaders($this->evolutionHeaders())
+            ->timeout(15)
+            ->get("{$this->baseUrl}/group/fetchAllGroups/{$instanceName}", [
+                'getParticipants' => 'false',
             ]);
 
-            throw $e;
+        if (! $response->successful()) {
+            Log::error('Failed to get WhatsApp groups', [
+                'instance' => $instanceName,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return [];
         }
+
+        $data = $response->json();
+
+        Log::info('WhatsApp groups raw response', [
+            'instance' => $instanceName,
+            'type' => gettype($data),
+            'count' => is_array($data) ? count($data) : 'N/A',
+        ]);
+
+        return collect($data)
+            ->map(fn (array $group) => [
+                'id' => $group['id'] ?? '',
+                'subject' => $group['subject'] ?? $group['name'] ?? '',
+            ])
+            ->filter(fn (array $group) => $group['id'] !== '')
+            ->values()
+            ->all();
     }
 
     /**
