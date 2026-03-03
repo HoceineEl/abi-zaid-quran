@@ -102,20 +102,26 @@ class GroupResource extends Resource
                             ->icon('heroicon-o-arrow-path')
                             ->tooltip('تحديث قائمة المجموعات')
                             ->color('gray')
-                            ->action(function () {
+                            ->action(function (Forms\Components\Select $component) {
                                 self::clearWhatsAppGroupsCache();
 
                                 $groups = self::fetchWhatsAppGroups();
 
                                 if (empty($groups)) {
+                                    $session = WhatsAppSession::getUserActiveSession(auth()->id());
+
                                     Notification::make()
                                         ->warning()
                                         ->title('لا يمكن جلب مجموعات واتساب')
-                                        ->body('تأكد من أن جلسة واتساب متصلة فعلياً')
+                                        ->body($session
+                                            ? 'الجلسة متصلة لكن الخادم لم يستجب. قد يحتاج بعض الوقت بعد الاتصال الجديد. حاول مرة أخرى بعد دقيقة.'
+                                            : 'لا توجد جلسة واتساب نشطة. أنشئ جلسة واتصل أولاً.')
                                         ->send();
 
                                     return;
                                 }
+
+                                $component->options($groups);
 
                                 Notification::make()
                                     ->success()
