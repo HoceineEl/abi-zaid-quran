@@ -115,6 +115,7 @@ class WhatsAppSession extends Model
         try {
             DB::transaction(function () {
                 $this->tryLogoutFromService();
+                $this->clearRelatedCaches();
 
                 parent::delete();
             });
@@ -145,12 +146,18 @@ class WhatsAppSession extends Model
         }
     }
 
+    protected function clearRelatedCaches(): void
+    {
+        app(\App\Services\WhatsAppService::class)->clearSessionGroupsCache($this->name);
+    }
+
     protected static function boot()
     {
         parent::boot();
 
         static::deleting(function ($session) {
             $session->tryLogoutFromService();
+            $session->clearRelatedCaches();
         });
     }
 }
