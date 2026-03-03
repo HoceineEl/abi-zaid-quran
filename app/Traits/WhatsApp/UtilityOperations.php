@@ -90,38 +90,59 @@ trait UtilityOperations
 
     /**
      * Fetch groups directly from the Evolution API, returning only id and subject.
+     * Falls back to findChats endpoint if fetchAllGroups times out.
      */
     protected function fetchSessionGroupsFromApi(string $instanceName): array
     {
-        $response = Http::withHeaders($this->evolutionHeaders())
-            ->timeout(15)
-            ->get("{$this->baseUrl}/group/fetchAllGroups/{$instanceName}", [
-                'getParticipants' => 'false',
-            ]);
+        // Primary: fetchAllGroups (returns full group info)
+        try {
+            $response = Http::withHeaders($this->evolutionHeaders())
+                ->timeout(15)
+                ->get("{$this->baseUrl}/group/fetchAllGroups/{$instanceName}", [
+                    'getParticipants' => 'false',
+                ]);
 
-        if (! $response->successful()) {
-            Log::warning('WhatsApp groups API returned non-200', [
+            if ($response->successful() && is_array($response->json())) {
+                return collect($response->json())
+                    ->map(fn (array $group) => [
+                        'id' => $group['id'] ?? '',
+                        'subject' => $group['subject'] ?? $group['name'] ?? '',
+                    ])
+                    ->filter(fn (array $group) => $group['id'] !== '')
+                    ->values()
+                    ->all();
+            }
+        } catch (\Exception $e) {
+            Log::warning('fetchAllGroups failed, trying findChats fallback', [
                 'instance' => $instanceName,
-                'status' => $response->status(),
+                'error' => $e->getMessage(),
             ]);
-
-            return [];
         }
 
-        $data = $response->json();
+        // Fallback: findChats (lighter, extracts groups from chat list)
+        try {
+            $response = Http::withHeaders($this->evolutionHeaders())
+                ->timeout(15)
+                ->post("{$this->baseUrl}/chat/findChats/{$instanceName}");
 
-        if (! is_array($data)) {
-            return [];
+            if ($response->successful() && is_array($response->json())) {
+                return collect($response->json())
+                    ->filter(fn (array $chat) => str_ends_with($chat['remoteJid'] ?? '', '@g.us'))
+                    ->map(fn (array $chat) => [
+                        'id' => $chat['remoteJid'],
+                        'subject' => $chat['pushName'] ?? $chat['remoteJid'],
+                    ])
+                    ->values()
+                    ->all();
+            }
+        } catch (\Exception $e) {
+            Log::warning('findChats fallback also failed', [
+                'instance' => $instanceName,
+                'error' => $e->getMessage(),
+            ]);
         }
 
-        return collect($data)
-            ->map(fn (array $group) => [
-                'id' => $group['id'] ?? '',
-                'subject' => $group['subject'] ?? $group['name'] ?? '',
-            ])
-            ->filter(fn (array $group) => $group['id'] !== '')
-            ->values()
-            ->all();
+        return [];
     }
 
     /**
