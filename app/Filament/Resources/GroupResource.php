@@ -548,7 +548,7 @@ class GroupResource extends Resource
     protected static function fetchWhatsAppGroups(): array
     {
         try {
-            $session = WhatsAppSession::getUserSession(auth()->id());
+            $session = WhatsAppSession::getUserActiveSession(auth()->id());
 
             if (! $session) {
                 return [];

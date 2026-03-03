@@ -56,21 +56,36 @@ trait UtilityOperations
 
     /**
      * Get session groups (cached). Returns only id and subject for each group.
+     *
+     * Non-empty results cached for 30 min; empty/failed cached for 2 min
+     * to avoid hammering the API on repeated dropdown opens.
      */
     public function getSessionGroups(string $instanceName): array
     {
         $cacheKey = "whatsapp_groups_{$instanceName}";
 
-        return Cache::remember($cacheKey, now()->addMinutes(30), function () use ($instanceName) {
+        $cached = Cache::get($cacheKey);
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        try {
             $groups = $this->fetchSessionGroupsFromApi($instanceName);
+        } catch (\Exception $e) {
+            Log::error('Failed to get WhatsApp groups', [
+                'instance' => $instanceName,
+                'error' => $e->getMessage(),
+            ]);
+            $groups = [];
+        }
 
-            // Don't cache empty results — they indicate a transient issue
-            if (empty($groups)) {
-                throw new \RuntimeException('No groups returned from API');
-            }
+        Cache::put(
+            $cacheKey,
+            $groups,
+            empty($groups) ? now()->addMinutes(2) : now()->addMinutes(30),
+        );
 
-            return $groups;
-        });
+        return $groups;
     }
 
     /**
@@ -85,10 +100,9 @@ trait UtilityOperations
             ]);
 
         if (! $response->successful()) {
-            Log::error('Failed to get WhatsApp groups', [
+            Log::warning('WhatsApp groups API returned non-200', [
                 'instance' => $instanceName,
                 'status' => $response->status(),
-                'body' => $response->body(),
             ]);
 
             return [];
@@ -96,11 +110,9 @@ trait UtilityOperations
 
         $data = $response->json();
 
-        Log::info('WhatsApp groups raw response', [
-            'instance' => $instanceName,
-            'type' => gettype($data),
-            'count' => is_array($data) ? count($data) : 'N/A',
-        ]);
+        if (! is_array($data)) {
+            return [];
+        }
 
         return collect($data)
             ->map(fn (array $group) => [
