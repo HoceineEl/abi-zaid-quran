@@ -57,8 +57,8 @@ trait UtilityOperations
     /**
      * Get session groups (cached). Returns only id and subject for each group.
      *
-     * Non-empty results cached for 30 min; empty/failed cached for 2 min
-     * to avoid hammering the API on repeated dropdown opens.
+     * Non-empty results cached forever; empty/failed results are not cached.
+     * Use clearSessionGroupsCache() (refresh button) to force a fresh fetch.
      */
     public function getSessionGroups(string $instanceName): array
     {
@@ -79,11 +79,11 @@ trait UtilityOperations
             $groups = [];
         }
 
-        Cache::put(
-            $cacheKey,
-            $groups,
-            empty($groups) ? now()->addMinutes(2) : now()->addMinutes(30),
-        );
+        if (empty($groups)) {
+            // Don't cache empty results — allow immediate retry
+        } else {
+            Cache::forever($cacheKey, $groups);
+        }
 
         return $groups;
     }

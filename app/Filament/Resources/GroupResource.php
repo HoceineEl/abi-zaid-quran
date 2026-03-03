@@ -100,7 +100,7 @@ class GroupResource extends Resource
                     ->suffixActions([
                         FormAction::make('refresh_whatsapp_groups')
                             ->icon('heroicon-o-arrow-path')
-                            ->tooltip('تحديث قائمة المجموعات')
+                            ->tooltip('تحديث قائمة المجموعات (مسح الذاكرة المؤقتة وجلب القائمة من جديد)')
                             ->color('gray')
                             ->action(function (Forms\Components\Select $component) {
                                 self::clearWhatsAppGroupsCache();
