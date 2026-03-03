@@ -73,7 +73,7 @@ trait UtilityOperations
     {
         try {
             $response = Http::withHeaders($this->evolutionHeaders())
-                ->timeout(30)
+                ->timeout(15)
                 ->get("{$this->baseUrl}/group/fetchAllGroups/{$instanceName}", [
                     'getParticipants' => 'false',
                 ]);
