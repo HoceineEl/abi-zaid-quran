@@ -94,6 +94,7 @@ class GroupResource extends Resource
                     ->label('مجموعة واتساب المرتبطة')
                     ->placeholder('لم يتم ربط مجموعة واتساب')
                     ->searchable()
+                    ->preload()
                     ->getSearchResultsUsing(function (string $search): array {
                         if (! auth()->user()?->isAdministrator()) {
                             return [];
