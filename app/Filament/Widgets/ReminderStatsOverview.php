@@ -2,7 +2,6 @@
 
 namespace App\Filament\Widgets;
 
-use App\Helpers\PhoneHelper;
 use App\Models\Group;
 use App\Models\Student;
 use App\Models\WhatsAppMessageHistory;
@@ -23,29 +22,20 @@ class ReminderStatsOverview extends BaseWidget
     {
         $date = $this->filters['date'] ?? now()->toDateString();
 
-        $remindedPhones = WhatsAppMessageHistory::query()
-            ->whereDate('created_at', $date)
-            ->pluck('recipient_phone');
-
-        $remindedPhonesSet = array_flip($remindedPhones->toArray());
-
-        $students = Student::query()
-            ->whereNotNull('phone')
-            ->get(['id', 'phone', 'group_id']);
-
-        $remindedGroupIds = $students
-            ->filter(function ($s) use ($remindedPhonesSet) {
-                $cleaned = PhoneHelper::cleanPhoneNumber($s->phone);
-
-                return $cleaned && isset($remindedPhonesSet[$cleaned]);
+        $remindedGroupIds = Student::query()
+            ->whereHas('progresses', function ($q) use ($date) {
+                $q->whereDate('date', $date)
+                    ->whereNull('status');
             })
-            ->pluck('group_id')
-            ->unique();
+            ->distinct('group_id')
+            ->pluck('group_id');
 
         $totalGroups = Group::count();
         $remindedCount = Group::whereIn('id', $remindedGroupIds)->count();
         $notRemindedCount = $totalGroups - $remindedCount;
-        $totalMessages = $remindedPhones->count();
+        $totalMessages = WhatsAppMessageHistory::query()
+            ->whereDate('created_at', $date)
+            ->count();
         $percentage = $totalGroups > 0 ? round(($remindedCount / $totalGroups) * 100) : 0;
 
         return [

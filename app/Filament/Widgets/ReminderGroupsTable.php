@@ -2,11 +2,9 @@
 
 namespace App\Filament\Widgets;
 
-use App\Helpers\PhoneHelper;
 use App\Models\Group;
 use App\Models\Student;
 use App\Models\User;
-use App\Models\WhatsAppMessageHistory;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
@@ -33,21 +31,13 @@ class ReminderGroupsTable extends BaseWidget
     {
         $date = $this->filters['date'] ?? now()->toDateString();
 
-        $remindedPhonesSet = array_flip(
-            WhatsAppMessageHistory::query()
-                ->whereDate('created_at', $date)
-                ->pluck('recipient_phone')
-                ->toArray()
-        );
-
         $remindedByGroup = Student::query()
-            ->whereNotNull('phone')
-            ->get(['id', 'phone', 'group_id'])
-            ->filter(function ($s) use ($remindedPhonesSet) {
-                $cleaned = PhoneHelper::cleanPhoneNumber($s->phone);
-
-                return $cleaned && isset($remindedPhonesSet[$cleaned]);
+            ->whereHas('progresses', function ($q) use ($date) {
+                $q->whereDate('date', $date)
+                    ->whereNull('status');
             })
+            ->select('id', 'group_id')
+            ->get()
             ->groupBy('group_id')
             ->map->count();
 
