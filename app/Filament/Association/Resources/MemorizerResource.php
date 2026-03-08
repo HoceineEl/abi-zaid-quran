@@ -89,6 +89,8 @@ class MemorizerResource extends Resource
                             ->label('المجموعة')
                             ->hiddenOn(MemorizersRelationManager::class)
                             ->relationship('group', 'name')
+                            ->searchable()
+                            ->preload()
                             ->required(),
 
 
@@ -327,7 +329,7 @@ class MemorizerResource extends Resource
                     ->form([
                         Select::make('memo_group_id')
                             ->label('المجموعة')
-                            ->options(MemoGroup::pluck('name', 'id'))
+                            ->options(fn () => MemoGroup::pluck('name', 'id'))
                             ->searchable()
                             ->preload()
                             ->required(),

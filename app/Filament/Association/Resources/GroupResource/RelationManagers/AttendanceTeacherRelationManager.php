@@ -392,6 +392,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                     ->label('تسجيل الحضور')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
+                    ->size(ActionSize::ExtraSmall)
                     ->action(function ($livewire) {
                         $records = $livewire->getSelectedTableRecords();
                         $records = Memorizer::find($records);
@@ -414,6 +415,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                     ->label('تسجيل الغياب')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
+                    ->size(ActionSize::ExtraSmall)
                     ->requiresConfirmation()
                     ->modalHeading('تأكيد تسجيل الغياب الجماعي')
                     ->modalDescription('هل أنت متأكد من تسجيل الغياب للطلاب المحددين؟')
@@ -443,6 +445,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                     ->label('إلغاء التسجيل')
                     ->icon('heroicon-o-arrow-uturn-left')
                     ->color('warning')
+                    ->size(ActionSize::ExtraSmall)
                     ->requiresConfirmation()
                     ->modalHeading('تأكيد إلغاء التسجيل الجماعي')
                     ->modalDescription('هل أنت متأكد من إلغاء تسجيل الحضور/الغياب للطلاب المحددين؟')
