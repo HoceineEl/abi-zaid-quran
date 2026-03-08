@@ -3,10 +3,11 @@
 namespace App\Models;
 
 use App\Enums\WhatsAppConnectionStatus;
+use App\Services\WhatsAppService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class WhatsAppSession extends Model
@@ -19,6 +20,7 @@ class WhatsAppSession extends Model
         'status',
         'qr_code',
         'session_data',
+        'cached_groups',
         'connected_at',
         'last_activity_at',
     ];
@@ -28,6 +30,7 @@ class WhatsAppSession extends Model
         'connected_at' => 'datetime',
         'last_activity_at' => 'datetime',
         'session_data' => 'array',
+        'cached_groups' => 'array',
     ];
 
     public function user(): BelongsTo
@@ -71,8 +74,7 @@ class WhatsAppSession extends Model
 
     public function updateQrCode(?string $qrCode): void
     {
-        $service = app(\App\Services\WhatsAppService::class);
-        $cleanedQrCode = $service->cleanQrCodeData($qrCode);
+        $cleanedQrCode = app(WhatsAppService::class)->cleanQrCodeData($qrCode);
 
         $this->update([
             'qr_code' => $cleanedQrCode,
@@ -110,33 +112,11 @@ class WhatsAppSession extends Model
             ->first();
     }
 
-    public function delete(): ?bool
-    {
-        try {
-            DB::transaction(function () {
-                $this->tryLogoutFromService();
-                $this->clearRelatedCaches();
-
-                parent::delete();
-            });
-
-            return true;
-        } catch (\Exception $e) {
-            Log::error('Failed to delete WhatsApp session', [
-                'session_id' => $this->id,
-                'error' => $e->getMessage(),
-            ]);
-
-            return false;
-        }
-    }
-
     protected function tryLogoutFromService(): void
     {
         try {
             if ($this->isConnected()) {
-                $whatsappService = app(\App\Services\WhatsAppService::class);
-                $whatsappService->logout($this);
+                app(WhatsAppService::class)->logout($this);
             }
         } catch (\Exception $e) {
             Log::warning('Failed to logout from WhatsApp service during deletion', [
@@ -146,9 +126,15 @@ class WhatsAppSession extends Model
         }
     }
 
+    public function cacheGroups(array $groups): void
+    {
+        $this->update(['cached_groups' => $groups]);
+    }
+
     public function clearRelatedCaches(): void
     {
-        app(\App\Services\WhatsAppService::class)->clearSessionGroupsCache($this->name);
+        Cache::forget("whatsapp_groups_{$this->name}");
+        $this->updateQuietly(['cached_groups' => null]);
     }
 
     protected static function boot()

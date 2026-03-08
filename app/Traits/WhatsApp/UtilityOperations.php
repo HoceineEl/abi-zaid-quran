@@ -2,8 +2,8 @@
 
 namespace App\Traits\WhatsApp;
 
+use App\Models\WhatsAppSession;
 use Carbon\Carbon;
-use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Pool;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
@@ -62,13 +62,23 @@ trait UtilityOperations
      */
     public function getSessionGroups(string $instanceName): array
     {
-        $cacheKey = "whatsapp_groups_{$instanceName}";
+        $cacheKey = $this->groupsCacheKey($instanceName);
 
+        // Layer 1: Laravel cache (fastest)
         $cached = Cache::get($cacheKey);
         if ($cached !== null) {
             return $cached;
         }
 
+        // Layer 2: DB persistent storage (survives server restart)
+        $session = WhatsAppSession::where('name', $instanceName)->first();
+        if ($session?->cached_groups) {
+            Cache::forever($cacheKey, $session->cached_groups);
+
+            return $session->cached_groups;
+        }
+
+        // Layer 3: Evolution API (slow, last resort)
         try {
             $groups = $this->fetchSessionGroupsFromApi($instanceName);
         } catch (\Exception $e) {
@@ -79,10 +89,9 @@ trait UtilityOperations
             $groups = [];
         }
 
-        if (empty($groups)) {
-            // Don't cache empty results — allow immediate retry
-        } else {
+        if (! empty($groups)) {
             Cache::forever($cacheKey, $groups);
+            $session?->cacheGroups($groups);
         }
 
         return $groups;
@@ -145,12 +154,16 @@ trait UtilityOperations
         return [];
     }
 
-    /**
-     * Clear the cached groups for an instance.
-     */
     public function clearSessionGroupsCache(string $instanceName): void
     {
-        Cache::forget("whatsapp_groups_{$instanceName}");
+        Cache::forget($this->groupsCacheKey($instanceName));
+        WhatsAppSession::where('name', $instanceName)
+            ->update(['cached_groups' => null]);
+    }
+
+    protected function groupsCacheKey(string $instanceName): string
+    {
+        return "whatsapp_groups_{$instanceName}";
     }
 
     public function getGroupParticipants(string $instanceName, string $groupJid): array
