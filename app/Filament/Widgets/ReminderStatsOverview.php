@@ -22,12 +22,11 @@ class ReminderStatsOverview extends BaseWidget
     {
         $date = $this->filters['date'] ?? now()->toDateString();
 
-        $remindedGroupIds = Student::query()
+        $remindedGroupIds = Student::withoutGlobalScope('ordered')
             ->whereHas('progresses', function ($q) use ($date) {
                 $q->whereDate('date', $date)
                     ->whereNull('status');
             })
-            ->reorder()
             ->distinct('group_id')
             ->pluck('group_id');
 
