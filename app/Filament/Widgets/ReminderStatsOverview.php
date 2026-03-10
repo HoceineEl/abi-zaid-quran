@@ -25,7 +25,7 @@ class ReminderStatsOverview extends BaseWidget
         $remindedGroupIds = Student::withoutGlobalScope('ordered')
             ->whereHas('progresses', function ($q) use ($date) {
                 $q->whereDate('date', $date)
-                    ->where('comment', 'message_sent_whatsapp');
+                    ->whereIn('comment', ['message_sent', 'voice_message_sent', 'call_made', 'message_sent_whatsapp']);
             })
             ->distinct('group_id')
             ->pluck('group_id');

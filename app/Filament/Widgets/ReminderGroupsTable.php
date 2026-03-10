@@ -34,7 +34,7 @@ class ReminderGroupsTable extends BaseWidget
         $remindedByGroup = Student::query()
             ->whereHas('progresses', function ($q) use ($date) {
                 $q->whereDate('date', $date)
-                    ->where('comment', 'message_sent_whatsapp');
+                    ->whereIn('comment', ['message_sent', 'voice_message_sent', 'call_made', 'message_sent_whatsapp']);
             })
             ->select('id', 'group_id')
             ->get()
