@@ -27,6 +27,7 @@ class ReminderStatsOverview extends BaseWidget
                 $q->whereDate('date', $date)
                     ->whereNull('status');
             })
+            ->reorder()
             ->distinct('group_id')
             ->pluck('group_id');
 
