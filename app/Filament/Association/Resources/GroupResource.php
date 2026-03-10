@@ -11,9 +11,13 @@ use App\Filament\Association\Resources\GroupResource\RelationManagers\PaymentsRe
 use App\Filament\Association\Resources\GroupResource\RelationManagers\AttendanceTeacherRelationManager;
 use App\Models\MemoGroup;
 use App\Exports\GroupStudentsPaymentExport;
+use App\Services\AttendanceExcelExportService;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\ToggleButtons;
+use Filament\Notifications\Notification;
 use Filament\Forms\Form;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Infolist;
@@ -147,6 +151,13 @@ class GroupResource extends Resource
                             $fileName
                         );
                     }),
+                Action::make('export_attendance_grades')
+                    ->label('تصدير حضور وتقييم Excel')
+                    ->icon('heroicon-o-table-cells')
+                    ->color('primary')
+                    ->hidden(fn() => auth()->user()->isTeacher())
+                    ->form(static::getAttendanceExportFormSchema())
+                    ->action(fn(MemoGroup $record, array $data) => static::exportAttendanceWorkbook($record, $data)),
             ])
             ->recordUrl(fn($record) => GroupResource::getUrl('view', ['record' => $record->id]))
             ->bulkActions([
@@ -198,5 +209,92 @@ class GroupResource extends Resource
             'index' => Pages\ListGroups::route('/'),
             'view' => Pages\ViewGroup::route('/{record}'),
         ];
+    }
+
+    public static function getAttendanceExportFormSchema(): array
+    {
+        return [
+            DatePicker::make('date_from')
+                ->label('من تاريخ')
+                ->default(now()->subDays(6)->format('Y-m-d'))
+                ->required(),
+            DatePicker::make('date_to')
+                ->label('إلى تاريخ')
+                ->default(now()->format('Y-m-d'))
+                ->required(),
+            Select::make('sex_filter')
+                ->label('تصفية الجنس')
+                ->options([
+                    'male' => 'الذكور فقط',
+                    'female' => 'الإناث فقط',
+                ])
+                ->placeholder('الكل'),
+            Toggle::make('include_student_numbers')
+                ->label('تضمين أرقام الطلاب')
+                ->default(false),
+            Toggle::make('include_contact_columns')
+                ->label('تضمين بيانات التواصل')
+                ->default(false),
+        ];
+    }
+
+    public static function exportAttendanceWorkbook(MemoGroup $group, array $data)
+    {
+        if (! $group->memorizers()->exists()) {
+            Notification::make()
+                ->title('لا يمكن التصدير')
+                ->body('هذه المجموعة لا تحتوي على طلاب حالياً.')
+                ->danger()
+                ->send();
+
+            return null;
+        }
+
+        try {
+            return app(AttendanceExcelExportService::class)->download($group, $data);
+        } catch (\InvalidArgumentException $exception) {
+            Notification::make()
+                ->title('تعذر إنشاء الملف')
+                ->body($exception->getMessage())
+                ->danger()
+                ->send();
+
+            return null;
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            Notification::make()
+                ->title('حدث خطأ أثناء إنشاء الملف')
+                ->body('تعذر إنشاء ملف Excel حالياً. حاول مرة أخرى.')
+                ->danger()
+                ->send();
+
+            return null;
+        }
+    }
+
+    public static function exportAllAttendanceWorkbooks(array $data)
+    {
+        try {
+            return app(AttendanceExcelExportService::class)->downloadAllGroups($data);
+        } catch (\InvalidArgumentException $exception) {
+            Notification::make()
+                ->title('تعذر إنشاء الملف')
+                ->body($exception->getMessage())
+                ->danger()
+                ->send();
+
+            return null;
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            Notification::make()
+                ->title('حدث خطأ أثناء إنشاء الملف')
+                ->body('تعذر إنشاء ملف Excel حالياً. حاول مرة أخرى.')
+                ->danger()
+                ->send();
+
+            return null;
+        }
     }
 }

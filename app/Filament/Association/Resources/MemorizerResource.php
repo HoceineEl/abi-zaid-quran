@@ -215,7 +215,37 @@ class MemorizerResource extends Resource
             ])
 
             ->headerActions([
+                Action::make('export_attendance_grades')
+                    ->label('تصدير حضور وتقييم Excel')
+                    ->icon('heroicon-o-table-cells')
+                    ->color('primary')
+                    ->form([
+                        Select::make('memo_group_id')
+                            ->label('المجموعة')
+                            ->options(fn () => MemoGroup::orderBy('name')->pluck('name', 'id'))
+                            ->searchable()
+                            ->preload()
+                            ->placeholder('كل المجموعات'),
+                        ...GroupResource::getAttendanceExportFormSchema(),
+                    ])
+                    ->action(function (array $data) {
+                        if (blank($data['memo_group_id'] ?? null)) {
+                            return GroupResource::exportAllAttendanceWorkbooks($data);
+                        }
 
+                        $group = MemoGroup::find($data['memo_group_id']);
+
+                        if (! $group) {
+                            Notification::make()
+                                ->title('تعذر العثور على المجموعة')
+                                ->danger()
+                                ->send();
+
+                            return null;
+                        }
+
+                        return GroupResource::exportAttendanceWorkbook($group, $data);
+                    }),
 
                 ExportAction::make()
                     ->label('تصدير البيانات')
