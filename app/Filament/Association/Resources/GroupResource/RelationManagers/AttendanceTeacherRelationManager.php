@@ -389,7 +389,7 @@ class AttendanceTeacherRelationManager extends RelationManager
             ])
             ->bulkActions([
                 BulkAction::make('mark_attendance_bulk')
-                    ->label('تسجيل الحضور')
+                    ->label('حاضرين')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->size(ActionSize::ExtraSmall)
@@ -412,7 +412,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                     }),
 
                 BulkAction::make('mark_absence_bulk')
-                    ->label('تسجيل الغياب')
+                    ->label('غائبين')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
                     ->size(ActionSize::ExtraSmall)
@@ -442,7 +442,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                     }),
 
                 BulkAction::make('revert_attendance_bulk')
-                    ->label('إلغاء التسجيل')
+                    ->label('إلغاء')
                     ->icon('heroicon-o-arrow-uturn-left')
                     ->color('warning')
                     ->size(ActionSize::ExtraSmall)

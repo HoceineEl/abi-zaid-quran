@@ -319,8 +319,8 @@ class AttendanceExcelExportService
 
         $sheet->fromArray([
             ['عدد الطلاب', $context['memorizers']->count(), 'عدد الأيام', $context['dates']->count()],
-            ['الحضور', $context['stats']['present_count'], 'الغياب', $context['stats']['absent_count']],
-            ['غير مسجل', $context['stats']['unmarked_count'], 'نسبة الحضور', $context['stats']['attendance_percentage'] . '%'],
+            ['إجمالي الحضور في الفترة', $context['stats']['present_count'], 'إجمالي الغياب في الفترة', $context['stats']['absent_count']],
+            ['إجمالي غير المسجل في الفترة', $context['stats']['unmarked_count'], 'نسبة الحضور', $context['stats']['attendance_percentage'] . '%'],
             ['حاضر بدون تقييم', $context['stats']['present_without_score_count'], 'عدد السجلات', $context['stats']['attendance_rows']->count()],
         ], null, 'A5');
 
@@ -556,9 +556,9 @@ class AttendanceExcelExportService
             'المجموعة',
             'الأستاذ',
             'عدد الطلاب',
-            'الحضور',
-            'الغياب',
-            'غير مسجل',
+            'إجمالي الحضور في الفترة',
+            'إجمالي الغياب في الفترة',
+            'إجمالي غير المسجل في الفترة',
         ]], null, 'A4');
 
         $row = 5;
