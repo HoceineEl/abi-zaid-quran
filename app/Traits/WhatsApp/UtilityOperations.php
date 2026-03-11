@@ -374,6 +374,13 @@ trait UtilityOperations
             ->filter(function (array $message) use ($groupJid, $allowedMessageTypes): bool {
                 $key = $message['key'] ?? [];
 
+                // Exclude deleted/revoked messages — Evolution API keeps the original record
+                // but nullifies the message content when a message is deleted.
+                $messageContent = $message['message'] ?? null;
+                if (empty($messageContent)) {
+                    return false;
+                }
+
                 return ($key['remoteJid'] ?? '') === $groupJid
                     && in_array($message['messageType'] ?? '', $allowedMessageTypes, true);
             })
