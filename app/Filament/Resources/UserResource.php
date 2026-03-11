@@ -135,7 +135,7 @@ class UserResource extends Resource
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Impersonate::make()
-                    ->visible(fn () => Auth::user()?->role === 'admin' && app()->isLocal()),
+                    ->visible(fn () => Auth::user()?->role === 'admin'),
                 ActionGroup::make([
                     Action::make('view_groups')
                         ->label('عرض المجموعات')
