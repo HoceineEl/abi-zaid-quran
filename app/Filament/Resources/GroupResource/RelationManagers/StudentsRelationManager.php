@@ -13,7 +13,6 @@ use App\Models\Group;
 use App\Models\GroupMessageTemplate;
 use App\Models\Student;
 use App\Models\StudentDisconnection;
-use App\Models\WhatsAppSession;
 use Filament\Forms;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
@@ -238,8 +237,7 @@ class StudentsRelationManager extends RelationManager
                 AutoAttendanceAction::make()
                     ->size(ActionSize::ExtraSmall)
                     ->visible(fn () => $this->ownerRecord->whatsapp_group_jid
-                        && $this->ownerRecord->managers->contains(auth()->user())
-                        && WhatsAppSession::getUserSession(auth()->id())?->isConnected()),
+                        && $this->ownerRecord->managers->contains(auth()->user())),
                 SendReminderToUnmarkedStudentsAction::make()
                     ->size(ActionSize::ExtraSmall)
                     ->visible(fn () => $this->ownerRecord->managers->contains(auth()->user())),

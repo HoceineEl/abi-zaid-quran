@@ -93,10 +93,9 @@ class GroupResource extends Resource
                 Forms\Components\Select::make('whatsapp_group_jid')
                     ->label('مجموعة واتساب المرتبطة')
                     ->placeholder('لم يتم ربط مجموعة واتساب')
-                    ->options(fn () => auth()->user()?->isAdministrator() ? self::fetchWhatsAppGroups() : [])
+                    ->options(fn () => self::fetchWhatsAppGroups())
                     ->searchable()
                     ->helperText('اربط هذه المجموعة بمجموعة واتساب للحضور التلقائي')
-                    ->hidden(fn () => ! auth()->user()?->isAdministrator())
                     ->suffixActions([
                         FormAction::make('refresh_whatsapp_groups')
                             ->icon('heroicon-o-arrow-path')
