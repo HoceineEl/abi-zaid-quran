@@ -178,7 +178,7 @@ class GroupResource extends Resource
                             ->modalWidth('lg');
                     }),
             ])
-            ->disabled(! Core::canChange());
+            ->disabled(fn (?Group $record) => ! auth()->user()->isAdministrator() && ! $record?->managers->contains(auth()->user()));
     }
 
     public static function table(Table $table): Table
