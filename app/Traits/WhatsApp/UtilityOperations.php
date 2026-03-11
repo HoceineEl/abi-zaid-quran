@@ -98,60 +98,51 @@ trait UtilityOperations
     }
 
     /**
-     * Fetch groups directly from the Evolution API, returning only id and subject.
-     * Falls back to findChats endpoint if fetchAllGroups times out.
+     * Fetch groups from the Evolution API by running both endpoints in parallel and merging results.
+     * fetchAllGroups is authoritative for subjects; findChats fills in any groups it missed.
      */
     protected function fetchSessionGroupsFromApi(string $instanceName): array
     {
-        // Primary: fetchAllGroups (returns full group info)
-        try {
-            $response = Http::withHeaders($this->evolutionHeaders())
-                ->timeout(15)
-                ->get("{$this->baseUrl}/group/fetchAllGroups/{$instanceName}", [
-                    'getParticipants' => 'false',
-                ]);
+        $responses = Http::pool(fn (Pool $pool) => [
+            $pool->as('fetchAllGroups')
+                ->withHeaders($this->evolutionHeaders())
+                ->timeout(20)
+                ->get("{$this->baseUrl}/group/fetchAllGroups/{$instanceName}", ['getParticipants' => 'false']),
+            $pool->as('findChats')
+                ->withHeaders($this->evolutionHeaders())
+                ->timeout(20)
+                ->post("{$this->baseUrl}/chat/findChats/{$instanceName}"),
+        ]);
 
-            if ($response->successful() && is_array($response->json())) {
-                return collect($response->json())
-                    ->map(fn (array $group) => [
-                        'id' => $group['id'] ?? '',
-                        'subject' => $group['subject'] ?? $group['name'] ?? '',
-                    ])
-                    ->filter(fn (array $group) => $group['id'] !== '')
-                    ->values()
-                    ->all();
+        $groups = [];
+
+        // fetchAllGroups: handles both 'id' and 'remoteJid' field names across Evolution API versions
+        $fetchAllResponse = $responses['fetchAllGroups'] ?? null;
+        if ($fetchAllResponse instanceof Response && $fetchAllResponse->successful() && is_array($fetchAllResponse->json())) {
+            foreach ($fetchAllResponse->json() as $group) {
+                $id = $group['id'] ?? $group['remoteJid'] ?? '';
+                if ($id !== '') {
+                    $groups[$id] = ['id' => $id, 'subject' => $group['subject'] ?? $group['name'] ?? ''];
+                }
             }
-        } catch (\Exception $e) {
-            Log::warning('fetchAllGroups failed, trying findChats fallback', [
-                'instance' => $instanceName,
-                'error' => $e->getMessage(),
-            ]);
         }
 
-        // Fallback: findChats (lighter, extracts groups from chat list)
-        try {
-            $response = Http::withHeaders($this->evolutionHeaders())
-                ->timeout(15)
-                ->post("{$this->baseUrl}/chat/findChats/{$instanceName}");
-
-            if ($response->successful() && is_array($response->json())) {
-                return collect($response->json())
-                    ->filter(fn (array $chat) => str_ends_with($chat['remoteJid'] ?? '', '@g.us'))
-                    ->map(fn (array $chat) => [
-                        'id' => $chat['remoteJid'],
-                        'subject' => $chat['pushName'] ?? $chat['remoteJid'],
-                    ])
-                    ->values()
-                    ->all();
+        // findChats: fills in any groups that fetchAllGroups missed
+        $findChatsResponse = $responses['findChats'] ?? null;
+        if ($findChatsResponse instanceof Response && $findChatsResponse->successful() && is_array($findChatsResponse->json())) {
+            foreach ($findChatsResponse->json() as $chat) {
+                $id = $chat['remoteJid'] ?? '';
+                if ($id !== '' && str_ends_with($id, '@g.us') && ! isset($groups[$id])) {
+                    $groups[$id] = ['id' => $id, 'subject' => $chat['pushName'] ?? $chat['name'] ?? $id];
+                }
             }
-        } catch (\Exception $e) {
-            Log::warning('findChats fallback also failed', [
-                'instance' => $instanceName,
-                'error' => $e->getMessage(),
-            ]);
         }
 
-        return [];
+        if (empty($groups)) {
+            Log::warning('Both fetchAllGroups and findChats returned no groups', ['instance' => $instanceName]);
+        }
+
+        return array_values($groups);
     }
 
     public function clearSessionGroupsCache(string $instanceName): void
