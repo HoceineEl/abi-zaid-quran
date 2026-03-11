@@ -1,7 +1,5 @@
 <?php
 
-use App\Models\Student;
-use App\Services\WhatsAppService;
 use Illuminate\Console\Scheduling\Schedule as SchedulingSchedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -20,12 +18,9 @@ return Application::configure(basePath: dirname(__DIR__))
         //
     })
     ->withSchedule(function (SchedulingSchedule $schedule) {
-        $schedule->call(function () {
-            $whatsAppService = new WhatsAppService();
-            $student = Student::where('phone', '0697361188')->first();
-
-            return $whatsAppService->sendMessage($student);
-        })->everyMinute();
+        $schedule->command('groups:run-whatsapp-automation')
+            ->everyMinute()
+            ->withoutOverlapping();
     })
 
     ->create();

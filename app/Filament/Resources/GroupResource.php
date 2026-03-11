@@ -9,6 +9,7 @@ use App\Exports\DailyAttendanceSummaryExport;
 use App\Filament\Actions\SendBulkReminderToAllGroupsAction;
 use App\Filament\Actions\SendMessageToAllGroupMembersAction;
 use App\Filament\Resources\GroupResource\Pages;
+use App\Filament\Resources\GroupResource\RelationManagers\AutomationRunsRelationManager;
 use App\Filament\Resources\GroupResource\RelationManagers\ManagersRelationManager;
 use App\Filament\Resources\GroupResource\RelationManagers\ProgressesRelationManager;
 use App\Filament\Resources\GroupResource\RelationManagers\StudentsRelationManager;
@@ -17,14 +18,17 @@ use App\Models\GroupMessageTemplate;
 use App\Models\User;
 use App\Models\WhatsAppSession;
 use App\Services\AttendanceReportService;
+use App\Services\GroupWhatsAppSessionResolver;
 use App\Services\WhatsAppService;
 use Filament\Forms;
 use Filament\Forms\Components\Actions\Action as FormAction;
 use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
+use Filament\Forms\Set;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Resources\Resource;
@@ -139,6 +143,21 @@ class GroupResource extends Resource
                             ->visible(fn (Get $get) => filled($get('whatsapp_group_jid')))
                             ->action(fn (Set $set) => $set('whatsapp_group_jid', null)),
                     ]),
+                Forms\Components\Select::make('whatsapp_manager_id')
+                    ->label('مسؤول واتساب للمجموعة')
+                    ->helperText('سيتم استخدام جلسة هذا المشرف أولاً، ثم يتم الرجوع إلى مدير النظام الافتراضي (أول مستخدم بدور admin) عند عدم توفر جلسة متصلة.')
+                    ->options(fn (?Group $record) => self::getWhatsAppManagerOptions($record))
+                    ->default(fn (?Group $record) => $record?->whatsapp_manager_id ?: self::defaultWhatsAppManagerId())
+                    ->searchable()
+                    ->preload()
+                    ->required(),
+                TimePicker::make('auto_attendance_close_time')
+                    ->label('وقت إغلاق المجموعة')
+                    ->seconds(false)
+                    ->native(false)
+                    ->default(config('whatsapp.automation.default_close_time', '23:00:00'))
+                    ->helperText('يتم تشغيل التحقق الأخير للحضور في هذا الوقت.')
+                    ->required(),
                 Forms\Components\TagsInput::make('ignored_names_phones')
                     ->label('أسماء وأرقام مستثناة من التسجيل')
                     ->helperText('أضف أسماء وأرقام هواتف يجب تجاهلها عند استيراد سجل الواتساب')
@@ -232,6 +251,16 @@ class GroupResource extends Resource
                 Tables\Columns\TextColumn::make('managers.name')
                     ->label('المشرفون')
                     ->badge(),
+                Tables\Columns\TextColumn::make('whatsappManager.name')
+                    ->label('مسؤول واتساب')
+                    ->default(fn () => self::fallbackAdminLabel())
+                    ->badge()
+                    ->color('success'),
+                Tables\Columns\TextColumn::make('auto_attendance_close_time')
+                    ->label('إغلاق المجموعة')
+                    ->time('H:i')
+                    ->badge()
+                    ->color('warning'),
                 TextColumn::make('created_at')->label('تاريخ الإنشاء')
                     ->date('Y-m-d H:i:s'),
                 // TextColumn::make('manager_has_set_progress')
@@ -506,6 +535,7 @@ class GroupResource extends Resource
             StudentsRelationManager::class,
             ProgressesRelationManager::class,
             ManagersRelationManager::class,
+            AutomationRunsRelationManager::class,
         ];
     }
 
@@ -557,5 +587,43 @@ class GroupResource extends Resource
         } catch (\Exception) {
             // Silently fail
         }
+    }
+
+    protected static function defaultWhatsAppManagerId(): ?int
+    {
+        return app(GroupWhatsAppSessionResolver::class)->fallbackAdmin()?->id;
+    }
+
+    protected static function fallbackAdminLabel(): string
+    {
+        return app(GroupWhatsAppSessionResolver::class)->fallbackAdmin()?->name ?? 'مدير النظام';
+    }
+
+    protected static function getWhatsAppManagerOptions(?Group $record): array
+    {
+        $fallbackAdmin = app(GroupWhatsAppSessionResolver::class)->fallbackAdmin();
+
+        $userIds = collect();
+
+        if ($record?->exists) {
+            $userIds = $userIds->merge($record->managers()->pluck('users.id'));
+        }
+
+        if ($record?->whatsapp_manager_id) {
+            $userIds->push($record->whatsapp_manager_id);
+        }
+
+        if ($fallbackAdmin) {
+            $userIds->push($fallbackAdmin->id);
+        }
+
+        return User::query()
+            ->whereIn('id', $userIds->filter()->unique()->values())
+            ->get(['id', 'name'])
+            ->sortBy(fn (User $user) => $user->id === $fallbackAdmin?->id ? 0 : 1)
+            ->mapWithKeys(fn (User $user) => [
+                $user->id => $user->name.($user->id === $fallbackAdmin?->id ? ' (مدير النظام)' : ''),
+            ])
+            ->all();
     }
 }

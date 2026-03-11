@@ -3,10 +3,8 @@
 namespace App\Filament\Actions;
 
 use App\Enums\MessageSubmissionType;
-use App\Helpers\PhoneHelper;
 use App\Models\Group;
-use App\Models\WhatsAppSession;
-use App\Services\WhatsAppService;
+use App\Services\GroupWhatsAppAutomationService;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Placeholder;
@@ -15,7 +13,6 @@ use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Notifications\Notification;
 use Filament\Tables\Actions\Action;
-use Illuminate\Support\Facades\Log;
 
 class AutoAttendanceAction extends Action
 {
@@ -57,7 +54,7 @@ class AutoAttendanceAction extends Action
                         ->content(fn () => ($this->getOwnerGroup()->message_submission_type ?? MessageSubmissionType::Media)->getLabel()),
                 ])
                 ->afterValidation(function (Get $get, Set $set) {
-                    $result = $this->fetchAndMatchAttendees($this->resolveDate($get));
+                    $result = $this->automation()->previewMatches($this->getOwnerGroup(), $this->resolveDate($get));
                     $set('student_ids', $result['matched_student_ids']);
                 }),
             Step::make('confirm_attendees')
@@ -67,7 +64,7 @@ class AutoAttendanceAction extends Action
                     Placeholder::make('match_stats')
                         ->label('إحصائيات المطابقة')
                         ->content(function (Get $get) {
-                            $result = $this->fetchAndMatchAttendees($this->resolveDate($get));
+                            $result = $this->automation()->previewMatches($this->getOwnerGroup(), $this->resolveDate($get));
 
                             return "تم مطابقة {$result['matched_count']} من {$result['total_students']} طالب";
                         }),
@@ -77,101 +74,16 @@ class AutoAttendanceAction extends Action
                             ->students()
                             ->orderBy('order_no')
                             ->pluck('name', 'id'))
-                        ->descriptions(fn (Get $get) => $this->fetchAndMatchAttendees($this->resolveDate($get))['descriptions'])
+                        ->descriptions(fn (Get $get) => $this->automation()->previewMatches($this->getOwnerGroup(), $this->resolveDate($get))['descriptions'])
                         ->disableOptionWhen(fn (string $value, Get $get) => in_array(
                             (int) $value,
-                            $this->fetchAndMatchAttendees($this->resolveDate($get))['already_present_ids'],
+                            $this->automation()->previewMatches($this->getOwnerGroup(), $this->resolveDate($get))['already_present_ids'],
                         ))
                         ->bulkToggleable()
                         ->columns(2)
                         ->required(),
                 ]),
         ];
-    }
-
-    protected function fetchAndMatchAttendees(string $date): array
-    {
-        static $cache = [];
-
-        if (isset($cache[$date])) {
-            return $cache[$date];
-        }
-
-        $group = $this->getOwnerGroup();
-        $students = $group->students()->orderBy('order_no')->get();
-
-        $senderPhones = $this->fetchWhatsAppSenders($group, $date);
-
-        // O(1) lookup index: suffix -> phone
-        $senderIndex = PhoneHelper::buildSuffixIndex($senderPhones);
-
-        $existingPresentIds = $group->progresses()
-            ->where('date', $date)
-            ->where('status', 'memorized')
-            ->pluck('student_id')
-            ->flip()
-            ->all();
-
-        $matchedStudentIds = [];
-        $alreadyPresentIds = [];
-        $descriptions = [];
-
-        foreach ($students as $student) {
-            $phone = $student->phone;
-
-            if (isset($existingPresentIds[$student->id])) {
-                $alreadyPresentIds[] = $student->id;
-                $matchedStudentIds[] = $student->id;
-                $descriptions[$student->id] = "$phone — مسجل مسبقاً";
-
-                continue;
-            }
-
-            if (PhoneHelper::matchesAny($phone, $senderIndex)) {
-                $matchedStudentIds[] = $student->id;
-                $descriptions[$student->id] = "$phone — تم المطابقة من واتساب";
-            } else {
-                $descriptions[$student->id] = $phone;
-            }
-        }
-
-        return $cache[$date] = [
-            'matched_student_ids' => $matchedStudentIds,
-            'already_present_ids' => $alreadyPresentIds,
-            'descriptions' => $descriptions,
-            'matched_count' => count($matchedStudentIds),
-            'total_students' => $students->count(),
-        ];
-    }
-
-    protected function fetchWhatsAppSenders(Group $group, string $date): array
-    {
-        if (! $group->whatsapp_group_jid) {
-            return [];
-        }
-
-        try {
-            $session = WhatsAppSession::getUserSession(auth()->id());
-            if (! $session?->isConnected()) {
-                return [];
-            }
-
-            $submissionType = $group->message_submission_type ?? MessageSubmissionType::Media;
-
-            return app(WhatsAppService::class)->getGroupAttendeesForDate(
-                $session->name,
-                $group->whatsapp_group_jid,
-                $date,
-                $submissionType->whatsappMessageTypes()
-            );
-        } catch (\Exception $e) {
-            Log::error('Failed to fetch WhatsApp group attendees', [
-                'group_id' => $group->id,
-                'error' => $e->getMessage(),
-            ]);
-
-            return [];
-        }
     }
 
     protected function processAttendance(array $data): void
@@ -189,32 +101,7 @@ class AutoAttendanceAction extends Action
             return;
         }
 
-        $existingProgress = $group->progresses()
-            ->where('date', $date)
-            ->whereIn('student_id', $studentIds)
-            ->get()
-            ->keyBy('student_id');
-
-        $createdCount = 0;
-        $attendanceData = ['status' => 'memorized', 'comment' => 'whatsapp_auto_attendance'];
-
-        foreach ($studentIds as $studentId) {
-            $progress = $existingProgress->get($studentId);
-
-            if ($progress?->status === 'memorized') {
-                continue;
-            }
-
-            if ($progress) {
-                $progress->update($attendanceData);
-            } else {
-                $group->students()->find($studentId)?->progresses()->create(
-                    ['date' => $date, ...$attendanceData],
-                );
-            }
-
-            $createdCount++;
-        }
+        $createdCount = $this->automation()->markAttendance($group, $date, $studentIds);
 
         Notification::make()
             ->success()
@@ -230,5 +117,10 @@ class AutoAttendanceAction extends Action
     protected function getOwnerGroup(): Group
     {
         return $this->getLivewire()->ownerRecord;
+    }
+
+    protected function automation(): GroupWhatsAppAutomationService
+    {
+        return app(GroupWhatsAppAutomationService::class);
     }
 }

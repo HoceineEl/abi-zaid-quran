@@ -3,20 +3,14 @@
 namespace App\Filament\Actions;
 
 use App\Classes\Core;
-use App\Enums\WhatsAppMessageStatus;
-use App\Helpers\PhoneHelper;
-use App\Jobs\SendWhatsAppMessageJob;
 use App\Models\GroupMessageTemplate;
-use App\Models\Student;
-use App\Models\WhatsAppMessageHistory;
-use App\Models\WhatsAppSession;
+use App\Services\GroupWhatsAppAutomationService;
 use Filament\Forms;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Filament\Tables\Actions\Action;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Facades\Log;
 
 class SendReminderToUnmarkedStudentsAction extends Action
 {
@@ -109,8 +103,23 @@ ARABIC;
 
         // Get the message content
         $messageTemplate = $this->getMessageTemplate($data, $ownerRecord);
+        $messagesQueued = $this->automation()->sendRemindersToUnmarkedStudents($ownerRecord, $today, $messageTemplate);
 
-        $this->sendReminderViaWhatsAppWeb($unmarkedStudents, $messageTemplate, $ownerRecord);
+        if ($messagesQueued === 0) {
+            Notification::make()
+                ->title('تعذر إرسال التذكيرات')
+                ->body('لا توجد جلسة واتساب متصلة للمشرف المحدد أو للمشرف العام.')
+                ->danger()
+                ->send();
+
+            return;
+        }
+
+        Notification::make()
+            ->title('تم جدولة التذكيرات للإرسال!')
+            ->body("تم جدولة {$messagesQueued} تذكير لإرسالها للطلاب غير المسجلين")
+            ->success()
+            ->send();
     }
 
     /**
@@ -165,77 +174,6 @@ ARABIC;
     /**
      * Send reminder messages via WhatsApp Web using queue jobs
      */
-    protected function sendReminderViaWhatsAppWeb(Collection $students, string $messageTemplate, $ownerRecord): void
-    {
-        // Get the current user's active session
-        $session = WhatsAppSession::getUserSession(auth()->id());
-
-        if (!$session || !$session->isConnected()) {
-            Notification::make()
-                ->title('جلسة واتساب غير متصلة')
-                ->body('يرجى التأكد من أن لديك جلسة واتساب متصلة قبل إرسال الرسائل')
-                ->danger()
-                ->send();
-            return;
-        }
-
-        $messagesQueued = 0;
-
-        foreach ($students as $student) {
-            // Process message template with variables
-            $processedMessage = Core::processMessageTemplate($messageTemplate, $student, $ownerRecord);
-
-            // Clean phone number using helper
-            $phoneNumber = PhoneHelper::cleanPhoneNumber($student->phone);
-
-            if (!$phoneNumber) {
-                Log::warning('Invalid phone number for student', [
-                    'student_id' => $student->id,
-                    'student_name' => $student->name,
-                    'phone' => $student->phone,
-                ]);
-                continue;
-            }
-
-            try {
-                // Create message history record as queued
-                WhatsAppMessageHistory::create([
-                    'session_id' => $session->id,
-                    'sender_user_id' => auth()->id(),
-                    'recipient_phone' => $phoneNumber,
-                    'message_type' => 'text',
-                    'message_content' => $processedMessage,
-                    'status' => WhatsAppMessageStatus::QUEUED,
-                ]);
-
-                $delay = SendWhatsAppMessageJob::getStaggeredDelay($session->id);
-
-                SendWhatsAppMessageJob::dispatch(
-                    $session->id,
-                    $phoneNumber,
-                    $processedMessage,
-                    'text',
-                    $student->id,
-                    ['sender_user_id' => auth()->id()],
-                )->delay(now()->addSeconds($delay));
-
-                $messagesQueued++;
-
-            } catch (\Exception $e) {
-                Log::error('Failed to queue WhatsApp reminder for unmarked student', [
-                    'student_id' => $student->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-        }
-
-        Notification::make()
-            ->title('تم جدولة التذكيرات للإرسال!')
-            ->body("تم جدولة {$messagesQueued} تذكير لإرسالها للطلاب غير المسجلين")
-            ->success()
-            ->send();
-    }
-
     /**
      * Send reminder messages via legacy WhatsApp service (for compatibility)
      */
@@ -253,4 +191,8 @@ ARABIC;
             ->send();
     }
 
+    protected function automation(): GroupWhatsAppAutomationService
+    {
+        return app(GroupWhatsAppAutomationService::class);
+    }
 }

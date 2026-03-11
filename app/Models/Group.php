@@ -32,6 +32,8 @@ class Group extends Model
         'message_submission_type',
         'ignored_names_phones',
         'whatsapp_group_jid',
+        'whatsapp_manager_id',
+        'auto_attendance_close_time',
     ];
 
     /**
@@ -58,9 +60,19 @@ class Group extends Model
         return $this->belongsToMany(User::class, 'group_manager', 'group_id', 'manager_id')->where('role', '!=', 'teacher');
     }
 
+    public function whatsappManager(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'whatsapp_manager_id');
+    }
+
     public function progresses(): HasManyThrough
     {
         return $this->hasManyThrough(Progress::class, Student::class);
+    }
+
+    public function automationRuns(): HasMany
+    {
+        return $this->hasMany(GroupAutomationRun::class);
     }
 
     public function message(): BelongsTo

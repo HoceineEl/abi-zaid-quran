@@ -16,4 +16,9 @@ return [
         'timeout_hours' => env('WHATSAPP_SESSION_TIMEOUT_HOURS', 24),
         'max_retry_attempts' => env('WHATSAPP_MAX_RETRY_ATTEMPTS', 3),
     ],
+
+    'automation' => [
+        'evening_time' => env('WHATSAPP_AUTOMATION_EVENING_TIME', '20:00'),
+        'default_close_time' => env('WHATSAPP_AUTOMATION_DEFAULT_CLOSE_TIME', '23:00:00'),
+    ],
 ];
