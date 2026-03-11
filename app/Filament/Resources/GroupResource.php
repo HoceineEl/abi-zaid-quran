@@ -17,6 +17,7 @@ use App\Models\GroupMessageTemplate;
 use App\Models\User;
 use App\Models\WhatsAppSession;
 use App\Services\AttendanceReportService;
+use App\Services\GroupWhatsAppSessionResolver;
 use App\Services\WhatsAppService;
 use Filament\Forms;
 use Filament\Forms\Components\Actions\Action as FormAction;
@@ -531,7 +532,7 @@ class GroupResource extends Resource
     protected static function fetchWhatsAppGroups(): array
     {
         try {
-            $session = WhatsAppSession::getUserActiveSession(auth()->id());
+            $session = static::resolveWhatsAppSession();
 
             if (! $session) {
                 return [];
@@ -548,7 +549,7 @@ class GroupResource extends Resource
     protected static function clearWhatsAppGroupsCache(): void
     {
         try {
-            $session = WhatsAppSession::getUserSession(auth()->id());
+            $session = static::resolveWhatsAppSession();
 
             if ($session) {
                 app(WhatsAppService::class)->clearSessionGroupsCache($session->name);
@@ -556,5 +557,19 @@ class GroupResource extends Resource
         } catch (\Exception) {
             // Silently fail
         }
+    }
+
+    protected static function resolveWhatsAppSession(): ?WhatsAppSession
+    {
+        // Prefer the current user's own connected session
+        $userSession = WhatsAppSession::getUserActiveSession(auth()->id());
+        if ($userSession?->isConnected()) {
+            return $userSession;
+        }
+
+        // Fall back to the admin session which has all groups
+        $fallbackAdmin = app(GroupWhatsAppSessionResolver::class)->fallbackAdmin();
+
+        return $fallbackAdmin ? WhatsAppSession::getUserActiveSession($fallbackAdmin->id) : null;
     }
 }
