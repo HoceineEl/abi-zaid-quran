@@ -133,6 +133,6 @@ class User extends Authenticatable implements FilamentUser
      */
     public function canBeImpersonated(): bool
     {
-        return $this->isTeacher();
+        return ! $this->isAdministrator();
     }
 }
