@@ -10,6 +10,7 @@ use App\Services\WhatsAppService;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\Wizard\Step;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
@@ -85,6 +86,9 @@ class AutoAttendanceAction extends Action
                         ->bulkToggleable()
                         ->columns(2)
                         ->required(),
+                    Toggle::make('mark_others_absent')
+                        ->label('تسجيل البقية كغائبين')
+                        ->default(false),
                 ]),
         ];
     }
@@ -176,6 +180,7 @@ class AutoAttendanceAction extends Action
         $group = $this->getOwnerGroup();
         $date = $data['date'] ?? today()->format('Y-m-d');
         $studentIds = $data['student_ids'] ?? [];
+        $markOthersAbsent = (bool) ($data['mark_others_absent'] ?? false);
 
         if (empty($studentIds)) {
             Notification::make()
@@ -213,9 +218,56 @@ class AutoAttendanceAction extends Action
             $createdCount++;
         }
 
+        $absentCount = 0;
+
+        if ($markOthersAbsent) {
+            $selectedStudentIds = array_map('intval', $studentIds);
+            $otherStudents = $group->students()
+                ->whereNotIn('id', $selectedStudentIds)
+                ->get();
+
+            $otherProgresses = $group->progresses()
+                ->where('date', $date)
+                ->whereIn('student_id', $otherStudents->pluck('id'))
+                ->get()
+                ->keyBy('student_id');
+
+            foreach ($otherStudents as $student) {
+                $progress = $otherProgresses->get($student->id);
+
+                if ($progress?->status === 'memorized') {
+                    continue;
+                }
+
+                if ($progress) {
+                    $progress->update([
+                        'status' => 'absent',
+                        'with_reason' => false,
+                        'comment' => null,
+                    ]);
+                } else {
+                    $student->progresses()->create([
+                        'date' => $date,
+                        'status' => 'absent',
+                        'with_reason' => false,
+                        'comment' => null,
+                        'page_id' => null,
+                        'lines_from' => null,
+                        'lines_to' => null,
+                    ]);
+                }
+
+                $absentCount++;
+            }
+        }
+
+        $title = $markOthersAbsent
+            ? "تم تسجيل حضور {$createdCount} طالب وتسجيل {$absentCount} غائبين بنجاح"
+            : "تم تسجيل حضور {$createdCount} طالب بنجاح";
+
         Notification::make()
             ->success()
-            ->title("تم تسجيل حضور {$createdCount} طالب بنجاح")
+            ->title($title)
             ->send();
     }
 
