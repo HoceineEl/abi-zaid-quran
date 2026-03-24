@@ -75,6 +75,7 @@ beforeEach(function () {
         $table->json('notes')->nullable();
         $table->string('score')->nullable();
         $table->string('custom_note')->nullable();
+        $table->boolean('absence_justified')->nullable()->default(false);
         $table->foreignId('created_by')->nullable();
         $table->timestamps();
     });
@@ -127,7 +128,7 @@ it('exports a single group with correct day statuses and without a details sheet
 
     expect($sheet)->not->toBeNull();
     expect($sheet->getCell('B2')->getValue())->toBe('أحمد');
-    expect($sheet->getCell('D2')->getValue())->toBe('غائب');
+    expect($sheet->getCell('D2')->getValue())->toBe('غائب غير مبرر');
     expect($sheet->getCell('E2')->getValue())->toBe('غ.م');
     expect($sheet->getCell('B1')->getValue())->toBe('اسم الطالب');
     expect($sheet->getCell('C1')->getValue())->toContain('01/01');

@@ -3,6 +3,7 @@
 namespace App\Filament\Association\Resources\GroupResource\RelationManagers;
 
 use App\Enums\MemorizationScore;
+use App\Filament\Actions\Attendance\SendWhatsAppAction;
 use App\Filament\Association\Resources\MemorizerResource;
 use App\Models\Attendance;
 use App\Models\Memorizer;
@@ -151,7 +152,7 @@ class MemorizersRelationManager extends RelationManager
                     Tables\Actions\DeleteAction::make(),
                     Tables\Actions\ViewAction::make(),
                     self::getTroublesAction(),
-                    AttendanceTeacherRelationManager::sendNotificationAction()
+                    SendWhatsAppAction::make()
                         ->label('إرسال رسالة واتساب'),
 
                 ]),

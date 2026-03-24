@@ -9,6 +9,7 @@
             --border-color: #e5e7eb;
             --success-color: #059669;
             --danger-color: #dc2626;
+            --warning-color: #d97706;
             --emerald: #059669;
             --green: #16a34a;
             --blue: #2563eb;
@@ -27,6 +28,7 @@
             --border-color: #4b5563;
             --success-color: #34d399;
             --danger-color: #f87171;
+            --warning-color: #fbbf24;
             --emerald: #34d399;
             --green: #4ade80;
             --blue: #60a5fa;
@@ -69,8 +71,10 @@
             font-weight: 500;
         }
 
-        .status-present { color: var(--success-color); }
-        .status-absent  { color: var(--danger-color); }
+        .status-present  { color: var(--success-color); }
+        .status-absent   { color: var(--danger-color); }
+        .status-justified { color: var(--warning-color); }
+        .status-unmarked { color: #6b7280; }
 
         .text-emerald { color: var(--emerald); }
         .text-green   { color: var(--green); }
@@ -100,8 +104,8 @@
                     @foreach ($chunk as $memorizer)
                         @php
                             $attendance = $memorizer->attendances->first();
-                            $status     = $attendance ? ($attendance->check_in_time ? 'حاضر' : 'غائب') : 'غائب';
-                            $statusClass = $status === 'حاضر' ? 'status-present' : 'status-absent';
+                            $status = \App\Enums\AttendanceStatus::resolve($attendance);
+                            $statusClass = $status->getCssStatusClass();
 
                             $scoreColor = match ($attendance?->score ?? null) {
                                 \App\Enums\MemorizationScore::EXCELLENT      => 'text-emerald',
@@ -117,7 +121,7 @@
                         <tr>
                             <td>{{ $pageIndex * 25 + $loop->iteration }}</td>
                             <td class="text-right">{{ $memorizer->name }}</td>
-                            <td class="{{ $statusClass }}">{{ $status }}</td>
+                            <td class="{{ $statusClass }}">{{ $status->getShortLabel() }}</td>
                             <td class="{{ $scoreColor }}">
                                 {{ $attendance?->score?->getLabel() ?? '—' }}
                             </td>

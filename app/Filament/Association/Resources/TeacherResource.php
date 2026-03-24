@@ -34,7 +34,9 @@ class TeacherResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->where('role', 'teacher');
+        return parent::getEloquentQuery()
+            ->where('role', 'teacher')
+            ->withCount(['reminderLogs', 'whatsAppMessages']);
     }
 
     public static function form(Form $form): Form
@@ -99,6 +101,13 @@ class TeacherResource extends Resource
                         'female' => 'أنثى',
                     ])
                     ->sortable(),
+
+                TextColumn::make('messages_count')
+                    ->label('عدد الرسائل')
+                    ->state(fn (User $record): int => ($record->reminder_logs_count ?? 0) + ($record->whats_app_messages_count ?? 0))
+                    ->badge()
+                    ->color('info')
+                    ->sortable(query: fn (Builder $query, string $direction) => $query->orderByRaw('(reminder_logs_count + whats_app_messages_count) ' . $direction)),
 
                 TextColumn::make('created_at')
                     ->label('تاريخ الإنشاء')

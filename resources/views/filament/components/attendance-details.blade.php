@@ -1,14 +1,19 @@
 <div class="space-y-6">
     {{-- Attendance Status --}}
+    @php
+        $status = \App\Enums\AttendanceStatus::resolve($attendance);
+    @endphp
     <div class="p-4 bg-gray-50 rounded-lg">
         <div class="font-semibold text-lg mb-2">حالة الحضور</div>
         <div class="flex items-center gap-2">
-            @if($attendance->check_in_time)
-                <x-heroicon-s-check-circle class="w-5 h-5 text-success-500"/>
-                <span>حاضر ({{ \Carbon\Carbon::parse($attendance->check_in_time)->format('H:i') }})</span>
+            <x-dynamic-component
+                :component="$status->getSolidIcon()"
+                class="w-5 h-5 {{ $status->getCssIconColor() }}"
+            />
+            @if($attendance->isPresent())
+                <span>{{ $status->getLabel() }} ({{ \Carbon\Carbon::parse($attendance->check_in_time)->format('H:i') }})</span>
             @else
-                <x-heroicon-s-x-circle class="w-5 h-5 text-danger-500"/>
-                <span>غائب</span>
+                <span>{{ $status->getLabel() }}</span>
             @endif
         </div>
     </div>

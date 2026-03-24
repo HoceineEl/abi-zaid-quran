@@ -44,6 +44,11 @@ class MemorizationProgressStats extends BaseWidget
                 ELSE 0 
             END'));
 
+        $presentWithoutScoreCount = Attendance::whereBetween('date', [$dateFrom, $dateTo])
+            ->whereNotNull('check_in_time')
+            ->whereNull('score')
+            ->count();
+
         return [
             Stat::make('الطلاب المتفوقون في الحفظ', $excellentCount)
                 ->description('عدد الطلاب الحاصلين على تقدير ممتاز في الحفظ')
@@ -62,6 +67,12 @@ class MemorizationProgressStats extends BaseWidget
                 ->descriptionIcon('heroicon-m-exclamation-circle')
                 ->chart([5, 4, 3, $needsImprovementCount])
                 ->color('danger'),
+
+            Stat::make('حاضرون بدون تقييم', $presentWithoutScoreCount)
+                ->description('عدد الحضور بدون تقييم حفظ في الفترة')
+                ->descriptionIcon('heroicon-m-clock')
+                ->chart([3, 5, 2, $presentWithoutScoreCount])
+                ->color('warning'),
         ];
     }
 }

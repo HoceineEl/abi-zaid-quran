@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\AttendanceStatus;
 use App\Enums\MemorizationScore;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -18,7 +19,8 @@ class Attendance extends Model
         'check_in_time',
         'check_out_time',
         'score',
-        'custom_note'
+        'custom_note',
+        'absence_justified',
     ];
 
     protected $casts = [
@@ -27,6 +29,7 @@ class Attendance extends Model
         'check_out_time' => 'datetime',
         'notes' => 'array',
         'score' => MemorizationScore::class,
+        'absence_justified' => 'boolean',
     ];
 
     protected static function boot()
@@ -37,11 +40,13 @@ class Attendance extends Model
             $model->created_by = auth()->id();
         });
     }
+
+    // ─── Relationships ─────────────────────────────────────────────────
+
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
     }
-
 
     public function memorizer(): BelongsTo
     {
@@ -51,5 +56,30 @@ class Attendance extends Model
     public function group(): HasOneThrough
     {
         return $this->hasOneThrough(MemoGroup::class, Memorizer::class, 'id', 'id', 'memorizer_id', 'memo_group_id');
+    }
+
+    // ─── Status Helpers (delegate to AttendanceStatus enum) ────────────
+
+    /**
+     * Resolve the attendance status for this record.
+     */
+    public function getStatus(): AttendanceStatus
+    {
+        return AttendanceStatus::resolve($this);
+    }
+
+    public function isAbsent(): bool
+    {
+        return $this->check_in_time === null;
+    }
+
+    public function isJustifiedAbsence(): bool
+    {
+        return $this->isAbsent() && (bool) $this->absence_justified;
+    }
+
+    public function isPresent(): bool
+    {
+        return $this->check_in_time !== null;
     }
 }

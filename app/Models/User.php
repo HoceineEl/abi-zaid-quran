@@ -111,6 +111,11 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasMany(ReminderLog::class, 'created_by');
     }
 
+    public function whatsAppMessages(): HasMany
+    {
+        return $this->hasMany(WhatsAppMessageHistory::class, 'sender_user_id');
+    }
+
     public function attendanceLogs(): HasMany
     {
         return $this->hasMany(Attendance::class, 'created_by');

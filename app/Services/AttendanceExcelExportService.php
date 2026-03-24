@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\AttendanceStatus;
 use App\Enums\MemorizationScore;
 use App\Enums\Troubles;
 use App\Models\Attendance;
@@ -25,6 +26,22 @@ class AttendanceExcelExportService
 {
     private const MAX_EXPORT_DAYS = 183;
 
+    /**
+     * Columns selected when loading attendance records.
+     * Single source of truth used by both download() and downloadAllGroups().
+     */
+    private const ATTENDANCE_SELECT_COLUMNS = [
+        'id',
+        'memorizer_id',
+        'date',
+        'check_in_time',
+        'score',
+        'notes',
+        'custom_note',
+        'created_by',
+        'absence_justified',
+    ];
+
     public function download(MemoGroup $group, array $options): BinaryFileResponse
     {
         [$dateFrom, $dateTo, $dates] = $this->resolveDateRange(
@@ -39,16 +56,7 @@ class AttendanceExcelExportService
             ->with([
                 'guardian:id,name,phone',
                 'attendances' => fn ($query) => $query
-                    ->select([
-                        'id',
-                        'memorizer_id',
-                        'date',
-                        'check_in_time',
-                        'score',
-                        'notes',
-                        'custom_note',
-                        'created_by',
-                    ])
+                    ->select(self::ATTENDANCE_SELECT_COLUMNS)
                     ->with('createdBy:id,name')
                     ->whereDate('date', '>=', $dateFrom->toDateString())
                     ->whereDate('date', '<=', $dateTo->toDateString())
@@ -125,16 +133,7 @@ class AttendanceExcelExportService
                     ->with([
                         'guardian:id,name,phone',
                         'attendances' => fn ($attendanceQuery) => $attendanceQuery
-                            ->select([
-                                'id',
-                                'memorizer_id',
-                                'date',
-                                'check_in_time',
-                                'score',
-                                'notes',
-                                'custom_note',
-                                'created_by',
-                            ])
+                            ->select(self::ATTENDANCE_SELECT_COLUMNS)
                             ->with('createdBy:id,name')
                             ->whereDate('date', '>=', $dateFrom->toDateString())
                             ->whereDate('date', '<=', $dateTo->toDateString())
@@ -223,6 +222,8 @@ class AttendanceExcelExportService
         $this->resolveDateRange($options['date_from'], $options['date_to']);
     }
 
+    // ─── Date Helpers ──────────────────────────────────────────────────
+
     private function resolveDateRange(string $from, string $to): array
     {
         $dateFrom = Carbon::parse($from)->startOfDay();
@@ -243,6 +244,8 @@ class AttendanceExcelExportService
         return [$dateFrom, $dateTo, $dates];
     }
 
+    // ─── Stats ─────────────────────────────────────────────────────────
+
     private function buildStats(array $context): array
     {
         $attendanceRows = $context['memorizers']
@@ -250,11 +253,21 @@ class AttendanceExcelExportService
             ->values();
 
         $totalSlots = $context['memorizers']->count() * $context['dates']->count();
-        $presentCount = $attendanceRows->filter(fn (Attendance $attendance) => $attendance->check_in_time !== null)->count();
-        $absentCount = $attendanceRows->filter(fn (Attendance $attendance) => $attendance->check_in_time === null)->count();
+        $presentCount = $attendanceRows->filter(fn (Attendance $a) => $a->isPresent())->count();
+
+        $absentJustifiedCount = $attendanceRows
+            ->filter(fn (Attendance $a) => $a->isJustifiedAbsence())
+            ->count();
+
+        $absentUnjustifiedCount = $attendanceRows
+            ->filter(fn (Attendance $a) => $a->isAbsent() && ! $a->isJustifiedAbsence())
+            ->count();
+
+        $absentCount = $absentJustifiedCount + $absentUnjustifiedCount;
+
         $unmarkedCount = max($totalSlots - $attendanceRows->count(), 0);
         $presentWithoutScoreCount = $attendanceRows
-            ->filter(fn (Attendance $attendance) => $attendance->check_in_time !== null && $attendance->score === null)
+            ->filter(fn (Attendance $a) => $a->isPresent() && $a->score === null)
             ->count();
 
         $scoreDistribution = collect(MemorizationScore::cases())
@@ -281,6 +294,8 @@ class AttendanceExcelExportService
             'attendance_rows' => $attendanceRows,
             'present_count' => $presentCount,
             'absent_count' => $absentCount,
+            'absent_justified_count' => $absentJustifiedCount,
+            'absent_unjustified_count' => $absentUnjustifiedCount,
             'unmarked_count' => $unmarkedCount,
             'present_without_score_count' => $presentWithoutScoreCount,
             'attendance_percentage' => $attendancePercentage,
@@ -288,6 +303,8 @@ class AttendanceExcelExportService
             'behavior_distribution' => $behaviorDistribution,
         ];
     }
+
+    // ─── Summary Sheet ─────────────────────────────────────────────────
 
     private function buildSummarySheet(Spreadsheet $spreadsheet, array $context): void
     {
@@ -320,11 +337,12 @@ class AttendanceExcelExportService
         $sheet->fromArray([
             ['عدد الطلاب', $context['memorizers']->count(), 'عدد الأيام', $context['dates']->count()],
             ['إجمالي الحضور في الفترة', $context['stats']['present_count'], 'إجمالي الغياب في الفترة', $context['stats']['absent_count']],
+            ['غياب مبرر', $context['stats']['absent_justified_count'], 'غياب غير مبرر', $context['stats']['absent_unjustified_count']],
             ['إجمالي غير المسجل في الفترة', $context['stats']['unmarked_count'], 'نسبة الحضور', $context['stats']['attendance_percentage'] . '%'],
             ['حاضر بدون تقييم', $context['stats']['present_without_score_count'], 'عدد السجلات', $context['stats']['attendance_rows']->count()],
         ], null, 'A5');
 
-        $sheet->fromArray([['توزيع التقييم', 'العدد']], null, 'A11');
+        $sheet->fromArray([['توزيع التقييم', 'العدد']], null, 'A12');
         $scoreRows = collect($context['stats']['score_distribution'])
             ->map(fn ($count, $label) => [$label, $count])
             ->values()
@@ -332,9 +350,9 @@ class AttendanceExcelExportService
         if ($scoreRows === []) {
             $scoreRows = [['لا توجد تقييمات', 0]];
         }
-        $sheet->fromArray($scoreRows, null, 'A12');
+        $sheet->fromArray($scoreRows, null, 'A13');
 
-        $sheet->fromArray([['ملاحظات السلوك', 'العدد']], null, 'D11');
+        $sheet->fromArray([['ملاحظات السلوك', 'العدد']], null, 'D12');
         $behaviorRows = collect($context['stats']['behavior_distribution'])
             ->map(fn ($count, $label) => [$label, $count])
             ->values()
@@ -342,18 +360,22 @@ class AttendanceExcelExportService
         if ($behaviorRows === []) {
             $behaviorRows = [['لا توجد ملاحظات', 0]];
         }
-        $sheet->fromArray($behaviorRows, null, 'D12');
+        $sheet->fromArray($behaviorRows, null, 'D13');
 
+        $legendStart = 14 + max(count($scoreRows), count($behaviorRows));
         $sheet->fromArray([
             ['الدليل', 'المعنى'],
             ['أخضر', 'حاضر'],
-            ['أحمر', 'غائب'],
+            ['أحمر', 'غائب غير مبرر'],
+            ['برتقالي', 'غائب مبرر'],
             ['رمادي', 'غير مسجل'],
             ['ألوان التقييم', 'حاضر مع تقييم'],
-        ], null, 'A' . (13 + max(count($scoreRows), count($behaviorRows))));
+        ], null, "A{$legendStart}");
 
-        $this->styleSummarySheet($sheet, $scoreRows, $behaviorRows);
+        $this->styleSummarySheet($sheet, $scoreRows, $behaviorRows, $legendStart);
     }
+
+    // ─── Matrix Sheet ──────────────────────────────────────────────────
 
     private function buildMatrixSheet(Spreadsheet $spreadsheet, array $context, ?string $sheetTitle = null): void
     {
@@ -453,6 +475,8 @@ class AttendanceExcelExportService
         $sheet->setAutoFilter("A1:{$lastColumn}{$lastRow}");
     }
 
+    // ─── Details Sheet (Single Group) ──────────────────────────────────
+
     private function buildDetailsSheet(Spreadsheet $spreadsheet, array $context): void
     {
         $sheet = $spreadsheet->createSheet();
@@ -465,32 +489,53 @@ class AttendanceExcelExportService
             'اليوم',
             'رقم الطالب',
             'اسم الطالب',
+        ];
+
+        if ($context['include_contact_columns']) {
+            $headers[] = 'الهاتف';
+            $headers[] = 'اسم الولي';
+            $headers[] = 'هاتف الولي';
+        }
+
+        $headers = array_merge($headers, [
             'الحالة',
             'وقت الحضور',
             'التقييم',
             'ملاحظات السلوك',
             'ملاحظة إضافية',
             'سجل بواسطة',
-        ];
+        ]);
         $sheet->fromArray([$headers], null, 'A1');
 
         $rowIndex = 2;
 
         foreach ($context['memorizers'] as $memorizer) {
             foreach ($memorizer->attendances as $attendance) {
-                $sheet->fromArray([[
+                $status = AttendanceStatus::resolve($attendance);
+
+                $row = [
                     $attendance->date->format('Y-m-d'),
                     $this->formatArabicWeekday($attendance->date),
                     $memorizer->number,
                     $memorizer->name,
-                    $attendance->check_in_time ? 'حاضر' : 'غائب',
-                    $attendance->check_in_time ? Carbon::parse($attendance->check_in_time)->format('H:i') : '—',
+                ];
+
+                if ($context['include_contact_columns']) {
+                    $row[] = $memorizer->phone ?: ($memorizer->guardian?->phone ?? '—');
+                    $row[] = $memorizer->guardian?->name ?? '—';
+                    $row[] = $memorizer->guardian?->phone ?? '—';
+                }
+
+                $row = array_merge($row, [
+                    $status->getExportLabel(),
+                    $attendance->isPresent() ? Carbon::parse($attendance->check_in_time)->format('H:i') : '—',
                     $attendance->score?->getLabel() ?? '—',
                     $this->formatTroubleLabels($attendance),
                     $attendance->custom_note ?: '—',
                     $attendance->createdBy?->name ?? '—',
-                ]], null, "A{$rowIndex}");
+                ]);
 
+                $sheet->fromArray([$row], null, "A{$rowIndex}");
                 $rowIndex++;
             }
         }
@@ -510,8 +555,15 @@ class AttendanceExcelExportService
         ]);
         $sheet->getStyle("A1:{$lastColumn}{$lastRow}")->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
         $sheet->getStyle("A1:{$lastColumn}{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-        $sheet->getStyle("D2:D{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-        $sheet->getStyle("H2:I{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT)->setWrapText(true);
+
+        $nameColIndex = $context['include_contact_columns'] ? 4 : 4;
+        $nameCol = Coordinate::stringFromColumnIndex($nameColIndex);
+        $sheet->getStyle("{$nameCol}2:{$nameCol}{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+
+        // Wrap text on behavior/note columns (last 3 before 'سجل بواسطة')
+        $behaviorColStart = Coordinate::stringFromColumnIndex(count($headers) - 2);
+        $noteColEnd = Coordinate::stringFromColumnIndex(count($headers) - 1);
+        $sheet->getStyle("{$behaviorColStart}2:{$noteColEnd}{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT)->setWrapText(true);
 
         for ($row = 2; $row <= $lastRow; $row++) {
             if ($row % 2 === 0) {
@@ -529,6 +581,8 @@ class AttendanceExcelExportService
         $sheet->setAutoFilter("A1:{$lastColumn}{$lastRow}");
     }
 
+    // ─── All Groups Summary Sheet ──────────────────────────────────────
+
     private function buildAllGroupsSummarySheet(
         Spreadsheet $spreadsheet,
         Collection $contexts,
@@ -539,9 +593,9 @@ class AttendanceExcelExportService
         $sheet->setTitle('ملخص');
         $sheet->setRightToLeft(true);
 
-        $sheet->mergeCells('A1:F1');
+        $sheet->mergeCells('A1:J1');
         $sheet->setCellValue('A1', 'تقرير الحضور والتقييم لجميع المجموعات');
-        $sheet->mergeCells('A2:F2');
+        $sheet->mergeCells('A2:J2');
         $sheet->setCellValue(
             'A2',
             sprintf(
@@ -552,13 +606,18 @@ class AttendanceExcelExportService
             )
         );
 
+        // ── Main table header (row 4) ─────────────────────────────────
         $sheet->fromArray([[
             'المجموعة',
             'الأستاذ',
             'عدد الطلاب',
-            'إجمالي الحضور في الفترة',
-            'إجمالي الغياب في الفترة',
-            'إجمالي غير المسجل في الفترة',
+            'عدد الأيام',
+            'إجمالي الحضور',
+            'نسبة الحضور',
+            'غياب مبرر',
+            'غياب غير مبرر',
+            'إجمالي الغياب',
+            'حاضر بدون تقييم',
         ]], null, 'A4');
 
         $row = 5;
@@ -567,42 +626,116 @@ class AttendanceExcelExportService
                 $context['group']->name,
                 $context['group']->teacher?->name ?? 'غير محدد',
                 $context['memorizers']->count(),
+                $context['dates']->count(),
                 $context['stats']['present_count'],
+                $context['stats']['attendance_percentage'] . '%',
+                $context['stats']['absent_justified_count'],
+                $context['stats']['absent_unjustified_count'],
                 $context['stats']['absent_count'],
-                $context['stats']['unmarked_count'],
+                $context['stats']['present_without_score_count'],
             ]], null, "A{$row}");
             $row++;
         }
 
-        $lastRow = max($row - 1, 4);
-        $sheet->getStyle('A1:F1')->applyFromArray([
+        $tableLastRow = max($row - 1, 4);
+
+        // ── Per-group breakdown section ───────────────────────────────
+        $breakdownStart = $tableLastRow + 2;
+        $sheet->mergeCells("A{$breakdownStart}:J{$breakdownStart}");
+        $sheet->setCellValue("A{$breakdownStart}", 'تفصيل التقييمات والملاحظات السلوكية لكل مجموعة');
+        $sheet->getStyle("A{$breakdownStart}:J{$breakdownStart}")->applyFromArray([
+            'font' => ['bold' => true, 'size' => 13, 'color' => ['rgb' => 'FFFFFF']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '0F766E']],
+        ]);
+
+        $detailRow = $breakdownStart + 1;
+        foreach ($contexts as $context) {
+            $groupName = $context['group']->name;
+            $teacherName = $context['group']->teacher?->name ?? 'غير محدد';
+
+            // Group sub-header
+            $sheet->mergeCells("A{$detailRow}:J{$detailRow}");
+            $sheet->setCellValue("A{$detailRow}", "{$groupName} — {$teacherName}");
+            $sheet->getStyle("A{$detailRow}:J{$detailRow}")->applyFromArray([
+                'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '1D4ED8']],
+            ]);
+            $detailRow++;
+
+            // Score distribution (left) + Behavior distribution (right)
+            $sheet->fromArray([['توزيع التقييم', 'العدد']], null, "A{$detailRow}");
+            $sheet->getStyle("A{$detailRow}:B{$detailRow}")->applyFromArray([
+                'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '059669']],
+            ]);
+            $sheet->fromArray([['ملاحظات السلوك', 'العدد']], null, "D{$detailRow}");
+            $sheet->getStyle("D{$detailRow}:E{$detailRow}")->applyFromArray([
+                'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'D97706']],
+            ]);
+            $detailRow++;
+
+            $scoreRows = collect($context['stats']['score_distribution'])
+                ->map(fn ($count, $label) => [$label, $count])
+                ->values()
+                ->all();
+            if ($scoreRows === []) {
+                $scoreRows = [['لا توجد تقييمات', 0]];
+            }
+
+            $behaviorRows = collect($context['stats']['behavior_distribution'])
+                ->map(fn ($count, $label) => [$label, $count])
+                ->values()
+                ->all();
+            if ($behaviorRows === []) {
+                $behaviorRows = [['لا توجد ملاحظات', 0]];
+            }
+
+            $maxRows = max(count($scoreRows), count($behaviorRows));
+            for ($i = 0; $i < $maxRows; $i++) {
+                $sheet->fromArray([$scoreRows[$i] ?? ['', '']], null, "A{$detailRow}");
+                $sheet->fromArray([$behaviorRows[$i] ?? ['', '']], null, "D{$detailRow}");
+                $detailRow++;
+            }
+
+            $detailRow++; // spacer between groups
+        }
+
+        // ── Styling ───────────────────────────────────────────────────
+        $lastCol = 'J';
+        $lastRow = max($detailRow - 1, 4);
+
+        $sheet->getStyle("A1:{$lastCol}1")->applyFromArray([
             'font' => ['bold' => true, 'size' => 16, 'color' => ['rgb' => 'FFFFFF']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '0F766E']],
         ]);
-        $sheet->getStyle('A2:F2')->applyFromArray([
+        $sheet->getStyle("A2:{$lastCol}2")->applyFromArray([
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'ECFDF5']],
         ]);
-        $sheet->getStyle("A4:F{$lastRow}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
-        $sheet->getStyle('A4:F4')->applyFromArray([
+        $sheet->getStyle("A4:{$lastCol}{$tableLastRow}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+        $sheet->getStyle("A4:{$lastCol}4")->applyFromArray([
             'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '1D4ED8']],
         ]);
 
-        for ($currentRow = 5; $currentRow <= $lastRow; $currentRow++) {
+        for ($currentRow = 5; $currentRow <= $tableLastRow; $currentRow++) {
             if ($currentRow % 2 === 1) {
-                $sheet->getStyle("A{$currentRow}:F{$currentRow}")->getFill()
+                $sheet->getStyle("A{$currentRow}:{$lastCol}{$currentRow}")->getFill()
                     ->setFillType(Fill::FILL_SOLID)
                     ->getStartColor()
                     ->setRGB('F8FAFC');
             }
         }
 
-        foreach (range('A', 'F') as $column) {
-            $sheet->getColumnDimension($column)->setAutoSize(true);
+        foreach (range(1, 10) as $columnIndex) {
+            $sheet->getColumnDimension(Coordinate::stringFromColumnIndex($columnIndex))->setAutoSize(true);
         }
     }
+
+    // ─── Combined Details Sheet (All Groups) ───────────────────────────
 
     private function buildCombinedDetailsSheet(Spreadsheet $spreadsheet, Collection $contexts): void
     {
@@ -611,38 +744,62 @@ class AttendanceExcelExportService
         $sheet->setRightToLeft(true);
         $sheet->freezePane('A2');
 
+        $includeContact = $contexts->first()['include_contact_columns'] ?? false;
+
         $headers = [
             'المجموعة',
             'التاريخ',
             'اليوم',
             'رقم الطالب',
             'اسم الطالب',
+        ];
+
+        if ($includeContact) {
+            $headers[] = 'الهاتف';
+            $headers[] = 'اسم الولي';
+            $headers[] = 'هاتف الولي';
+        }
+
+        $headers = array_merge($headers, [
             'الحالة',
             'وقت الحضور',
             'التقييم',
             'ملاحظات السلوك',
             'ملاحظة إضافية',
             'سجل بواسطة',
-        ];
+        ]);
         $sheet->fromArray([$headers], null, 'A1');
 
         $rowIndex = 2;
         foreach ($contexts as $context) {
             foreach ($context['memorizers'] as $memorizer) {
                 foreach ($memorizer->attendances as $attendance) {
-                    $sheet->fromArray([[
+                    $status = AttendanceStatus::resolve($attendance);
+
+                    $row = [
                         $context['group']->name,
                         $attendance->date->format('Y-m-d'),
                         $this->formatArabicWeekday($attendance->date),
                         $memorizer->number,
                         $memorizer->name,
-                        $attendance->check_in_time ? 'حاضر' : 'غائب',
-                        $attendance->check_in_time ? Carbon::parse($attendance->check_in_time)->format('H:i') : '—',
+                    ];
+
+                    if ($includeContact) {
+                        $row[] = $memorizer->phone ?: ($memorizer->guardian?->phone ?? '—');
+                        $row[] = $memorizer->guardian?->name ?? '—';
+                        $row[] = $memorizer->guardian?->phone ?? '—';
+                    }
+
+                    $row = array_merge($row, [
+                        $status->getExportLabel(),
+                        $attendance->isPresent() ? Carbon::parse($attendance->check_in_time)->format('H:i') : '—',
                         $attendance->score?->getLabel() ?? '—',
                         $this->formatTroubleLabels($attendance),
                         $attendance->custom_note ?: '—',
                         $attendance->createdBy?->name ?? '—',
-                    ]], null, "A{$rowIndex}");
+                    ]);
+
+                    $sheet->fromArray([$row], null, "A{$rowIndex}");
                     $rowIndex++;
                 }
             }
@@ -662,8 +819,14 @@ class AttendanceExcelExportService
         ]);
         $sheet->getStyle("A1:{$lastColumn}{$lastRow}")->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
         $sheet->getStyle("A1:{$lastColumn}{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-        $sheet->getStyle("E2:E{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-        $sheet->getStyle("I2:J{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT)->setWrapText(true);
+
+        $nameColIndex = $includeContact ? 5 : 5;
+        $nameCol = Coordinate::stringFromColumnIndex($nameColIndex);
+        $sheet->getStyle("{$nameCol}2:{$nameCol}{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+
+        $behaviorColStart = Coordinate::stringFromColumnIndex(count($headers) - 2);
+        $noteColEnd = Coordinate::stringFromColumnIndex(count($headers) - 1);
+        $sheet->getStyle("{$behaviorColStart}2:{$noteColEnd}{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT)->setWrapText(true);
 
         foreach (range(1, count($headers)) as $columnIndex) {
             $sheet->getColumnDimension(Coordinate::stringFromColumnIndex($columnIndex))->setAutoSize(true);
@@ -672,7 +835,9 @@ class AttendanceExcelExportService
         $sheet->setAutoFilter("A1:{$lastColumn}{$lastRow}");
     }
 
-    private function styleSummarySheet($sheet, array $scoreRows, array $behaviorRows): void
+    // ─── Summary Sheet Styling ─────────────────────────────────────────
+
+    private function styleSummarySheet($sheet, array $scoreRows, array $behaviorRows, int $legendStart): void
     {
         $sheet->getStyle('A1:F1')->applyFromArray([
             'font' => ['bold' => true, 'size' => 16, 'color' => ['rgb' => 'FFFFFF']],
@@ -685,37 +850,48 @@ class AttendanceExcelExportService
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'ECFDF5']],
         ]);
 
-        $sheet->getStyle('A5:D8')->applyFromArray([
+        $sheet->getStyle('A5:D9')->applyFromArray([
             'font' => ['bold' => true],
             'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
         ]);
 
-        $scoreLastRow = 11 + count($scoreRows);
-        $behaviorLastRow = 11 + count($behaviorRows);
+        $scoreLastRow = 12 + count($scoreRows);
+        $behaviorLastRow = 12 + count($behaviorRows);
 
-        $sheet->getStyle("A11:B{$scoreLastRow}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
-        $sheet->getStyle("D11:E{$behaviorLastRow}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
-        $sheet->getStyle('A11:B11')->applyFromArray([
+        $sheet->getStyle("A12:B{$scoreLastRow}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+        $sheet->getStyle("D12:E{$behaviorLastRow}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+        $sheet->getStyle('A12:B12')->applyFromArray([
             'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '1D4ED8']],
         ]);
-        $sheet->getStyle('D11:E11')->applyFromArray([
+        $sheet->getStyle('D12:E12')->applyFromArray([
             'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'D97706']],
         ]);
 
-        $legendStart = 13 + max(count($scoreRows), count($behaviorRows));
-        $legendEnd = $legendStart + 4;
+        $legendEnd = $legendStart + 5;
         $sheet->getStyle("A{$legendStart}:B{$legendEnd}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
         $sheet->getStyle("A{$legendStart}:B{$legendStart}")->applyFromArray([
             'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '334155']],
         ]);
 
+        // Legend color swatches
+        $sheet->getStyle('A' . ($legendStart + 1) . ':B' . ($legendStart + 1))->getFill()
+            ->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB(AttendanceStatus::PRESENT->getExportFillColor());
+        $sheet->getStyle('A' . ($legendStart + 2) . ':B' . ($legendStart + 2))->getFill()
+            ->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB(AttendanceStatus::ABSENT_UNJUSTIFIED->getExportFillColor());
+        $sheet->getStyle('A' . ($legendStart + 3) . ':B' . ($legendStart + 3))->getFill()
+            ->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB(AttendanceStatus::ABSENT_JUSTIFIED->getExportFillColor());
+        $sheet->getStyle('A' . ($legendStart + 4) . ':B' . ($legendStart + 4))->getFill()
+            ->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB(AttendanceStatus::UNMARKED->getExportFillColor());
+
         foreach (range('A', 'F') as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
     }
+
+    // ─── Matrix Cell Helpers ───────────────────────────────────────────
 
     private function buildAttendanceMap(Collection $memorizers): array
     {
@@ -729,6 +905,95 @@ class AttendanceExcelExportService
 
         return $map;
     }
+
+    /**
+     * Generate cell value for the matrix sheet. Uses AttendanceStatus for status labels.
+     */
+    private function makeMatrixCellValue(?Attendance $attendance): string|RichText
+    {
+        $status = AttendanceStatus::resolve($attendance);
+
+        if ($status !== AttendanceStatus::PRESENT) {
+            return $status->getExportLabel();
+        }
+
+        if (! $attendance->score instanceof MemorizationScore) {
+            return $status->getExportLabel();
+        }
+
+        $richText = new RichText();
+        $statusRun = $richText->createTextRun('حاضر');
+        $statusRun->getFont()->setBold(true);
+        $richText->createText("\n");
+
+        $scoreRun = $richText->createTextRun($attendance->score->getLabel());
+        $scoreRun->getFont()->getColor()->setRGB($this->scorePalette($attendance->score)[1]);
+        $scoreRun->getFont()->setBold(true);
+
+        return $richText;
+    }
+
+    /**
+     * Apply fill/font styling to a matrix cell. Uses AttendanceStatus for colors.
+     */
+    private function applyMatrixStatusStyle($sheet, string $cell, ?Attendance $attendance): void
+    {
+        $status = AttendanceStatus::resolve($attendance);
+
+        $fill = $status->getExportFillColor();
+        $font = $status->getExportFontColor();
+
+        $sheet->getStyle($cell)->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['rgb' => $font]],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $fill]],
+            'alignment' => [
+                'horizontal' => Alignment::HORIZONTAL_CENTER,
+                'vertical' => Alignment::VERTICAL_CENTER,
+                'wrapText' => true,
+            ],
+        ]);
+    }
+
+    private function scorePalette(MemorizationScore $score): array
+    {
+        return match ($score) {
+            MemorizationScore::EXCELLENT => ['A7F3D0', '065F46'],
+            MemorizationScore::GOOD => ['BBF7D0', '166534'],
+            MemorizationScore::VERY_GOOD => ['BFDBFE', '1D4ED8'],
+            MemorizationScore::FAIR => ['FDE68A', '92400E'],
+            MemorizationScore::ACCEPTABLE => ['E5E7EB', '374151'],
+            MemorizationScore::POOR => ['FCA5A5', '991B1B'],
+            MemorizationScore::NOT_MEMORIZED => ['FDA4AF', '9F1239'],
+        };
+    }
+
+    // ─── Formatting Helpers ────────────────────────────────────────────
+
+    private function formatTroubleLabels(Attendance $attendance): string
+    {
+        if (! $attendance->notes || count($attendance->notes) === 0) {
+            return '—';
+        }
+
+        return collect($attendance->notes)
+            ->map(fn (string $value) => Troubles::tryFrom($value)?->getLabel() ?? $value)
+            ->implode('، ');
+    }
+
+    private function formatArabicWeekday(Carbon $date): string
+    {
+        return match ($date->dayOfWeek) {
+            Carbon::SUNDAY => 'الأحد',
+            Carbon::MONDAY => 'الاثنين',
+            Carbon::TUESDAY => 'الثلاثاء',
+            Carbon::WEDNESDAY => 'الأربعاء',
+            Carbon::THURSDAY => 'الخميس',
+            Carbon::FRIDAY => 'الجمعة',
+            Carbon::SATURDAY => 'السبت',
+        };
+    }
+
+    // ─── File / Sheet Name Helpers ─────────────────────────────────────
 
     private function filterDatesForGroup(MemoGroup $group, Collection $dates): Collection
     {
@@ -758,96 +1023,6 @@ class AttendanceExcelExportService
                 )->values()
             );
         }
-    }
-
-    private function makeMatrixCellValue(?Attendance $attendance): string|RichText
-    {
-        if (! $attendance) {
-            return 'غ.م';
-        }
-
-        if (! $attendance->check_in_time) {
-            return 'غائب';
-        }
-
-        if (! $attendance->score instanceof MemorizationScore) {
-            return 'حاضر';
-        }
-
-        $richText = new RichText();
-        $status = $richText->createTextRun('حاضر');
-        $status->getFont()->setBold(true);
-        $richText->createText("\n");
-
-        $scoreRun = $richText->createTextRun($attendance->score->getLabel());
-        $scoreRun->getFont()->getColor()->setRGB($this->scorePalette($attendance->score)[1]);
-        $scoreRun->getFont()->setBold(true);
-
-        return $richText;
-    }
-
-    private function applyMatrixStatusStyle($sheet, string $cell, ?Attendance $attendance): void
-    {
-        $fill = 'E5E7EB';
-        $font = '374151';
-
-        if (! $attendance) {
-            $fill = 'E5E7EB';
-            $font = '374151';
-        } elseif (! $attendance->check_in_time) {
-            $fill = 'FECACA';
-            $font = '991B1B';
-        } else {
-            $fill = 'BBF7D0';
-            $font = '166534';
-        }
-
-        $sheet->getStyle($cell)->applyFromArray([
-            'font' => ['bold' => true, 'color' => ['rgb' => $font]],
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $fill]],
-            'alignment' => [
-                'horizontal' => Alignment::HORIZONTAL_CENTER,
-                'vertical' => Alignment::VERTICAL_CENTER,
-                'wrapText' => true,
-            ],
-        ]);
-    }
-
-    private function scorePalette(MemorizationScore $score): array
-    {
-        return match ($score) {
-            MemorizationScore::EXCELLENT => ['A7F3D0', '065F46'],
-            MemorizationScore::GOOD => ['BBF7D0', '166534'],
-            MemorizationScore::VERY_GOOD => ['BFDBFE', '1D4ED8'],
-            MemorizationScore::FAIR => ['FDE68A', '92400E'],
-            MemorizationScore::ACCEPTABLE => ['E5E7EB', '374151'],
-            MemorizationScore::POOR => ['FCA5A5', '991B1B'],
-            MemorizationScore::NOT_MEMORIZED => ['FDA4AF', '9F1239'],
-        };
-    }
-
-    private function formatTroubleLabels(Attendance $attendance): string
-    {
-        if (! $attendance->notes || count($attendance->notes) === 0) {
-            return '—';
-        }
-
-        return collect($attendance->notes)
-            ->map(fn (string $value) => Troubles::tryFrom($value)?->getLabel() ?? $value)
-            ->implode('، ');
-    }
-
-    private function formatArabicWeekday(Carbon $date): string
-    {
-        return match ($date->dayOfWeek) {
-            Carbon::SUNDAY => 'الأحد',
-            Carbon::MONDAY => 'الاثنين',
-            Carbon::TUESDAY => 'الثلاثاء',
-            Carbon::WEDNESDAY => 'الأربعاء',
-            Carbon::THURSDAY => 'الخميس',
-            Carbon::FRIDAY => 'الجمعة',
-            Carbon::SATURDAY => 'السبت',
-        };
     }
 
     private function makeFileName(MemoGroup $group, Carbon $dateFrom, Carbon $dateTo): string
