@@ -3,10 +3,8 @@
 namespace App\Filament\Actions;
 
 use App\Enums\MessageSubmissionType;
-use App\Helpers\PhoneHelper;
 use App\Models\Group;
-use App\Models\WhatsAppSession;
-use App\Services\WhatsAppService;
+use App\Services\WhatsAppAttendanceService;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Placeholder;
@@ -16,7 +14,6 @@ use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Notifications\Notification;
 use Filament\Tables\Actions\Action;
-use Illuminate\Support\Facades\Log;
 
 class AutoAttendanceAction extends Action
 {
@@ -101,78 +98,40 @@ class AutoAttendanceAction extends Action
             return $cache[$date];
         }
 
-        $group = $this->getOwnerGroup();
-        $students = $group->students()->orderBy('order_no')->get();
-        $senderPhones = $this->fetchWhatsAppSenders($group, $date);
-        $senderIndex = PhoneHelper::buildSuffixIndex($senderPhones);
-
-        $existingPresentIds = $group->progresses()
-            ->where('date', $date)
-            ->where('status', 'memorized')
-            ->pluck('student_id')
-            ->flip()
-            ->all();
-
-        $matchedStudentIds = [];
-        $alreadyPresentIds = [];
+        $group = $this->getOwnerGroup()->load([
+            'students.progresses' => fn ($query) => $query
+                ->where('date', $date)
+                ->select(['id', 'student_id', 'date', 'status', 'with_reason', 'comment']),
+        ]);
+        $students = $group->students()->orderBy('order_no')->get()->keyBy('id');
+        $preview = app(WhatsAppAttendanceService::class)->buildGroupPreview($group, $date);
+        $matchedStudentIds = collect($preview['matched_student_ids'] ?? []);
+        $alreadyPresentIds = collect($preview['already_present_ids'] ?? []);
         $descriptions = [];
 
         foreach ($students as $student) {
-            $phone = $student->phone;
-
-            if (isset($existingPresentIds[$student->id])) {
-                $alreadyPresentIds[] = $student->id;
-                $matchedStudentIds[] = $student->id;
-                $descriptions[$student->id] = "$phone — مسجل مسبقاً";
+            if ($alreadyPresentIds->contains($student->id)) {
+                $descriptions[$student->id] = "{$student->phone} — مسجل مسبقاً";
 
                 continue;
             }
 
-            if (PhoneHelper::matchesAny($phone, $senderIndex)) {
-                $matchedStudentIds[] = $student->id;
-                $descriptions[$student->id] = "$phone — تم المطابقة من واتساب";
-            } else {
-                $descriptions[$student->id] = $phone;
+            if ($matchedStudentIds->contains($student->id)) {
+                $descriptions[$student->id] = "{$student->phone} — تم المطابقة من واتساب";
+
+                continue;
             }
+
+            $descriptions[$student->id] = $student->phone;
         }
 
         return $cache[$date] = [
-            'matched_student_ids' => $matchedStudentIds,
-            'already_present_ids' => $alreadyPresentIds,
+            'matched_student_ids' => $matchedStudentIds->all(),
+            'already_present_ids' => $alreadyPresentIds->all(),
             'descriptions' => $descriptions,
-            'matched_count' => count($matchedStudentIds),
+            'matched_count' => $matchedStudentIds->count(),
             'total_students' => $students->count(),
         ];
-    }
-
-    protected function fetchWhatsAppSenders(Group $group, string $date): array
-    {
-        if (! $group->whatsapp_group_jid) {
-            return [];
-        }
-
-        try {
-            $session = WhatsAppSession::getUserSession(auth()->id());
-            if (! $session?->isConnected()) {
-                return [];
-            }
-
-            $submissionType = $group->message_submission_type ?? MessageSubmissionType::Media;
-
-            return app(WhatsAppService::class)->getGroupAttendeesForDate(
-                $session->name,
-                $group->whatsapp_group_jid,
-                $date,
-                $submissionType->whatsappMessageTypes()
-            );
-        } catch (\Exception $e) {
-            Log::error('Failed to fetch WhatsApp group attendees', [
-                'group_id' => $group->id,
-                'error' => $e->getMessage(),
-            ]);
-
-            return [];
-        }
     }
 
     protected function processAttendance(array $data): void
@@ -191,79 +150,27 @@ class AutoAttendanceAction extends Action
             return;
         }
 
-        $existingProgress = $group->progresses()
-            ->where('date', $date)
-            ->whereIn('student_id', $studentIds)
-            ->get()
-            ->keyBy('student_id');
-
-        $createdCount = 0;
-        $attendanceData = ['status' => 'memorized', 'comment' => 'whatsapp_auto_attendance'];
-
-        foreach ($studentIds as $studentId) {
-            $progress = $existingProgress->get($studentId);
-
-            if ($progress?->status === 'memorized') {
-                continue;
-            }
-
-            if ($progress) {
-                $progress->update($attendanceData);
-            } else {
-                $group->students()->find($studentId)?->progresses()->create(
-                    ['date' => $date, ...$attendanceData],
-                );
-            }
-
-            $createdCount++;
-        }
-
-        $absentCount = 0;
-
-        if ($markOthersAbsent) {
-            $selectedStudentIds = array_map('intval', $studentIds);
-            $otherStudents = $group->students()
-                ->whereNotIn('id', $selectedStudentIds)
-                ->get();
-
-            $otherProgresses = $group->progresses()
-                ->where('date', $date)
-                ->whereIn('student_id', $otherStudents->pluck('id'))
-                ->get()
-                ->keyBy('student_id');
-
-            foreach ($otherStudents as $student) {
-                $progress = $otherProgresses->get($student->id);
-
-                if ($progress?->status === 'memorized') {
-                    continue;
-                }
-
-                if ($progress) {
-                    $progress->update([
-                        'status' => 'absent',
-                        'with_reason' => false,
-                        'comment' => null,
-                    ]);
-                } else {
-                    $student->progresses()->create([
-                        'date' => $date,
-                        'status' => 'absent',
-                        'with_reason' => false,
-                        'comment' => null,
-                        'page_id' => null,
-                        'lines_from' => null,
-                        'lines_to' => null,
-                    ]);
-                }
-
-                $absentCount++;
-            }
-        }
+        $preview = app(WhatsAppAttendanceService::class)->buildGroupPreview($group, $date);
+        $preview['to_mark_present_ids'] = array_values(array_map('intval', $studentIds));
+        $preview['matched_student_ids'] = array_values(array_unique([
+            ...($preview['already_present_ids'] ?? []),
+            ...$preview['to_mark_present_ids'],
+        ]));
+        $result = app(WhatsAppAttendanceService::class)->applyGroupPreview(
+            $group->load([
+                'students.progresses' => fn ($query) => $query
+                    ->where('date', $date)
+                    ->select(['id', 'student_id', 'date', 'status', 'with_reason', 'comment']),
+            ]),
+            $preview,
+            $date,
+            $markOthersAbsent,
+            false,
+        );
 
         $title = $markOthersAbsent
-            ? "تم تسجيل حضور {$createdCount} طالب وتسجيل {$absentCount} غائبين بنجاح"
-            : "تم تسجيل حضور {$createdCount} طالب بنجاح";
+            ? "تم تسجيل حضور {$result['students_marked_present']} طالب وتسجيل {$result['students_marked_absent']} غائبين بنجاح"
+            : "تم تسجيل حضور {$result['students_marked_present']} طالب بنجاح";
 
         Notification::make()
             ->success()

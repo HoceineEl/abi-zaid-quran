@@ -13,6 +13,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (DB::getDriverName() === 'sqlite' && Schema::hasColumn('group_message_templates', 'group_id')) {
+            return;
+        }
+
         // Create a simple and concise default reminder template
         $template = GroupMessageTemplate::create([
             'name' => 'تذكير بسيط - القالب الافتراضي',
@@ -47,6 +51,10 @@ ARABIC
      */
     public function down(): void
     {
+        if (DB::getDriverName() === 'sqlite' && Schema::hasColumn('group_message_templates', 'group_id')) {
+            return;
+        }
+
         // Remove the default template
         $template = GroupMessageTemplate::where('name', 'تذكير بسيط - القالب الافتراضي')->first();
 

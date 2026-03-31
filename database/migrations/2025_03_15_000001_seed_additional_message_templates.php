@@ -3,6 +3,7 @@
 use App\Models\GroupMessageTemplate;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -11,6 +12,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (DB::getDriverName() === 'sqlite' && Schema::hasColumn('group_message_templates', 'group_id')) {
+            return;
+        }
+
         // Define the message templates to be seeded
         $templates = [
             [
@@ -127,6 +132,10 @@ MSG
      */
     public function down(): void
     {
+        if (DB::getDriverName() === 'sqlite' && Schema::hasColumn('group_message_templates', 'group_id')) {
+            return;
+        }
+
         // Define the template names to be removed
         $templateNames = [
             'تذكير بالواجب - مع تشجيع',

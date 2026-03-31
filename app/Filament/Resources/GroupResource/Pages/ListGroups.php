@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\GroupResource\Pages;
 
+use App\Filament\Actions\BulkWhatsAppAttendanceAction;
 use App\Filament\Actions\CheckWhatsAppStatusAction;
 use App\Filament\Resources\GroupResource;
 use App\Models\Group;
@@ -13,6 +14,7 @@ use Filament\Resources\Pages\ListRecords;
 use Filament\Support\Enums\ActionSize;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Notifications\Notification;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 
 class ListGroups extends ListRecords
 {
@@ -42,8 +44,23 @@ class ListGroups extends ListRecords
         return [
             Actions\CreateAction::make()
                 ->visible(auth()->user()->isAdministrator()),
+            BulkWhatsAppAttendanceAction::make()->visible(false),
             CheckWhatsAppStatusAction::make(),
         ];
+    }
+
+    public function getBulkWhatsAppAttendanceGroups(): EloquentCollection
+    {
+        $query = clone $this->getFilteredTableQuery();
+
+        return $query
+            ->with([
+                'students.progresses' => fn ($progressQuery) => $progressQuery
+                    ->where('date', today()->format('Y-m-d'))
+                    ->select(['id', 'student_id', 'date', 'status', 'with_reason', 'comment']),
+                'messageTemplates',
+            ])
+            ->get();
     }
 
     public function getTabs(): array

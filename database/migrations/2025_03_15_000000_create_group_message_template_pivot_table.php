@@ -39,30 +39,37 @@ return new class extends Migration
         }
 
         // Remove the group_id column from the group_message_templates table
-        // First, get the actual foreign key constraint name
-        $foreignKeys = DB::select("
-            SELECT CONSTRAINT_NAME
-            FROM information_schema.TABLE_CONSTRAINTS
-            WHERE TABLE_SCHEMA = DATABASE()
-            AND TABLE_NAME = 'group_message_templates'
-            AND CONSTRAINT_TYPE = 'FOREIGN KEY'
-            AND CONSTRAINT_NAME LIKE '%group_id%'
-        ");
-
-        if (!empty($foreignKeys)) {
-            $foreignKeyName = $foreignKeys[0]->CONSTRAINT_NAME;
-
-            Schema::table('group_message_templates', function (Blueprint $table) use ($foreignKeyName) {
-                $table->dropForeign($foreignKeyName);
-                $table->dropColumn('group_id');
-                $table->dropColumn('is_default'); // Move is_default to the pivot table
-            });
+        if (DB::getDriverName() === 'sqlite') {
+            // SQLite cannot reliably rebuild this legacy table while preserving the
+            // original foreign key definition during tests. Keep the old columns in
+            // place for SQLite and rely on the new pivot table at runtime.
+            return;
         } else {
-            // If no foreign key constraint is found, just drop the columns
-            Schema::table('group_message_templates', function (Blueprint $table) {
-                $table->dropColumn('group_id');
-                $table->dropColumn('is_default'); // Move is_default to the pivot table
-            });
+            // First, get the actual foreign key constraint name
+            $foreignKeys = DB::select("
+                SELECT CONSTRAINT_NAME
+                FROM information_schema.TABLE_CONSTRAINTS
+                WHERE TABLE_SCHEMA = DATABASE()
+                AND TABLE_NAME = 'group_message_templates'
+                AND CONSTRAINT_TYPE = 'FOREIGN KEY'
+                AND CONSTRAINT_NAME LIKE '%group_id%'
+            ");
+
+            if (!empty($foreignKeys)) {
+                $foreignKeyName = $foreignKeys[0]->CONSTRAINT_NAME;
+
+                Schema::table('group_message_templates', function (Blueprint $table) use ($foreignKeyName) {
+                    $table->dropForeign($foreignKeyName);
+                    $table->dropColumn('group_id');
+                    $table->dropColumn('is_default'); // Move is_default to the pivot table
+                });
+            } else {
+                // If no foreign key constraint is found, just drop the columns
+                Schema::table('group_message_templates', function (Blueprint $table) {
+                    $table->dropColumn('group_id');
+                    $table->dropColumn('is_default'); // Move is_default to the pivot table
+                });
+            }
         }
     }
 
