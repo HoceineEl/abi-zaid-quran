@@ -6,6 +6,7 @@ use App\Classes\Core;
 use App\Enums\MessageSubmissionType;
 use App\Exports\BulkGroupStudentsExport;
 use App\Exports\DailyAttendanceSummaryExport;
+use App\Filament\Actions\BulkWhatsAppAttendanceAction;
 use App\Filament\Actions\SendBulkReminderToAllGroupsAction;
 use App\Filament\Actions\SendMessageToAllGroupMembersAction;
 use App\Filament\Resources\GroupResource\Pages;
@@ -330,6 +331,7 @@ class GroupResource extends Resource
                     }),
             ])
             ->bulkActions([
+                BulkWhatsAppAttendanceAction::make(),
                 Tables\Actions\BulkAction::make('bulk_export_attendance')
                     ->label('تصدير كشف الحضور')
                     ->icon('heroicon-o-share')
