@@ -2,6 +2,7 @@
 
 namespace App\Filament\Actions;
 
+use App\Models\Group;
 use App\Models\WhatsAppSession;
 use App\Services\WhatsAppAttendanceService;
 use Filament\Forms\Components\Hidden;
@@ -9,7 +10,6 @@ use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Support\Enums\MaxWidth;
 use Filament\Tables\Actions\BulkAction;
-use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 
 class BulkWhatsAppAttendanceAction extends BulkAction
 {
@@ -30,14 +30,16 @@ class BulkWhatsAppAttendanceAction extends BulkAction
             ->modalSubmitActionLabel('تأكيد الحضور')
             ->visible(fn (): bool => auth()->user()->isAdministrator()
                 && WhatsAppSession::getUserSession(auth()->id())?->isConnected() === true)
-            ->form(function (EloquentCollection $records) {
+            ->form(function ($livewire) {
+                $records = Group::with([
+                    'students.progresses' => fn ($q) => $q
+                        ->where('date', today()->format('Y-m-d'))
+                        ->select(['id', 'student_id', 'date', 'status', 'with_reason', 'comment']),
+                    'messageTemplates',
+                ])->whereKey($livewire->selectedTableRecords ?? [])->get();
+
                 $preview = app(WhatsAppAttendanceService::class)->buildBulkPreview(
-                    $records->load([
-                        'students.progresses' => fn ($q) => $q
-                            ->where('date', today()->format('Y-m-d'))
-                            ->select(['id', 'student_id', 'date', 'status', 'with_reason', 'comment']),
-                        'messageTemplates',
-                    ]),
+                    $records,
                     today()->format('Y-m-d'),
                 );
 
