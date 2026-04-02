@@ -29,7 +29,8 @@ class BulkWhatsAppAttendanceAction extends BulkAction
             ->modalWidth(MaxWidth::SevenExtraLarge)
             ->modalHeading('الحضور التلقائي عبر واتساب')
             ->modalSubmitActionLabel('تأكيد الحضور')
-            ->visible(fn (): bool => WhatsAppSession::getUserSession(auth()->id())?->isConnected() === true)
+            ->visible(fn (): bool => auth()->user()->isAdministrator()
+                && WhatsAppSession::getUserSession(auth()->id())?->isConnected() === true)
             ->mountUsing(function (Form $form, EloquentCollection $records): void {
                 $preview = app(WhatsAppAttendanceService::class)->buildBulkPreview(
                     $records->load([
