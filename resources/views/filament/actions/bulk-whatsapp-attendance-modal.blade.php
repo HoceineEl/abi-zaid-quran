@@ -19,23 +19,23 @@
         <span>{{ \Carbon\Carbon::parse($date)->translatedFormat('l، j F Y') }}</span>
     </div>
 
-    {{-- Summary stats: 2×2 on mobile, 4 cols on sm+ --}}
-    <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <div class="rounded-xl bg-success-50 px-3 py-2.5 dark:bg-success-500/10">
+    {{-- Summary stats: always one row --}}
+    <div class="flex gap-2">
+        <div class="flex-1 rounded-xl bg-success-50 px-3 py-2.5 dark:bg-success-500/10">
             <div class="text-xs font-medium text-success-700 dark:text-success-400">جاهزة</div>
-            <div class="mt-0.5 text-2xl font-bold leading-none text-success-700 dark:text-success-400">{{ $totals['ready_group_count'] ?? 0 }}</div>
+            <div class="mt-0.5 text-xl font-bold leading-none text-success-700 dark:text-success-400">{{ $totals['ready_group_count'] ?? 0 }}</div>
         </div>
-        <div class="rounded-xl bg-primary-50 px-3 py-2.5 dark:bg-primary-500/10">
+        <div class="flex-1 rounded-xl bg-primary-50 px-3 py-2.5 dark:bg-primary-500/10">
             <div class="text-xs font-medium text-primary-700 dark:text-primary-400">سيُسجَّلون</div>
-            <div class="mt-0.5 text-2xl font-bold leading-none text-primary-700 dark:text-primary-400">{{ $totals['to_mark_present_students'] ?? 0 }}</div>
+            <div class="mt-0.5 text-xl font-bold leading-none text-primary-700 dark:text-primary-400">{{ $totals['to_mark_present_students'] ?? 0 }}</div>
         </div>
-        <div class="rounded-xl bg-warning-50 px-3 py-2.5 dark:bg-warning-500/10">
+        <div class="flex-1 rounded-xl bg-warning-50 px-3 py-2.5 dark:bg-warning-500/10">
             <div class="text-xs font-medium text-warning-700 dark:text-warning-400">متبقون</div>
-            <div class="mt-0.5 text-2xl font-bold leading-none text-warning-700 dark:text-warning-400">{{ $totals['remaining_students'] ?? 0 }}</div>
+            <div class="mt-0.5 text-xl font-bold leading-none text-warning-700 dark:text-warning-400">{{ $totals['remaining_students'] ?? 0 }}</div>
         </div>
-        <div class="rounded-xl bg-danger-50 px-3 py-2.5 dark:bg-danger-500/10">
+        <div class="flex-1 rounded-xl bg-danger-50 px-3 py-2.5 dark:bg-danger-500/10">
             <div class="text-xs font-medium text-danger-700 dark:text-danger-400">متخطاة</div>
-            <div class="mt-0.5 text-2xl font-bold leading-none text-danger-700 dark:text-danger-400">{{ $totals['skipped_group_count'] ?? 0 }}</div>
+            <div class="mt-0.5 text-xl font-bold leading-none text-danger-700 dark:text-danger-400">{{ $totals['skipped_group_count'] ?? 0 }}</div>
         </div>
     </div>
 

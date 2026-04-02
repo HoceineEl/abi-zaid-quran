@@ -6,7 +6,6 @@ use App\Models\WhatsAppSession;
 use App\Services\WhatsAppAttendanceService;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Toggle;
-use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Support\Enums\MaxWidth;
 use Filament\Tables\Actions\BulkAction;
@@ -31,7 +30,7 @@ class BulkWhatsAppAttendanceAction extends BulkAction
             ->modalSubmitActionLabel('تأكيد الحضور')
             ->visible(fn (): bool => auth()->user()->isAdministrator()
                 && WhatsAppSession::getUserSession(auth()->id())?->isConnected() === true)
-            ->mountUsing(function (Form $form, EloquentCollection $records): void {
+            ->form(function (EloquentCollection $records) {
                 $preview = app(WhatsAppAttendanceService::class)->buildBulkPreview(
                     $records->load([
                         'students.progresses' => fn ($q) => $q
@@ -42,22 +41,20 @@ class BulkWhatsAppAttendanceAction extends BulkAction
                     today()->format('Y-m-d'),
                 );
 
-                $form->fill([
-                    'preview_payload' => json_encode($preview, JSON_UNESCAPED_UNICODE),
-                ]);
+                return [
+                    Hidden::make('preview_payload')
+                        ->default(json_encode($preview, JSON_UNESCAPED_UNICODE)),
+                    Toggle::make('mark_others_absent')
+                        ->label('تسجيل البقية كغائبين')
+                        ->default(false)
+                        ->reactive(),
+                    Toggle::make('remind_remaining_students')
+                        ->label('تذكير البقية عبر واتساب')
+                        ->default(false)
+                        ->reactive()
+                        ->helperText('سيتم إرسال تذكير للطلاب الذين لم يسجلوا بعد.'),
+                ];
             })
-            ->form([
-                Hidden::make('preview_payload'),
-                Toggle::make('mark_others_absent')
-                    ->label('تسجيل البقية كغائبين')
-                    ->default(false)
-                    ->reactive(),
-                Toggle::make('remind_remaining_students')
-                    ->label('تذكير البقية عبر واتساب')
-                    ->default(false)
-                    ->reactive()
-                    ->helperText('سيتم إرسال تذكير للطلاب الذين لم يسجلوا بعد.'),
-            ])
             ->modalContent(fn ($livewire) => view('filament.actions.bulk-whatsapp-attendance-modal', [
                 'preview' => $this->derivePreviewFromData($this->getMountedActionData($livewire)),
                 'date' => today()->format('Y-m-d'),
