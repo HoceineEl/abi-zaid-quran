@@ -188,6 +188,10 @@ class GroupResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->label('الاسم')
+                    ->icon(fn (Group $record) => $record->students()
+                        ->whereHas('progresses', fn (Builder $q) => $q->whereDate('date', today()))
+                        ->exists() ? 'heroicon-s-check-circle' : null)
+                    ->iconColor('success')
                     ->searchable(
                         query: function (Builder $query, string $search) {
                             return $query
