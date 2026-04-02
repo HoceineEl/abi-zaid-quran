@@ -188,10 +188,6 @@ class GroupResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->label('الاسم')
-                    ->icon(fn (Group $record) => $record->students()
-                        ->whereHas('progresses', fn (Builder $q) => $q->whereDate('date', today()))
-                        ->exists() ? 'heroicon-s-check-circle' : null)
-                    ->iconColor('success')
                     ->searchable(
                         query: function (Builder $query, string $search) {
                             return $query
@@ -253,6 +249,9 @@ class GroupResource extends Resource
             ->filters([
                 Tables\Filters\TrashedFilter::make(),
             ])
+            ->recordClasses(fn (Group $record) => $record->students()
+                ->whereHas('progresses', fn (Builder $q) => $q->whereDate('date', today()))
+                ->exists() ? 'bg-success-50 dark:bg-success-950/20' : null)
             ->recordUrl(fn (?Group $record) => $record ? GroupResource::getUrl('edit', ['record' => $record, 'activeRelationManager' => 0]) : null)
             ->actions([
 
