@@ -334,32 +334,31 @@ class GroupResource extends Resource
                     }),
             ])
             ->bulkActions([
-                BulkWhatsAppAttendanceAction::make(),
-                Tables\Actions\BulkAction::make('bulk_export_attendance')
-                    ->label('تصدير كشف الحضور')
-                    ->icon('heroicon-o-share')
-                    ->color('success')
-                    ->size(ActionSize::ExtraSmall)
-                    ->action(fn ($records, ListRecords $livewire) => $livewire->dispatch(
-                        'export-tables-bulk',
-                        ['groups' => AttendanceReportService::prepareBulkExportData($records)]
-                    ))
-                    ->deselectRecordsAfterCompletion(),
-                Tables\Actions\BulkAction::make('bulk_export_students')
-                    ->label('تصدير قوائم الطلاب')
-                    ->icon('heroicon-o-document-arrow-down')
-                    ->color('info')
-                    ->size(ActionSize::ExtraSmall)
-                    ->action(function ($records) {
-                        $groups = $records->load(['students', 'managers']);
-
-                        return Excel::download(
-                            new BulkGroupStudentsExport($groups),
-                            'قوائم-الطلاب-'.now()->format('Y-m-d').'.xlsx',
-                        );
-                    })
-                    ->deselectRecordsAfterCompletion(),
+                BulkWhatsAppAttendanceAction::make()
+                    ->size(ActionSize::ExtraSmall),
                 Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\BulkAction::make('bulk_export_attendance')
+                        ->label('تصدير كشف الحضور')
+                        ->icon('heroicon-o-share')
+                        ->color('success')
+                        ->action(fn ($records, ListRecords $livewire) => $livewire->dispatch(
+                            'export-tables-bulk',
+                            ['groups' => AttendanceReportService::prepareBulkExportData($records)]
+                        ))
+                        ->deselectRecordsAfterCompletion(),
+                    Tables\Actions\BulkAction::make('bulk_export_students')
+                        ->label('تصدير قوائم الطلاب')
+                        ->icon('heroicon-o-document-arrow-down')
+                        ->color('info')
+                        ->action(function ($records) {
+                            $groups = $records->load(['students', 'managers']);
+
+                            return Excel::download(
+                                new BulkGroupStudentsExport($groups),
+                                'قوائم-الطلاب-'.now()->format('Y-m-d').'.xlsx',
+                            );
+                        })
+                        ->deselectRecordsAfterCompletion(),
                     Tables\Actions\BulkAction::make('toggle_quran_group')
                         ->label('تبديل حالة مجموعة القرآن')
                         ->icon('heroicon-o-academic-cap')
