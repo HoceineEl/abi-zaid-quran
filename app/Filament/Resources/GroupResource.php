@@ -6,6 +6,8 @@ use App\Classes\Core;
 use App\Enums\MessageSubmissionType;
 use App\Exports\BulkGroupStudentsExport;
 use App\Exports\DailyAttendanceSummaryExport;
+use App\Filament\Actions\BulkMarkAbsentAction;
+use App\Filament\Actions\BulkSendRemindersAction;
 use App\Filament\Actions\BulkWhatsAppAttendanceAction;
 use App\Filament\Actions\SendBulkReminderToAllGroupsAction;
 use App\Filament\Actions\SendMessageToAllGroupMembersAction;
@@ -335,6 +337,10 @@ class GroupResource extends Resource
             ])
             ->bulkActions([
                 BulkWhatsAppAttendanceAction::make()
+                    ->size(ActionSize::ExtraSmall),
+                BulkMarkAbsentAction::make()
+                    ->size(ActionSize::ExtraSmall),
+                BulkSendRemindersAction::make()
                     ->size(ActionSize::ExtraSmall),
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\BulkAction::make('bulk_export_attendance')
