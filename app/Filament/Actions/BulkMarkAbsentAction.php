@@ -31,7 +31,7 @@ class BulkMarkAbsentAction extends BulkAction
             ->modalWidth(MaxWidth::Large)
             ->modalHeading('تسجيل الغائبين جماعياً')
             ->modalSubmitActionLabel('تسجيل الغائبين')
-            ->visible(fn (): bool => auth()->user()->isAdministrator())
+            ->visible(true)
             ->steps([
                 Step::make('date')
                     ->label('التاريخ')

@@ -34,8 +34,7 @@ class BulkSendRemindersAction extends BulkAction
             ->modalWidth(MaxWidth::Large)
             ->modalHeading('إرسال تذكيرات للغائبين')
             ->modalSubmitActionLabel('إرسال التذكيرات')
-            ->visible(fn (): bool => auth()->user()->isAdministrator()
-                && WhatsAppSession::getUserSession(auth()->id())?->isConnected() === true)
+            ->visible(fn (): bool => WhatsAppSession::getUserSession(auth()->id())?->isConnected() === true)
             ->steps([
                 Step::make('date')
                     ->label('التاريخ')
