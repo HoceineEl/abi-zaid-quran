@@ -337,12 +337,14 @@ class GroupResource extends Resource
             ])
             ->bulkActions([
                 BulkWhatsAppAttendanceAction::make()
-                    ->size(ActionSize::ExtraSmall),
-                BulkMarkAbsentAction::make()
-                    ->size(ActionSize::ExtraSmall),
-                BulkSendRemindersAction::make()
+                    ->label('حضور تلقائي')
+                    ->icon('tabler-brand-whatsapp')
                     ->size(ActionSize::ExtraSmall),
                 Tables\Actions\BulkActionGroup::make([
+                    BulkMarkAbsentAction::make()
+                        ->label('تسجيل المتبقين غائبين'),
+                    BulkSendRemindersAction::make()
+                        ->label('تذكير المتبقين عبر واتساب'),
                     Tables\Actions\BulkAction::make('bulk_export_attendance')
                         ->label('تصدير كشف الحضور')
                         ->icon('heroicon-o-share')
@@ -505,7 +507,13 @@ class GroupResource extends Resource
                                 ->send();
                         })
                         ->deselectRecordsAfterCompletion(),
-                ]),
+                ])
+                    ->icon('heroicon-o-ellipsis-horizontal')
+                    ->label('المزيد')
+                    ->button()
+                    ->labeledFrom(null)
+                    ->size(ActionSize::ExtraSmall)
+                    ->color('gray'),
             ]);
     }
 

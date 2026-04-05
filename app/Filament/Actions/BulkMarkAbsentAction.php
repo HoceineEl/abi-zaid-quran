@@ -31,7 +31,6 @@ class BulkMarkAbsentAction extends BulkAction
             ->modalWidth(MaxWidth::Large)
             ->modalHeading('تسجيل الغائبين جماعياً')
             ->modalSubmitActionLabel('تسجيل الغائبين')
-            ->visible(true)
             ->steps([
                 Step::make('date')
                     ->label('التاريخ')
@@ -76,19 +75,9 @@ class BulkMarkAbsentAction extends BulkAction
                                     return new HtmlString('<p class="text-sm text-gray-500">لا يوجد طلاب غائبون غير مسجلين في المجموعات المحددة.</p>');
                                 }
 
-                                $rows = collect($groups)->map(fn ($g) => "
-                                    <div class='flex items-center justify-between rounded-xl bg-gray-50 px-3 py-2 dark:bg-gray-800/60'>
-                                        <span class='text-sm text-gray-700 dark:text-gray-200'>{$g['name']}</span>
-                                        <span class='rounded-full bg-danger-50 px-2 py-0.5 text-xs font-bold text-danger-700 dark:bg-danger-500/10 dark:text-danger-400'>{$g['count']}</span>
-                                    </div>")->implode('');
-
-                                return new HtmlString("
-                                    <div class='space-y-2' dir='rtl'>
-                                        <p class='text-sm font-medium text-gray-700 dark:text-gray-200'>
-                                            سيتم تسجيل <strong class='text-danger-600'>{$total}</strong> طالب كغائب في تاريخ {$date}:
-                                        </p>
-                                        <div class='space-y-1.5 mt-2'>{$rows}</div>
-                                    </div>");
+                                return new HtmlString(
+                                    view('filament.actions.bulk-mark-absent-modal', compact('groups', 'total', 'date'))->render()
+                                );
                             }),
                     ]),
             ])
@@ -96,13 +85,13 @@ class BulkMarkAbsentAction extends BulkAction
                 $date  = $data['date'];
                 $count = 0;
 
-                foreach ($records as $group) {
-                    $group->load([
-                        'students.progresses' => fn ($q) => $q
-                            ->whereDate('date', $date)
-                            ->select(['id', 'student_id', 'date', 'status']),
-                    ]);
+                $records->load([
+                    'students.progresses' => fn ($q) => $q
+                        ->whereDate('date', $date)
+                        ->select(['id', 'student_id', 'date', 'status']),
+                ]);
 
+                foreach ($records as $group) {
                     foreach ($group->students as $student) {
                         $progress = $student->progresses->first();
 
