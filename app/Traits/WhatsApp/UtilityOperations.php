@@ -381,8 +381,30 @@ trait UtilityOperations
                     return false;
                 }
 
-                return ($key['remoteJid'] ?? '') === $groupJid
-                    && in_array($message['messageType'] ?? '', $allowedMessageTypes, true);
+                if (($key['remoteJid'] ?? '') !== $groupJid) {
+                    return false;
+                }
+
+                $messageType = $message['messageType'] ?? '';
+
+                if (! in_array($messageType, $allowedMessageTypes, true)) {
+                    return false;
+                }
+
+                // Audio: only count voice notes (ptt=true), not shared audio/music files.
+                if ($messageType === 'audioMessage') {
+                    return ($messageContent['audioMessage']['ptt'] ?? false) === true;
+                }
+
+                // Text: only count messages that contain a completion/submission keyword.
+                // This excludes admin curriculum announcements, reactions, mentions, and noise.
+                if (in_array($messageType, ['conversation', 'extendedTextMessage'], true)) {
+                    $text = $messageContent['conversation'] ?? ($messageContent['extendedTextMessage']['text'] ?? '');
+
+                    return $this->isSubmissionText($text);
+                }
+
+                return true;
             })
             ->map(fn (array $message) => $this->resolveMessageSenderPhone($message, $lidToPhone, $ownerPhone))
             ->filter()
@@ -558,6 +580,44 @@ trait UtilityOperations
     protected function stripWhatsAppSuffix(string $jid): string
     {
         return str_replace('@s.whatsapp.net', '', $jid);
+    }
+
+    /**
+     * Returns true if the message text looks like a student submission (completion report).
+     *
+     * Filters out: admin curriculum announcements, short noise, @mentions, reactions.
+     * Confirmed patterns from real group data:
+     *   تم / تمت / أتممت        → "تم بحمد الله مراجعة الحزب 1"
+     *   قرأت / قراءة             → "قرأت إلى ص 59"
+     *   راجعت / مراجعة          → "تمت مراجعة الحزبين 1و2"
+     *   حفظت / استظهرت          → audio groups that also accept text
+     *   بحمد الله / بفضل الله   → "تم بفضل الله مراجعة الحزبين 4و3"
+     *   ولله الحمد / الحمد لله  → "تم ولله الحمد مراجعة الحزب 59"
+     *   أنهيت / انتهيت / اتممت  → variant completion phrases
+     */
+    protected function isSubmissionText(string $text): bool
+    {
+        if (blank($text)) {
+            return false;
+        }
+
+        $text = mb_strtolower(trim($text));
+
+        $keywords = [
+            'تم', 'تمت', 'اتممت', 'أتممت', 'أنهيت', 'انتهيت', 'انتهى',
+            'قرأت', 'قراءة', 'قرأ',
+            'راجعت', 'مراجعة',
+            'حفظت', 'حفظ', 'استظهرت', 'استظهر',
+            'بحمد الله', 'بفضل الله', 'ولله الحمد', 'الحمد لله',
+        ];
+
+        foreach ($keywords as $keyword) {
+            if (str_contains($text, $keyword)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function addParticipantsToGroup(string $instanceName, string $groupJid, array $phoneNumbers): array
