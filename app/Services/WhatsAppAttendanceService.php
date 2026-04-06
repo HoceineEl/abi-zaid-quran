@@ -213,6 +213,8 @@ class WhatsAppAttendanceService
             'groups' => [],
         ];
 
+        $firstReadyGroup = true;
+
         foreach ($preview['groups'] as $groupPreview) {
             if (($groupPreview['status'] ?? 'skipped') !== 'ready') {
                 $result['groups_skipped']++;
@@ -226,6 +228,12 @@ class WhatsAppAttendanceService
             }
 
             try {
+                // Insert a random inter-group gap before every group after the first
+                if (! $firstReadyGroup && $remindRemainingStudents) {
+                    SendWhatsAppMessageJob::addGroupDelay($session->id);
+                }
+                $firstReadyGroup = false;
+
                 $group = Group::query()
                     ->with(['students.progresses' => fn ($query) => $query
                         ->where('date', $date)

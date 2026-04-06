@@ -9,6 +9,10 @@ return [
     'delay_min' => env('WHATSAPP_DELAY_MIN', 5),
     'delay_max' => env('WHATSAPP_DELAY_MAX', 10),
 
+    // Inter-group delay: random pause between each group's batch of messages (in seconds)
+    'group_delay_min' => env('WHATSAPP_GROUP_DELAY_MIN', 60),
+    'group_delay_max' => env('WHATSAPP_GROUP_DELAY_MAX', 120),
+
     // Rate limit: max messages per minute per session (safety net)
     'messages_per_minute' => env('WHATSAPP_MESSAGES_PER_MINUTE', 10),
 

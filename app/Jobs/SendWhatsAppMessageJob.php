@@ -68,6 +68,26 @@ class SendWhatsAppMessageJob implements ShouldQueue
         return $delay;
     }
 
+    /**
+     * Advance the session's message slot by a random inter-group delay,
+     * inserting a natural-looking pause between each group's batch.
+     */
+    public static function addGroupDelay(string $sessionId): void
+    {
+        $slotKey = "whatsapp_next_slot:{$sessionId}";
+        $delayMin = (int) config('whatsapp.group_delay_min', 60);
+        $delayMax = (int) config('whatsapp.group_delay_max', 120);
+
+        $now = now()->timestamp;
+        $nextSlot = (int) Cache::get($slotKey, $now);
+
+        if ($nextSlot < $now) {
+            $nextSlot = $now;
+        }
+
+        Cache::put($slotKey, $nextSlot + rand($delayMin, $delayMax), now()->addMinutes(30));
+    }
+
     public function middleware(): array
     {
         return [

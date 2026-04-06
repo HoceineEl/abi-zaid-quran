@@ -209,10 +209,17 @@ class SendBulkReminderToAllGroupsAction extends Action
         }
 
         $messagesQueued = 0;
+        $currentGroupId = null;
 
         foreach ($studentsWithGroups as $item) {
             $student = $item['student'];
             $group = $item['group'];
+
+            // Insert a random inter-group gap when moving to a new group
+            if ($currentGroupId !== null && $currentGroupId !== $group->id) {
+                SendWhatsAppMessageJob::addGroupDelay($session->id);
+            }
+            $currentGroupId = $group->id;
 
             // Get message template for this specific group
             $messageTemplate = $this->getMessageTemplateForGroup($data, $group);
