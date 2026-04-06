@@ -425,7 +425,7 @@ ARABIC;
     protected function getRemainingStudents(Group $group, string $date): Collection
     {
         return $group->students
-            ->filter(fn (Student $student) => $student->progresses->where('date', $date)->isEmpty())
+            ->filter(fn (Student $student) => $student->progresses->isEmpty())
             ->values();
     }
 
