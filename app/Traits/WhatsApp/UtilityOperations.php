@@ -391,9 +391,9 @@ trait UtilityOperations
                     return false;
                 }
 
-                // Audio: only count voice notes (ptt=true), not shared audio/music files.
+                // Audio: count any audio message (voice notes and uploaded audio files).
                 if ($messageType === 'audioMessage') {
-                    return ($messageContent['audioMessage']['ptt'] ?? false) === true;
+                    return isset($messageContent['audioMessage']);
                 }
 
                 // Text: only count messages that contain a completion/submission keyword.
