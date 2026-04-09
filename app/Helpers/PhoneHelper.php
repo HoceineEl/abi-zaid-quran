@@ -5,7 +5,9 @@ namespace App\Helpers;
 class PhoneHelper
 {
     /**
-     * Clean and format phone number for WhatsApp (Moroccan format)
+     * Clean and format phone number for WhatsApp.
+     * Moroccan local formats are normalised to 212xxxxxxxxx.
+     * Any other number that already carries a country code is returned as-is.
      */
     public static function cleanPhoneNumber(?string $phone): ?string
     {
@@ -28,7 +30,11 @@ class PhoneHelper
             return $number;
         }
 
-        // Return null for invalid numbers
+        // International numbers: already include country code (E.164 range: 7–15 digits)
+        if (strlen($number) >= 7 && strlen($number) <= 15) {
+            return $number;
+        }
+
         return null;
     }
 
