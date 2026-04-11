@@ -40,6 +40,10 @@ class AttendanceTeacherRelationManager extends RelationManager
 
     protected static ?string $title = 'تسجيل الحضور والغياب';
 
+    protected static ?string $modelLabel = 'طالب';
+
+    protected static ?string $pluralModelLabel = 'الطلاب';
+
     protected static ?string $icon = 'heroicon-o-user-group';
 
     protected function canView(Model $record): bool
@@ -142,7 +146,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                 JustifyPastAbsenceAction::make(),
             ], ActionsPosition::BeforeColumns)
             ->headerActions([
-                CreateAction::make()->slideOver()->label('إضافة طالب')->modelLabel('طالب'),
+                CreateAction::make()->slideOver()->label('إضافة طالب'),
                 $this->exportTableAction(),
             ])
             ->bulkActions([
