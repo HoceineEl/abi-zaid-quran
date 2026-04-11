@@ -142,7 +142,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                 JustifyPastAbsenceAction::make(),
             ], ActionsPosition::BeforeColumns)
             ->headerActions([
-                CreateAction::make()->slideOver()->label('إضافة حافظ'),
+                CreateAction::make()->slideOver()->label('إضافة طالب')->modelLabel('طالب'),
                 $this->exportTableAction(),
             ])
             ->bulkActions([
