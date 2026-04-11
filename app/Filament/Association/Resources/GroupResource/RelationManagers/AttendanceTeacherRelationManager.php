@@ -46,6 +46,11 @@ class AttendanceTeacherRelationManager extends RelationManager
         return auth()->user()->isTeacher();
     }
 
+    public function isReadOnly(): bool
+    {
+        return false;
+    }
+
     public function form(Form $form): Form
     {
         return $form->schema([
