@@ -29,6 +29,7 @@ use Filament\Tables\Enums\ActionsPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 
 class ProgressesRelationManager extends RelationManager
@@ -60,71 +61,43 @@ class ProgressesRelationManager extends RelationManager
     {
         $dateFrom = $this->dateFrom ?? now()->subDays(4)->format('Y-m-d');
         $dateTo = $this->dateTo ?? now()->format('Y-m-d');
-        // Calculate status per day for each student
-        $statusPerDay = $this->ownerRecord->students
 
-            ->mapWithKeys(function ($student) use ($dateFrom, $dateTo) {
-                return [
-                    $student->id => $student->progresses
-                        ->whereBetween('date', [$dateFrom, $dateTo])
-                        ->groupBy('date')
-                        ->map(function ($group) {
-                            return $group->groupBy('status');
-                        }),
-                ];
-            });
-        // dd($statusPerDay);
-        // Prepare columns for each date within the range
-        $dateRange = new \DatePeriod(
-            new \DateTime($dateFrom),
-            new \DateInterval('P1D'),
-            (new \DateTime($dateTo))->modify('+1 day')
-        );
+        $statusPerDay = $this->getStatusPerDay($dateFrom, $dateTo);
+        $workingDates = $this->getWorkingDates($dateFrom, $dateTo);
 
-        $statusColumns = collect();
-        foreach ($dateRange as $date) {
-            $formattedDate = $date->format('Y-m-d');
-            $day = $date->format('d/m');
-            $statusColumns->push(
+        $statusColumns = $workingDates->map(function (string $formattedDate) use ($statusPerDay) {
+            $label = (new \DateTime($formattedDate))->format('d/m');
 
-                IconColumn::make("status_day_{$formattedDate}")
-                    ->getStateUsing(function ($record) use ($statusPerDay, $formattedDate) {
-                        if ($record->id && isset($statusPerDay[$record->id][$formattedDate])) {
-                            $progress = $statusPerDay[$record->id][$formattedDate]->first()[0];
-                            $status = $progress->status;
-
-                            // If status is absent and with_reason is true, return a special status
-                            if ($status === 'absent' && $progress->with_reason) {
-                                return 'absent_with_reason';
-                            }
-
-                            return $status;
-                        }
-
+            return IconColumn::make("status_day_{$formattedDate}")
+                ->getStateUsing(function ($record) use ($statusPerDay, $formattedDate) {
+                    if (! $record->id || ! isset($statusPerDay[$record->id][$formattedDate])) {
                         return null;
-                    })
-                    ->color(function ($state) {
-                        return match ($state) {
-                            'memorized' => 'success',
-                            'absent' => 'danger',
-                            'absent_with_reason' => 'info',
-                            default => 'muted'
-                        };
-                    })
-                    ->size(IconColumnSize::Large)
-                    ->default('unknown')
-                    ->icon(function ($state) {
-                        return match ($state) {
-                            'memorized' => 'heroicon-o-check-circle',
-                            'absent' => 'heroicon-o-x-circle',
-                            'absent_with_reason' => 'heroicon-o-exclamation-circle',
-                            default => 'heroicon-o-minus-circle',
-                            null => 'heroicon-o-minus-circle',
-                        };
-                    })
-                    ->label($day)
-            );
-        }
+                    }
+
+                    $progress = $statusPerDay[$record->id][$formattedDate]->first()[0];
+
+                    if ($progress->status === 'absent' && $progress->with_reason) {
+                        return 'absent_with_reason';
+                    }
+
+                    return $progress->status;
+                })
+                ->color(fn ($state) => match ($state) {
+                    'memorized' => 'success',
+                    'absent' => 'danger',
+                    'absent_with_reason' => 'info',
+                    default => 'muted',
+                })
+                ->size(IconColumnSize::Large)
+                ->default('unknown')
+                ->icon(fn ($state) => match ($state) {
+                    'memorized' => 'heroicon-o-check-circle',
+                    'absent' => 'heroicon-o-x-circle',
+                    'absent_with_reason' => 'heroicon-o-exclamation-circle',
+                    default => 'heroicon-o-minus-circle',
+                })
+                ->label($label);
+        });
 
         return $table
             ->deferFilters()
@@ -140,16 +113,12 @@ class ProgressesRelationManager extends RelationManager
                 ]
             )
             ->paginated(false)
-            ->query(function () use ($dateFrom, $dateTo) {
-                $query = $this->ownerRecord->students()
-                    ->withCount(['progresses as attendance_count' => function ($query) use ($dateFrom, $dateTo) {
-                        $query->whereBetween('date', [$dateFrom, $dateTo])
-                            ->where('status', 'memorized');
-                    }])
-                    ->orderByDesc('attendance_count');
-
-                return $query;
-            })
+            ->query(fn () => $this->ownerRecord->students()
+                ->withCount(['progresses as attendance_count' => function ($query) use ($dateFrom, $dateTo) {
+                    $query->whereBetween('date', [$dateFrom, $dateTo])
+                        ->where('status', 'memorized');
+                }])
+                ->orderByDesc('attendance_count'))
             ->headerActions([
                 ExportAction::make()
                     ->label('تصدير الكل')
@@ -165,25 +134,10 @@ class ProgressesRelationManager extends RelationManager
                         $dateFrom = $this->dateFrom ?? now()->subDays(4)->format('Y-m-d');
                         $dateTo = $this->dateTo ?? now()->format('Y-m-d');
 
-                        // Get date range
-                        $dateRange = new \DatePeriod(
-                            new \DateTime($dateFrom),
-                            new \DateInterval('P1D'),
-                            (new \DateTime($dateTo))->modify('+1 day')
-                        );
+                        $dateRange = $this->getWorkingDates($dateFrom, $dateTo)
+                            ->map(fn (string $date) => new \DateTime($date));
 
-                        // Calculate status per day for each student
-                        $statusPerDay = $this->ownerRecord->students
-                            ->mapWithKeys(function ($student) use ($dateFrom, $dateTo) {
-                                return [
-                                    $student->id => $student->progresses
-                                        ->whereBetween('date', [$dateFrom, $dateTo])
-                                        ->groupBy('date')
-                                        ->map(function ($group) {
-                                            return $group->groupBy('status');
-                                        }),
-                                ];
-                            });
+                        $statusPerDay = $this->getStatusPerDay($dateFrom, $dateTo);
 
                         $students = $this->ownerRecord->students()
                             ->withCount(['progresses as attendance_count' => function ($query) use ($dateFrom, $dateTo) {
@@ -202,7 +156,7 @@ class ProgressesRelationManager extends RelationManager
 
                         $this->dispatch('export-table', [
                             'html' => $html,
-                            'groupName' => $this->ownerRecord->name
+                            'groupName' => $this->ownerRecord->name,
                         ]);
                     }),
             ])
@@ -330,6 +284,31 @@ class ProgressesRelationManager extends RelationManager
     public function isReadOnly(): bool
     {
         return ! $this->ownerRecord->managers->contains(auth()->user());
+    }
+
+    /**
+     * Get only working dates (dates with actual progress records) within the given range.
+     */
+    protected function getWorkingDates(string $dateFrom, string $dateTo): Collection
+    {
+        return $this->ownerRecord->progresses()
+            ->whereBetween('date', [$dateFrom, $dateTo])
+            ->distinct()
+            ->orderBy('date')
+            ->pluck('date');
+    }
+
+    /**
+     * Calculate the status per day for each student in the group, grouped by date then status.
+     */
+    protected function getStatusPerDay(string $dateFrom, string $dateTo): Collection
+    {
+        return $this->ownerRecord->students->mapWithKeys(fn ($student) => [
+            $student->id => $student->progresses
+                ->whereBetween('date', [$dateFrom, $dateTo])
+                ->groupBy('date')
+                ->map(fn ($group) => $group->groupBy('status')),
+        ]);
     }
 
     public function getDateFrom(): string

@@ -40,11 +40,17 @@ class AttendancesRelationManager extends RelationManager
         $this->dateFrom = $this->dateFrom ?? now()->subDays(4)->format('Y-m-d');
         $this->dateTo = $this->dateTo ?? now()->format('Y-m-d');
 
-        $dateRange = new \DatePeriod(
+        $workingDays = $this->ownerRecord->days ?? [];
+
+        $fullRange = new \DatePeriod(
             new \DateTime($this->dateFrom),
             new \DateInterval('P1D'),
             (new \DateTime($this->dateTo))->modify('+1 day')
         );
+
+        $dateRange = $workingDays
+            ? collect($fullRange)->filter(fn ($date) => in_array(strtolower($date->format('l')), $workingDays))
+            : collect($fullRange);
 
         $attendanceColumns = collect();
         foreach ($dateRange as $date) {
