@@ -41,7 +41,7 @@ class AttendancesScoreRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
-        $this->dateFrom = $this->dateFrom ?? now()->subDays(2)->format('Y-m-d');
+        $this->dateFrom = $this->dateFrom ?? $this->getDefaultDateFrom();
         $this->dateTo = $this->dateTo ?? now()->format('Y-m-d');
 
         $workingDays = $this->ownerRecord->days ?? [];
@@ -85,8 +85,8 @@ class AttendancesScoreRelationManager extends RelationManager
                         DatePicker::make('date_from')
                             ->label('من تاريخ')
                             ->reactive()
-                            ->afterStateUpdated(fn ($state) => $this->dateFrom = $state ?? now()->subDays(4)->format('Y-m-d'))
-                            ->default(now()->subDays(4)->format('Y-m-d')),
+                            ->afterStateUpdated(fn ($state) => $this->dateFrom = $state ?? $this->getDefaultDateFrom())
+                            ->default(fn () => $this->getDefaultDateFrom()),
                         DatePicker::make('date_to')
                             ->reactive()
                             ->label('إلى تاريخ')
@@ -142,6 +142,28 @@ class AttendancesScoreRelationManager extends RelationManager
     public function isReadOnly(): bool
     {
         return ! $this->ownerRecord->managers->contains(auth()->user());
+    }
+
+    private function getDefaultDateFrom(int $sessions = 4): string
+    {
+        $workingDays = $this->ownerRecord->days ?? [];
+
+        if (empty($workingDays)) {
+            return now()->subWeeks(2)->format('Y-m-d');
+        }
+
+        $count = 0;
+        $date = now()->copy();
+
+        while (true) {
+            if (in_array(strtolower($date->format('l')), $workingDays)) {
+                $count++;
+                if ($count === $sessions) {
+                    return $date->format('Y-m-d');
+                }
+            }
+            $date->subDay();
+        }
     }
 
     // ─── Column Builder ────────────────────────────────────────────────
