@@ -14,6 +14,7 @@ use App\Models\Attendance;
 use App\Models\Memorizer;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TextInput;
+use Ysfkaya\FilamentPhoneInput\Forms\PhoneInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -57,9 +58,9 @@ class AttendanceTeacherRelationManager extends RelationManager
             TextInput::make('name')
                 ->label('الإسم')
                 ->required(),
-            TextInput::make('phone')
+            PhoneInput::make('phone')
                 ->label('الهاتف')
-                ->tel(),
+                ->defaultCountry('MA'),
             TextInput::make('address')
                 ->label('العنوان'),
             DatePicker::make('birth_date')

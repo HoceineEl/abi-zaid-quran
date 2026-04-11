@@ -20,7 +20,8 @@
         "stechstudio/filament-impersonate": "^3.16",
         "symfony/console": "^7.3.0 <7.4",
         "symfony/string": "^7.3.0 <7.4",
-        "twilio/sdk": "^8.0"
+        "twilio/sdk": "^8.0",
+        "ysfkaya/filament-phone-input": "^3.2"
     },
     "require-dev": {
         "barryvdh/laravel-debugbar": "^3.14",

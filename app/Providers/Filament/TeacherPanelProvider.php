@@ -4,6 +4,7 @@ namespace App\Providers\Filament;
 
 use App\Filament\Association\Resources\GroupResource;
 use Filament\Http\Middleware\Authenticate;
+use Ysfkaya\FilamentPhoneInput\FilamentPhoneInputPlugin;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Pages;
@@ -49,6 +50,9 @@ class TeacherPanelProvider extends PanelProvider
             ->favicon(asset('logo.jpg'))
             ->login(CustomLogin::class)
             ->spa()
+            ->plugins([
+                FilamentPhoneInputPlugin::make(),
+            ])
             ->resources([
                 GroupResource::class,
             ])
