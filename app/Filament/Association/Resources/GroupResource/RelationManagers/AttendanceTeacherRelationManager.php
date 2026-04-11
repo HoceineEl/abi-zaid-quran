@@ -60,6 +60,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                 ->required(),
             PhoneInput::make('phone')
                 ->label('الهاتف')
+                ->initialCountry('ma')
                 ->defaultCountry('MA'),
             TextInput::make('address')
                 ->label('العنوان'),
@@ -139,7 +140,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                 JustifyPastAbsenceAction::make(),
             ], ActionsPosition::BeforeColumns)
             ->headerActions([
-                CreateAction::make()->slideOver(),
+                CreateAction::make()->slideOver()->label('إضافة حافظ'),
                 $this->exportTableAction(),
             ])
             ->bulkActions([

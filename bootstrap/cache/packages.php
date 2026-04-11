@@ -252,4 +252,11 @@
       0 => 'STS\\FilamentImpersonate\\FilamentImpersonateServiceProvider',
     ),
   ),
+  'ysfkaya/filament-phone-input' => 
+  array (
+    'providers' => 
+    array (
+      0 => 'Ysfkaya\\FilamentPhoneInput\\FilamentPhoneInputServiceProvider',
+    ),
+  ),
 );

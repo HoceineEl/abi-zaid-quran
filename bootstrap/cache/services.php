@@ -55,10 +55,11 @@
     51 => 'LaravelPWA\\Providers\\LaravelPWAServiceProvider',
     52 => 'Spatie\\LaravelIgnition\\IgnitionServiceProvider',
     53 => 'STS\\FilamentImpersonate\\FilamentImpersonateServiceProvider',
-    54 => 'App\\Providers\\AppServiceProvider',
-    55 => 'App\\Providers\\Filament\\AdminPanelProvider',
-    56 => 'App\\Providers\\Filament\\AssociationPanelProvider',
-    57 => 'App\\Providers\\Filament\\TeacherPanelProvider',
+    54 => 'Ysfkaya\\FilamentPhoneInput\\FilamentPhoneInputServiceProvider',
+    55 => 'App\\Providers\\AppServiceProvider',
+    56 => 'App\\Providers\\Filament\\AdminPanelProvider',
+    57 => 'App\\Providers\\Filament\\AssociationPanelProvider',
+    58 => 'App\\Providers\\Filament\\TeacherPanelProvider',
   ),
   'eager' => 
   array (
@@ -101,10 +102,11 @@
     36 => 'LaravelPWA\\Providers\\LaravelPWAServiceProvider',
     37 => 'Spatie\\LaravelIgnition\\IgnitionServiceProvider',
     38 => 'STS\\FilamentImpersonate\\FilamentImpersonateServiceProvider',
-    39 => 'App\\Providers\\AppServiceProvider',
-    40 => 'App\\Providers\\Filament\\AdminPanelProvider',
-    41 => 'App\\Providers\\Filament\\AssociationPanelProvider',
-    42 => 'App\\Providers\\Filament\\TeacherPanelProvider',
+    39 => 'Ysfkaya\\FilamentPhoneInput\\FilamentPhoneInputServiceProvider',
+    40 => 'App\\Providers\\AppServiceProvider',
+    41 => 'App\\Providers\\Filament\\AdminPanelProvider',
+    42 => 'App\\Providers\\Filament\\AssociationPanelProvider',
+    43 => 'App\\Providers\\Filament\\TeacherPanelProvider',
   ),
   'deferred' => 
   array (

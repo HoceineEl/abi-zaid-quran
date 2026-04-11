@@ -31,7 +31,6 @@ use App\Filament\Association\Widgets\MemorizationProgressStats;
 use App\Filament\Association\Widgets\AttendanceTrendsWidget;
 use App\Filament\Association\Widgets\ComprehensivePerformanceWidget;
 use App\Filament\Pages\Dashboard;
-use Ysfkaya\FilamentPhoneInput\FilamentPhoneInputPlugin;
 
 class AssociationPanelProvider extends PanelProvider
 {
@@ -56,9 +55,6 @@ class AssociationPanelProvider extends PanelProvider
             ->brandLogoHeight('3.5rem')
             ->spa()
             ->favicon(asset('logo.jpg'))
-            ->plugins([
-                FilamentPhoneInputPlugin::make(),
-            ])
             ->discoverResources(in: app_path('Filament/Association/Resources'), for: 'App\\Filament\\Association\\Resources')
             ->discoverPages(in: app_path('Filament/Association/Pages'), for: 'App\\Filament\\Association\\Pages')
             ->pages([
