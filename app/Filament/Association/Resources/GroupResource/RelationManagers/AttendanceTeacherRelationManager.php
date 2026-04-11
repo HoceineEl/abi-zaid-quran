@@ -51,6 +51,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                     ->icon(fn (Memorizer $record) => $this->resolveNameIcon($record))
                     ->color(fn (Memorizer $record) => $this->resolveNameColor($record))
                     ->iconPosition('before')
+                    ->description(fn ($record, $rowLoop) => $rowLoop->iteration . '.')
                     ->sortable()
                     ->label('الإسم'),
 
