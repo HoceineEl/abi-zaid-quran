@@ -12,10 +12,16 @@ use App\Filament\Actions\Attendance\MarkPresentAction;
 use App\Filament\Actions\Attendance\SendWhatsAppAction;
 use App\Models\Attendance;
 use App\Models\Memorizer;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Table;
 use Filament\Tables\Actions\BulkAction;
+use Filament\Tables\Actions\CreateAction;
+use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Tables\Actions\EditAction;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Notifications\Notification;
@@ -38,6 +44,25 @@ class AttendanceTeacherRelationManager extends RelationManager
     protected function canView(Model $record): bool
     {
         return auth()->user()->isTeacher();
+    }
+
+    public function form(Form $form): Form
+    {
+        return $form->schema([
+            TextInput::make('name')
+                ->label('الإسم')
+                ->required(),
+            TextInput::make('phone')
+                ->label('الهاتف')
+                ->tel(),
+            TextInput::make('address')
+                ->label('العنوان'),
+            DatePicker::make('birth_date')
+                ->label('تاريخ الميلاد'),
+            TextInput::make('city')
+                ->label('المدينة')
+                ->default('أسفي'),
+        ])->columns(2);
     }
 
     public function table(Table $table): Table
@@ -104,16 +129,18 @@ class AttendanceTeacherRelationManager extends RelationManager
                 MarkAbsentAction::make(),
                 ClearAttendanceAction::make(),
                 AddNotesAction::make(),
-                EditStudentAction::make(),
+                EditAction::make()->slideOver()->iconButton(),
                 JustifyPastAbsenceAction::make(),
             ], ActionsPosition::BeforeColumns)
             ->headerActions([
+                CreateAction::make()->slideOver(),
                 $this->exportTableAction(),
             ])
             ->bulkActions([
                 $this->markPresentBulkAction(),
                 $this->markAbsentBulkAction(),
                 $this->revertAttendanceBulkAction(),
+                DeleteBulkAction::make(),
             ])
             ->paginated(false);
     }
