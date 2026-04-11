@@ -61,7 +61,9 @@ class AttendanceTeacherRelationManager extends RelationManager
             PhoneInput::make('phone')
                 ->label('الهاتف')
                 ->initialCountry('ma')
-                ->defaultCountry('MA'),
+                ->defaultCountry('MA')
+                ->formatAsYouType()
+                ->showFlags(),
             TextInput::make('address')
                 ->label('العنوان'),
             DatePicker::make('birth_date')
