@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\WhatsAppMessageStatus;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -37,6 +38,11 @@ class WhatsAppMessageHistory extends Model
         'sent_at' => 'datetime',
         'failed_at' => 'datetime',
     ];
+
+    public function scopeForUserSession(Builder $query, int $userId): Builder
+    {
+        return $query->whereHas('session', fn ($q) => $q->forUser($userId));
+    }
 
     public function session(): BelongsTo
     {

@@ -7,7 +7,7 @@ return [
 
     // Anti-ban: Random delay range between messages (in seconds)
     'delay_min' => env('WHATSAPP_DELAY_MIN', 5),
-    'delay_max' => env('WHATSAPP_DELAY_MAX', 10),
+    'delay_max' => env('WHATSAPP_DELAY_MAX', 20),
 
     // Inter-group delay: random pause between each group's batch of messages (in seconds)
     'group_delay_min' => env('WHATSAPP_GROUP_DELAY_MIN', 60),

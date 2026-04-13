@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\WhatsAppMessageStatus;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -48,6 +50,19 @@ class Memorizer extends Model
         );
     }
 
+    public function scopeNotExempt(Builder $query): Builder
+    {
+        return $query->where('exempt', false);
+    }
+
+    public function scopeUnpaidForMonth(Builder $query, int $year, int $month): Builder
+    {
+        return $query->whereDoesntHave('payments', fn ($q) =>
+            $q->whereYear('payment_date', $year)
+              ->whereMonth('payment_date', $month)
+        );
+    }
+
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
@@ -78,6 +93,22 @@ class Memorizer extends Model
                 $this->getReminderCacheKey(),
                 now()->endOfMonth(),
                 fn() => $this->reminderLogs()->whereYear('created_at', now()->year)
+                    ->whereMonth('created_at', now()->month)
+                    ->exists()
+            ),
+        );
+    }
+
+    public function hasSentReminderThisMonth(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => cache()->remember(
+                "memorizer:{$this->id}:has_sent_reminder:" . now()->format('Y-m'),
+                now()->addMinutes(5),
+                fn () => WhatsAppMessageHistory::where('status', WhatsAppMessageStatus::SENT)
+                    ->whereJsonContains('metadata->memorizer_id', $this->id)
+                    ->whereJsonContains('metadata->payment_reminder', true)
+                    ->whereYear('created_at', now()->year)
                     ->whereMonth('created_at', now()->month)
                     ->exists()
             ),

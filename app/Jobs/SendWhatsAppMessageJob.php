@@ -48,7 +48,7 @@ class SendWhatsAppMessageJob implements ShouldQueue
     public static function getStaggeredDelay(string $sessionId): int
     {
         $slotKey = "whatsapp_next_slot:{$sessionId}";
-        $delayMin = (int) config('whatsapp.delay_min', 8);
+        $delayMin = (int) config('whatsapp.delay_min', 5);
         $delayMax = (int) config('whatsapp.delay_max', 20);
 
         $now = now()->timestamp;

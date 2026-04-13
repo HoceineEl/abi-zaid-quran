@@ -4,6 +4,8 @@ namespace App\Filament\Association\Resources;
 
 use App\Classes\Core;
 use App\Enums\Days;
+use App\Filament\Association\Actions\SendPaymentRemindersAction;
+use App\Filament\Association\Actions\SendPaymentRemindersBulkAction;
 use App\Filament\Association\Resources\GroupResource\RelationManagers\MemorizersRelationManager;
 use App\Filament\Association\Resources\MemorizerResource\Pages;
 use App\Filament\Association\Resources\MemorizerResource\RelationManagers\PaymentsRelationManager;
@@ -215,6 +217,8 @@ class MemorizerResource extends Resource
             ])
 
             ->headerActions([
+                SendPaymentRemindersAction::make(),
+
                 Action::make('export_attendance_grades')
                     ->label('تصدير حضور وتقييم Excel')
                     ->icon('heroicon-o-table-cells')
@@ -329,10 +333,6 @@ class MemorizerResource extends Resource
 
             ], ActionsPosition::BeforeColumns)
             ->bulkActions([
-                ExportBulkAction::make()
-                    ->label('تصدير البيانات')
-                    ->icon('heroicon-o-arrow-up-tray')
-                    ->exporter(MemorizerExporter::class),
                 Tables\Actions\BulkAction::make('pay_this_month')
                     ->label('دفع الشهر')
                     ->requiresConfirmation()
@@ -353,28 +353,33 @@ class MemorizerResource extends Resource
                             ->success()
                             ->send();
                     }),
-                Tables\Actions\BulkAction::make('attach_to_group')
-                    ->label('إلحاق بمجموعة')
-                    ->icon('heroicon-o-user-group')
-                    ->form([
-                        Select::make('memo_group_id')
-                            ->label('المجموعة')
-                            ->options(fn () => MemoGroup::pluck('name', 'id'))
-                            ->searchable()
-                            ->preload()
-                            ->required(),
-                    ])
-                    ->action(function (array $data, $livewire) {
-                        $recordIds = $livewire->getSelectedTableRecords()->pluck('id')->toArray();
-                        Memorizer::whereIn('id', $recordIds)->update(['memo_group_id' => $data['memo_group_id']]);
-
-                        Notification::make()
-                            ->title('تم إلحاق الطلاب بالمجموعة بنجاح')
-                            ->success()
-                            ->send();
-                    })
-                    ->deselectRecordsAfterCompletion(),
+                SendPaymentRemindersBulkAction::make(),
                 Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\BulkAction::make('attach_to_group')
+                        ->label('إلحاق بمجموعة')
+                        ->icon('heroicon-o-user-group')
+                        ->form([
+                            Select::make('memo_group_id')
+                                ->label('المجموعة')
+                                ->options(fn () => MemoGroup::pluck('name', 'id'))
+                                ->searchable()
+                                ->preload()
+                                ->required(),
+                        ])
+                        ->action(function (array $data, $livewire) {
+                            $recordIds = $livewire->getSelectedTableRecords()->pluck('id')->toArray();
+                            Memorizer::whereIn('id', $recordIds)->update(['memo_group_id' => $data['memo_group_id']]);
+
+                            Notification::make()
+                                ->title('تم إلحاق الطلاب بالمجموعة بنجاح')
+                                ->success()
+                                ->send();
+                        })
+                        ->deselectRecordsAfterCompletion(),
+                    ExportBulkAction::make()
+                        ->label('تصدير البيانات')
+                        ->icon('heroicon-o-arrow-up-tray')
+                        ->exporter(MemorizerExporter::class),
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])->filters([
@@ -459,7 +464,10 @@ class MemorizerResource extends Resource
             ->modifyQueryUsing(function (Builder $query) {
                 $query
                     ->with(['group:id,name', 'round:id,name', 'guardian:id,name,phone', 'payments:id,memorizer_id,payment_date', 'reminderLogs:id,memorizer_id,created_at']);
-            });
+            })
+            ->recordClasses(fn (Memorizer $record): ?string => ! $record->has_payment_this_month && $record->has_sent_reminder_this_month
+                ? 'bg-yellow-50 dark:bg-yellow-950/20'
+                : null);
     }
 
     public static function getRelations(): array

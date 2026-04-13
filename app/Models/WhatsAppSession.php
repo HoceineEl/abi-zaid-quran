@@ -23,6 +23,7 @@ class WhatsAppSession extends Model
         'cached_groups',
         'connected_at',
         'last_activity_at',
+        'payment_reminder_template',
     ];
 
     protected $casts = [
