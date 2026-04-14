@@ -14,14 +14,11 @@ use Filament\Actions\Action;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
+use Livewire\Attributes\On;
 
 class ListWhatsAppSessions extends ListRecords
 {
     protected static string $resource = WhatsAppSessionResource::class;
-
-    protected $listeners = [
-        'start-session' => 'startSessionForQr',
-    ];
 
     public function pollStatus(string $sessionId): void
     {
@@ -132,6 +129,7 @@ class ListWhatsAppSessions extends ListRecords
         }
     }
 
+    #[On('start-session')]
     public function startSessionForQr(array $data): void
     {
         $sessionId = $data['sessionId'] ?? null;
