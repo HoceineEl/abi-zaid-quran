@@ -20,6 +20,7 @@ use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Table;
 use Filament\Tables\Actions\BulkAction;
+use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Actions\CreateAction;
 use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Actions\EditAction;
@@ -152,8 +153,10 @@ class AttendanceTeacherRelationManager extends RelationManager
             ->bulkActions([
                 $this->markPresentBulkAction(),
                 $this->markAbsentBulkAction(),
-                $this->revertAttendanceBulkAction(),
-                DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    $this->revertAttendanceBulkAction(),
+                    DeleteBulkAction::make(),
+                ]),
             ])
             ->paginated(false);
     }
