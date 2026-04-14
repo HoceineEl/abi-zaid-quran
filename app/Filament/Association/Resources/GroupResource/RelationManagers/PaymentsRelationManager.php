@@ -2,34 +2,55 @@
 
 namespace App\Filament\Association\Resources\GroupResource\RelationManagers;
 
-use Filament\Schemas\Schema;
+use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Schema;
+use Filament\Support\Enums\IconSize;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
-use Carbon\Carbon;
-use Filament\Support\Enums\IconSize;
-use Filament\Tables\Enums\FiltersLayout;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Collection;
 
 class PaymentsRelationManager extends RelationManager
 {
     protected static string $relationship = 'memorizers';
 
     protected static ?string $title = 'المدفوعات';
+
     protected static ?string $navigationLabel = 'المدفوعات';
+
     protected static ?string $modelLabel = 'دفعة';
+
     protected static ?string $pluralModelLabel = 'المدفوعات';
 
+    private const ARABIC_MONTHS = [
+        'يناير',
+        'فبراير',
+        'مارس',
+        'أبريل',
+        'مايو',
+        'يونيو',
+        'يوليو',
+        'أغسطس',
+        'سبتمبر',
+        'أكتوبر',
+        'نوفمبر',
+        'ديسمبر',
+    ];
+
     public ?string $dateFrom = null;
+
     public ?string $dateTo = null;
+
     protected function canView(Model $record): bool
     {
-        return !auth()->user()->isTeacher();
+        return ! auth()->user()->isTeacher();
     }
+
     public function form(Schema $schema): Schema
     {
         return $schema->components([]);
@@ -37,10 +58,8 @@ class PaymentsRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
-        $this->dateFrom = $this->dateFrom ?? Carbon::now()->startOfYear()->toDateString();
-        $this->dateTo = $this->dateTo ?? Carbon::now()->startOfYear()->addMonths(2)->toDateString();
-
-        $paymentColumns = $this->generatePaymentColumns();
+        $this->dateFrom ??= Carbon::now()->startOfYear()->toDateString();
+        $this->dateTo ??= Carbon::now()->startOfYear()->addMonths(2)->toDateString();
 
         return $table
             ->deferFilters()
@@ -48,45 +67,37 @@ class PaymentsRelationManager extends RelationManager
                 TextColumn::make('name')
                     ->label('الاسم')
                     ->state(function ($record) {
-                        $number = $this->ownerRecord->memorizers->search(fn($memorizer) => $memorizer->id == $record->id) + 1;
-                        return $number . '. ' . $record->name;
+                        $number = $this->ownerRecord->memorizers->search(fn ($memorizer) => $memorizer->id == $record->id) + 1;
+
+                        return $number.'. '.$record->name;
                     })
                     ->sortable(),
-                ...$paymentColumns,
+                ...$this->generatePaymentColumns(),
             ])
             ->filters([
                 $this->getDateFilter(),
             ], layout: FiltersLayout::AboveContent)
-            ->query(function () {
-                return $this->getQuery();
-            })
+            ->query(fn (): Builder => $this->getQuery())
             ->paginated(false)
             ->headerActions([])
             ->recordActions([])
             ->toolbarActions([]);
     }
 
+    public function isReadOnly(): bool
+    {
+        return ! $this->ownerRecord->managers->contains(auth()->user());
+    }
+
+    /**
+     * @return array<int, IconColumn>
+     */
     private function generatePaymentColumns(): array
     {
-        $arabicMonths = [
-            'يناير',
-            'فبراير',
-            'مارس',
-            'أبريل',
-            'مايو',
-            'يونيو',
-            'يوليو',
-            'أغسطس',
-            'سبتمبر',
-            'أكتوبر',
-            'نوفمبر',
-            'ديسمبر'
-        ];
-
         return collect(Carbon::parse($this->dateFrom)->monthsUntil($this->dateTo))
-            ->map(function (Carbon $date) use ($arabicMonths) {
+            ->map(function (Carbon $date) {
                 $formattedDate = $date->format('Y-m');
-                $arabicMonthName = $arabicMonths[$date->month - 1];
+                $arabicMonthName = self::ARABIC_MONTHS[$date->month - 1];
 
                 return IconColumn::make("payment_month_{$formattedDate}")
                     ->label($arabicMonthName)
@@ -96,13 +107,12 @@ class PaymentsRelationManager extends RelationManager
                     ->trueColor('success')
                     ->falseColor('danger')
                     ->size(IconSize::ExtraLarge)
-                    ->state(function ($record) use ($date) {
-                        return $record->payments()
-                            ->whereYear('payment_date', $date->year)
-                            ->whereMonth('payment_date', $date->month)
-                            ->exists();
-                    });
-            })->toArray();
+                    ->state(fn ($record): bool => $record->payments()
+                        ->whereYear('payment_date', $date->year)
+                        ->whereMonth('payment_date', $date->month)
+                        ->exists());
+            })
+            ->all();
     }
 
     private function getDateFilter(): Filter
@@ -114,27 +124,20 @@ class PaymentsRelationManager extends RelationManager
                 DatePicker::make('date_from')
                     ->label('من تاريخ')
                     ->reactive()
-                    ->afterStateUpdated(fn($state) => $this->dateFrom = $state ?? Carbon::now()->startOfYear()->toDateString())
+                    ->afterStateUpdated(fn ($state) => $this->dateFrom = $state ?? Carbon::now()->startOfYear()->toDateString())
                     ->default(Carbon::now()->startOfYear()),
                 DatePicker::make('date_to')
-                    ->reactive()
                     ->label('إلى تاريخ')
-                    ->afterStateUpdated(fn($state) => $this->dateTo = $state ?? Carbon::now()->endOfYear()->toDateString())
+                    ->reactive()
+                    ->afterStateUpdated(fn ($state) => $this->dateTo = $state ?? Carbon::now()->endOfYear()->toDateString())
                     ->default(Carbon::now()->endOfYear()),
             ]);
     }
 
-    private function getQuery()
+    private function getQuery(): Builder
     {
         return $this->ownerRecord->memorizers()
-            ->withCount(['payments as payment_count' => function ($query) {
-                $query->whereBetween('payment_date', [$this->dateFrom, $this->dateTo]);
-            }])
+            ->withCount(['payments as payment_count' => fn ($query) => $query->whereBetween('payment_date', [$this->dateFrom, $this->dateTo])])
             ->orderByDesc('payment_count');
-    }
-
-    public function isReadOnly(): bool
-    {
-        return !$this->ownerRecord->managers->contains(auth()->user());
     }
 }
