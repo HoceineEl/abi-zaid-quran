@@ -4,8 +4,10 @@ namespace App\Filament\Association\Resources;
 
 use App\Classes\Core;
 use App\Enums\Days;
+use App\Enums\WhatsAppMessageStatus;
 use App\Filament\Association\Actions\SendPaymentRemindersAction;
 use App\Filament\Association\Actions\SendPaymentRemindersBulkAction;
+use App\Models\WhatsAppMessageHistory;
 use App\Filament\Association\Resources\GroupResource\RelationManagers\MemorizersRelationManager;
 use App\Filament\Association\Resources\MemorizerResource\Pages;
 use App\Filament\Association\Resources\MemorizerResource\RelationManagers\PaymentsRelationManager;
@@ -312,21 +314,24 @@ class MemorizerResource extends Resource
                     ->tooltip('إرسال تذكير بالدفع')
                     ->iconButton()
                     ->icon('heroicon-o-chat-bubble-left-ellipsis')
-                    // ->hidden(function (Memorizer $record) {
-                    //     // Skip if no phone number available
-                    //     if (!$record->phone && !$record->guardian?->phone) {
-                    //         return true;
-                    //     }
-
-                    //     // Skip if student has already paid this month
-                    //     if ($record->has_payment_this_month) {
-                    //         return true;
-                    //     }
-                    // })
-                    ->url(function (Memorizer $record) {
-
-                        return self::getWhatsAppUrl($record);
-                    }, true),
+                    ->url(fn (Memorizer $record) => self::getWhatsAppUrl($record), true),
+                Action::make('view_messages')
+                    ->tooltip('سجل الرسائل')
+                    ->iconButton()
+                    ->icon('heroicon-o-envelope')
+                    ->color('info')
+                    ->visible(fn (): bool => auth()->user()?->hasAssociationAccess() ?? false)
+                    ->modalHeading(fn (Memorizer $record) => "رسائل {$record->name}")
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('إغلاق')
+                    ->modalWidth('3xl')
+                    ->modalContent(fn (Memorizer $record) => view(
+                        'filament.association.memorizer-messages',
+                        ['messages' => WhatsAppMessageHistory::where('metadata->memorizer_id', $record->id)
+                            ->latest()
+                            ->limit(20)
+                            ->get()],
+                    )),
 
 
 

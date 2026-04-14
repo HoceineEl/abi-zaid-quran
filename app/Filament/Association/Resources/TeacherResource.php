@@ -3,8 +3,9 @@
 namespace App\Filament\Association\Resources;
 
 use App\Filament\Association\Resources\TeacherResource\Pages;
-use App\Filament\Association\Resources\TeacherResource\RelationManagers\ReminderLogsRelationManager;
 use App\Filament\Association\Resources\TeacherResource\RelationManagers\AttendanceLogsRelationManager;
+use App\Filament\Association\Resources\TeacherResource\RelationManagers\ReminderLogsRelationManager;
+use App\Filament\Association\Resources\TeacherResource\RelationManagers\WhatsAppMessagesRelationManager;
 use App\Models\User;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\ToggleButtons;
@@ -153,6 +154,7 @@ class TeacherResource extends Resource
         return [
             AttendanceLogsRelationManager::class,
             ReminderLogsRelationManager::class,
+            WhatsAppMessagesRelationManager::class,
         ];
     }
 
