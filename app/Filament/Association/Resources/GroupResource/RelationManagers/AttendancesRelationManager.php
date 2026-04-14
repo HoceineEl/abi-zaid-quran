@@ -10,7 +10,6 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Support\Enums\IconSize;
 use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Columns\IconColumn\IconColumnSize;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
@@ -78,7 +77,7 @@ class AttendancesRelationManager extends RelationManager
                         'absent' => 'heroicon-o-x-circle',
                         default => 'heroicon-o-minus-circle',
                     })
-                    ->size(IconColumnSize::ExtraLarge)
+                    ->size(IconSize::ExtraLarge)
                     ->color(fn(string $state): string => match ($state) {
                         'present' => 'success',
                         'absent' => 'danger',

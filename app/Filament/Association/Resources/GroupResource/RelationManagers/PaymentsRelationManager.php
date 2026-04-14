@@ -10,7 +10,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Carbon\Carbon;
-use Filament\Tables\Columns\IconColumn\IconColumnSize;
+use Filament\Support\Enums\IconSize;
 use Filament\Tables\Enums\FiltersLayout;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
@@ -95,7 +95,7 @@ class PaymentsRelationManager extends RelationManager
                     ->falseIcon('heroicon-o-x-circle')
                     ->trueColor('success')
                     ->falseColor('danger')
-                    ->size(IconColumnSize::ExtraLarge)
+                    ->size(IconSize::ExtraLarge)
                     ->state(function ($record) use ($date) {
                         return $record->payments()
                             ->whereYear('payment_date', $date->year)
