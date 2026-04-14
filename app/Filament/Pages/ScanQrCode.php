@@ -11,7 +11,7 @@ class ScanQrCode extends Page
 {
     protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-qr-code';
 
-    protected string $view = 'filament.pages.scan-qr-code';
+    protected string $view = 'filament.association.pages.scan-qr-code';
 
     public function getMaxContentWidth(): Width
     {

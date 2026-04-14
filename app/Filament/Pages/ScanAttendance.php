@@ -21,11 +21,6 @@ class ScanAttendance extends Page
 
     public ?Memorizer $memorizer = null;
 
-    public function mount(): void
-    {
-        $this->form->fill();
-    }
-
     public function updatedScannedMemorizerId($value): void
     {
         $this->memorizer = Memorizer::with(['memoGroup'])->find($value);

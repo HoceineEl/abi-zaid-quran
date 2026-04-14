@@ -39,7 +39,7 @@ class PageResource extends Resource
                     ->label('رقم الصفحة')
                     ->required(),
                 Placeholder::make('surah_name')
-                    ->content(fn ($record) => $record->surah_name)
+                    ->content(fn (?\App\Models\Page $record) => $record?->surah_name ?? '-')
                     ->label('اسم السورة'),
                 TextInput::make('lines_count')
                     ->label('عدد الأسطر')

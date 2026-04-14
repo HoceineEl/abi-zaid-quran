@@ -55,10 +55,10 @@ class ViewGroup extends ViewRecord
 
     public  function infolist(Schema $schema): Schema
     {
-        return $infolist
-            ->schema([
+        return $schema
+            ->components([
                 Section::make()
-                    ->schema([
+                    ->components([
                         TextEntry::make('name')
                             ->label('اسم المجموعة'),
                         TextEntry::make('type')
