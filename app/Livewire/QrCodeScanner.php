@@ -26,6 +26,7 @@ class QrCodeScanner extends Component
         $this->scannedMemorizerId = null;
         $this->memorizer = null;
         $this->message = null;
+        $this->dispatch('qr-scanner-mounted');
     }
 
     #[On('set-scanned-memorizer-id')]

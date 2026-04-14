@@ -127,12 +127,4 @@
 
 @push('scripts')
     @vite(['resources/js/qr-scanner.js'])
-    <script>
-        document.addEventListener('livewire:init', () => {
-            Livewire.on('qr-scanner-mounted', () => {
-                console.log('QR Scanner component mounted');
-                window.qrScanner.init();
-            });
-        });
-    </script>
 @endpush

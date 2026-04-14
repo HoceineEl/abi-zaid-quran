@@ -112,9 +112,8 @@ function destroyQrScanner() {
   }
 }
 
-document.addEventListener('livewire:init', () => {
+document.addEventListener('livewire:initialized', () => {
   Livewire.on('qr-scanner-mounted', () => {
-    console.log('QR Scanner component mounted');
     initQrScanner();
   });
 });
