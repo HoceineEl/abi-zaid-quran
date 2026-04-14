@@ -2,6 +2,21 @@
 
 namespace App\Filament\Association\Resources;
 
+use Filament\Schemas\Schema;
+use Filament\Schemas\Components\Section;
+use Filament\Actions\ExportAction;
+use Filament\Actions\ImportAction;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\EditAction;
+use Filament\Tables\Enums\RecordActionsPosition;
+use Filament\Actions\BulkAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\ExportBulkAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Forms\Components\DateTimePicker;
+use App\Filament\Association\Resources\MemorizerResource\Pages\ListMemorizers;
+use App\Filament\Association\Resources\MemorizerResource\Pages\CreateMemorizer;
 use App\Classes\Core;
 use App\Enums\Days;
 use App\Enums\WhatsAppMessageStatus;
@@ -26,28 +41,20 @@ use Filament\Actions\Action as ActionsAction;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\ToggleButtons;
-use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Support\Assets\Js;
 use Filament\Support\Enums\FontWeight;
 use Filament\Support\Facades\FilamentAsset;
 use Filament\Tables;
-use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\ActionGroup;
-use Filament\Tables\Actions\ExportAction;
-use Filament\Tables\Actions\ExportBulkAction;
-use Filament\Tables\Actions\ImportAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
-use Filament\Tables\Enums\ActionsPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
@@ -63,7 +70,7 @@ class MemorizerResource extends Resource
 {
     protected static ?string $model = Memorizer::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-user';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-user';
 
     protected static ?string $navigationLabel = 'الطلاب';
 
@@ -71,10 +78,10 @@ class MemorizerResource extends Resource
 
     protected static ?string $pluralModelLabel = 'الطلاب';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
+        return $schema
+            ->components([
                 Section::make()
                     ->schema([
                         TextInput::make('name')
@@ -221,11 +228,11 @@ class MemorizerResource extends Resource
             ->headerActions([
                 SendPaymentRemindersAction::make(),
 
-                Action::make('export_attendance_grades')
+                ActionsAction::make('export_attendance_grades')
                     ->label('تصدير حضور وتقييم Excel')
                     ->icon('heroicon-o-table-cells')
                     ->color('primary')
-                    ->form([
+                    ->schema([
                         Select::make('memo_group_id')
                             ->label('المجموعة')
                             ->options(fn () => MemoGroup::orderBy('name')->pluck('name', 'id'))
@@ -263,12 +270,12 @@ class MemorizerResource extends Resource
                     ->icon('heroicon-o-arrow-down-tray')
                     ->importer(MemorizerImporter::class),
             ])
-            ->actions([
+            ->recordActions([
                 ActionGroup::make([
-                    Tables\Actions\EditAction::make()->slideOver(),
+                    EditAction::make()->slideOver(),
                     MemorizersRelationManager::getTroublesAction(),
                 ]),
-                Action::make('generate_badge')
+                ActionsAction::make('generate_badge')
                     ->tooltip('إنشاء بطاقة')
                     ->label('')
                     ->icon('heroicon-o-identification')
@@ -310,12 +317,12 @@ class MemorizerResource extends Resource
                             echo $mpdf->Output('', 'S');
                         }, "badge_{$record->id}.pdf");
                     }),
-                Action::make('send_payment_reminders')
+                ActionsAction::make('send_payment_reminders')
                     ->tooltip('إرسال تذكير بالدفع')
                     ->iconButton()
                     ->icon('heroicon-o-chat-bubble-left-ellipsis')
                     ->url(fn (Memorizer $record) => self::getWhatsAppUrl($record), true),
-                Action::make('view_messages')
+                ActionsAction::make('view_messages')
                     ->tooltip('سجل الرسائل')
                     ->iconButton()
                     ->icon('heroicon-o-envelope')
@@ -336,9 +343,9 @@ class MemorizerResource extends Resource
 
 
 
-            ], ActionsPosition::BeforeColumns)
-            ->bulkActions([
-                Tables\Actions\BulkAction::make('pay_this_month')
+            ], RecordActionsPosition::BeforeColumns)
+            ->toolbarActions([
+                BulkAction::make('pay_this_month')
                     ->label('دفع الشهر')
                     ->requiresConfirmation()
                     ->modalDescription('هل أنت متأكد من دفع الشهر للطلاب المحددين؟')
@@ -359,8 +366,8 @@ class MemorizerResource extends Resource
                             ->send();
                     }),
                 SendPaymentRemindersBulkAction::make(),
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\BulkAction::make('attach_to_group')
+                BulkActionGroup::make([
+                    BulkAction::make('attach_to_group')
                         ->label('إلحاق بمجموعة')
                         ->icon('heroicon-o-user-group')
                         ->form([
@@ -385,16 +392,16 @@ class MemorizerResource extends Resource
                         ->label('تصدير البيانات')
                         ->icon('heroicon-o-arrow-up-tray')
                         ->exporter(MemorizerExporter::class),
-                    Tables\Actions\DeleteBulkAction::make(),
+                    DeleteBulkAction::make(),
                 ]),
             ])->filters([
-                Tables\Filters\SelectFilter::make('memo_group_id')
+                SelectFilter::make('memo_group_id')
                     ->label('المجموعة')
                     ->relationship('group', 'name')
                     ->multiple()
                     ->preload(),
 
-                Tables\Filters\SelectFilter::make('teacher_id')
+                SelectFilter::make('teacher_id')
                     ->label('المعلم')
                     ->options(User::where('role', 'teacher')->pluck('name', 'id'))
                     ->preload()
@@ -415,7 +422,7 @@ class MemorizerResource extends Resource
                     ]),
                 Filter::make('doesnt_have_payment_this_month')
                     ->label('الدفع')
-                    ->form([
+                    ->schema([
                         Toggle::make('doesnt_have_payment_this_month')
                             ->label('لم يدفع هذا الشهر'),
                     ])
@@ -431,7 +438,7 @@ class MemorizerResource extends Resource
                     }),
 
 
-                Tables\Filters\SelectFilter::make('sex')
+                SelectFilter::make('sex')
                     ->label('الجنس')
                     ->options([
                         'male' => 'ذكر',
@@ -455,8 +462,8 @@ class MemorizerResource extends Resource
 
                 Filter::make('created_after')
                     ->label('تاريخ الإنشاء بعد')
-                    ->form([
-                        \Filament\Forms\Components\DateTimePicker::make('created_after')
+                    ->schema([
+                        DateTimePicker::make('created_after')
                             ->label('تم إنشاؤه بعد'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
@@ -486,8 +493,8 @@ class MemorizerResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListMemorizers::route('/'),
-            'create' => Pages\CreateMemorizer::route('/create'),
+            'index' => ListMemorizers::route('/'),
+            'create' => CreateMemorizer::route('/create'),
         ];
     }
 

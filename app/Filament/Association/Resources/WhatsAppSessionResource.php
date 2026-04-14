@@ -2,6 +2,7 @@
 
 namespace App\Filament\Association\Resources;
 
+use App\Filament\Association\Resources\WhatsAppSessionResource\Pages\ListWhatsAppSessions;
 use App\Filament\Association\Resources\WhatsAppSessionResource\Pages;
 use App\Filament\Resources\WhatsAppSessionResource as BaseWhatsAppSessionResource;
 use App\Models\WhatsAppSession;
@@ -12,11 +13,11 @@ class WhatsAppSessionResource extends Resource
 {
     protected static ?string $model = WhatsAppSession::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-chat-bubble-left-right';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-chat-bubble-left-right';
 
     protected static ?string $navigationLabel = 'جلسة واتساب';
 
-    protected static ?string $navigationGroup = 'التواصل';
+    protected static string | \UnitEnum | null $navigationGroup = 'التواصل';
 
     protected static ?int $navigationSort = 10;
 
@@ -43,7 +44,7 @@ class WhatsAppSessionResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListWhatsAppSessions::route('/'),
+            'index' => ListWhatsAppSessions::route('/'),
         ];
     }
 }

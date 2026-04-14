@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Exception;
 use App\Enums\WhatsAppConnectionStatus;
 use App\Services\WhatsAppService;
 use Illuminate\Database\Eloquent\Model;
@@ -119,7 +120,7 @@ class WhatsAppSession extends Model
             if ($this->isConnected()) {
                 app(WhatsAppService::class)->logout($this);
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::warning('Failed to logout from WhatsApp service during deletion', [
                 'session_id' => $this->id,
                 'error' => $e->getMessage(),

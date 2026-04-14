@@ -2,12 +2,12 @@
 
 namespace App\Filament\Actions\Attendance;
 
+use Filament\Actions\Action;
 use App\Enums\AttendanceStatus;
 use App\Models\Attendance;
 use App\Models\Memorizer;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Notifications\Notification;
-use Filament\Tables\Actions\Action;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 

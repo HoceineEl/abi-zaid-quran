@@ -16,11 +16,11 @@ class ReminderStatsOverview extends BaseWidget
 
     protected static bool $isDiscovered = false;
 
-    protected static ?string $pollingInterval = null;
+    protected ?string $pollingInterval = null;
 
     protected function getStats(): array
     {
-        $date = $this->filters['date'] ?? now()->toDateString();
+        $date = $this->pageFilters['date'] ?? now()->toDateString();
 
         $remindedGroupIds = Student::withoutGlobalScope('ordered')
             ->whereHas('progresses', function ($q) use ($date) {

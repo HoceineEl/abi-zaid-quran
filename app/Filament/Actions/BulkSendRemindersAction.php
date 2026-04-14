@@ -2,6 +2,12 @@
 
 namespace App\Filament\Actions;
 
+use Filament\Actions\BulkAction;
+use Filament\Support\Enums\Width;
+use Filament\Schemas\Components\Wizard\Step;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
+use Throwable;
 use App\Helpers\PhoneHelper;
 use App\Models\Group;
 use App\Models\WhatsAppSession;
@@ -9,12 +15,7 @@ use App\Services\WhatsAppAttendanceService;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
-use Filament\Forms\Components\Wizard\Step;
-use Filament\Forms\Get;
-use Filament\Forms\Set;
 use Filament\Notifications\Notification;
-use Filament\Support\Enums\MaxWidth;
-use Filament\Tables\Actions\BulkAction;
 use Illuminate\Support\HtmlString;
 
 class BulkSendRemindersAction extends BulkAction
@@ -31,7 +32,7 @@ class BulkSendRemindersAction extends BulkAction
         $this->label('تذكير الغائبين')
             ->icon('heroicon-o-bell')
             ->color('warning')
-            ->modalWidth(MaxWidth::Large)
+            ->modalWidth(Width::Large)
             ->modalHeading('إرسال تذكيرات للغائبين')
             ->modalSubmitActionLabel('إرسال التذكيرات')
             ->visible(fn (): bool => WhatsAppSession::getUserSession(auth()->id())?->isConnected() === true)
@@ -120,7 +121,7 @@ class BulkSendRemindersAction extends BulkAction
                         markOthersAbsent: false,
                         remindRemainingStudents: true,
                     );
-                } catch (\Throwable $exception) {
+                } catch (Throwable $exception) {
                     Notification::make()
                         ->danger()
                         ->title('فشل إرسال التذكيرات')

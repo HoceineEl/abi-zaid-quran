@@ -2,6 +2,27 @@
 
 namespace App\Filament\Resources;
 
+use Filament\Schemas\Schema;
+use Filament\Forms\Components\Select;
+use Filament\Schemas\Components\Utilities\Set;
+use App\Models\Student;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\Textarea;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
+use Filament\Tables\Filters\Filter;
+use Carbon\Carbon;
+use Filament\Actions\EditAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\BulkAction;
+use App\Filament\Resources\StudentDisconnectionResource\Pages\ListStudentDisconnections;
+use App\Filament\Resources\StudentDisconnectionResource\Pages\CreateStudentDisconnection;
 use App\Enums\DisconnectionStatus;
 use App\Enums\MessageResponseStatus;
 use App\Enums\StudentReactionStatus;
@@ -12,7 +33,6 @@ use App\Filament\Resources\StudentDisconnectionResource\Pages;
 use Illuminate\Support\Collection;
 use App\Models\StudentDisconnection;
 use Filament\Forms;
-use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -25,7 +45,7 @@ class StudentDisconnectionResource extends Resource
 {
     protected static ?string $model = StudentDisconnection::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-exclamation-triangle';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-exclamation-triangle';
 
     protected static ?string $navigationLabel = 'الطلاب المنقطعون';
 
@@ -41,19 +61,19 @@ class StudentDisconnectionResource extends Resource
         return auth()->user()->isAdministrator() || auth()->user()->email === 'mehdi@mehdi.com' || auth()->user()->phone === '0701255179' || auth()->user()->email === 'youssef@abi-zaid.com';
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\Select::make('student_id')
+        return $schema
+            ->components([
+                Select::make('student_id')
                     ->label('الطالب')
                     ->relationship('student', 'name')
                     ->searchable()
                     ->required()
                     ->live()
-                    ->afterStateUpdated(function ($state, Forms\Set $set) {
+                    ->afterStateUpdated(function ($state, Set $set) {
                         if ($state) {
-                            $student = \App\Models\Student::find($state);
+                            $student = Student::find($state);
                             if ($student && $student->group) {
                                 $set('group_id', $student->group_id);
                                 $set('disconnection_date', now()->format('Y-m-d'));
@@ -61,7 +81,7 @@ class StudentDisconnectionResource extends Resource
                         }
                     }),
 
-                Forms\Components\Select::make('group_id')
+                Select::make('group_id')
                     ->label('المجموعة')
                     ->relationship(
                         name: 'group',
@@ -72,24 +92,24 @@ class StudentDisconnectionResource extends Resource
                     ->required()
                     ->disabled(),
 
-                Forms\Components\DatePicker::make('disconnection_date')
+                DatePicker::make('disconnection_date')
                     ->label('تاريخ الانقطاع')
                     ->required()
                     ->default(now()),
 
-                Forms\Components\DatePicker::make('contact_date')
+                DatePicker::make('contact_date')
                     ->label('تاريخ التواصل')
                     ->nullable(),
 
-                Forms\Components\DatePicker::make('reminder_message_date')
+                DatePicker::make('reminder_message_date')
                     ->label('تاريخ الرسالة التذكيرية')
                     ->nullable(),
 
-                Forms\Components\DatePicker::make('warning_message_date')
+                DatePicker::make('warning_message_date')
                     ->label('تاريخ الرسالة الإندارية')
                     ->nullable(),
 
-                Forms\Components\Select::make('message_response')
+                Select::make('message_response')
                     ->label('حالة التواصل')
                     ->options([
                         MessageResponseStatus::NotContacted->value => MessageResponseStatus::NotContacted->getLabel(),
@@ -100,25 +120,25 @@ class StudentDisconnectionResource extends Resource
                     ->default(MessageResponseStatus::NotContacted->value)
                     ->nullable(),
 
-                Forms\Components\Select::make('student_reaction')
+                Select::make('student_reaction')
                     ->label('تفاعل الطالب')
                     ->options(StudentReactionStatus::class)
                     ->nullable(),
 
-                Forms\Components\DatePicker::make('student_reaction_date')
+                DatePicker::make('student_reaction_date')
                     ->label('تاريخ التفاعل')
                     ->nullable(),
 
-                Forms\Components\DateTimePicker::make('questionnaire_sent_at')
+                DateTimePicker::make('questionnaire_sent_at')
                     ->label('تاريخ الرسالة الاستفسارية')
                     ->nullable()
                     ->seconds(false),
 
-                Forms\Components\Toggle::make('has_been_converted_to_mandatory_group')
+                Toggle::make('has_been_converted_to_mandatory_group')
                     ->label('تم التحويل لمجموعة إلزامية')
                     ->default(false),
 
-                Forms\Components\Textarea::make('notes')
+                Textarea::make('notes')
                     ->label('ملاحظات')
                     ->nullable()
                     ->rows(3),
@@ -130,13 +150,13 @@ class StudentDisconnectionResource extends Resource
         return $table
             ->defaultSort('disconnection_date', 'desc')
             ->columns([
-                Tables\Columns\TextColumn::make('student.name')
+                TextColumn::make('student.name')
                     ->label('اسم الطالب')
                     ->searchable()
                     ->sortable()
                     ->description(fn(StudentDisconnection $record): string => $record->group->name ?? ''),
 
-                Tables\Columns\TextColumn::make('consecutive_absent_days')
+                TextColumn::make('consecutive_absent_days')
                     ->label('أيام الغياب المتتالية')
                     ->state(function (StudentDisconnection $record): string {
                         $consecutiveDays = $record->student->getCurrentConsecutiveAbsentDays();
@@ -155,7 +175,7 @@ class StudentDisconnectionResource extends Resource
                             : 'لا يوجد حضور'
                     ),
 
-                Tables\Columns\TextColumn::make('warning_level')
+                TextColumn::make('warning_level')
                     ->label('مستوى الإنذار')
                     ->state(function (StudentDisconnection $record): string {
                         $consecutiveDays = $record->student->getCurrentConsecutiveAbsentDays();
@@ -178,7 +198,7 @@ class StudentDisconnectionResource extends Resource
                     })
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('disconnection_duration')
+                TextColumn::make('disconnection_duration')
                     ->label('مدة الانقطاع')
                     ->state(function (StudentDisconnection $record): string {
                         $daysSinceLastPresent = $record->student->getDaysSinceLastPresentAttribute();
@@ -191,14 +211,14 @@ class StudentDisconnectionResource extends Resource
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                Tables\Columns\TextColumn::make('reminder_message_date')
+                TextColumn::make('reminder_message_date')
                     ->label('تاريخ الرسالة التذكيرية')
                     ->date('Y-m-d')
                     ->sortable()
                     ->placeholder('لم يتم الإرسال')
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                Tables\Columns\TextColumn::make('warning_message_date')
+                TextColumn::make('warning_message_date')
                     ->label('تاريخ الرسالة الإندارية')
                     ->date('Y-m-d')
                     ->sortable()
@@ -227,20 +247,20 @@ class StudentDisconnectionResource extends Resource
                     ->placeholder('لا يوجد')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('student_reaction_date')
+                TextColumn::make('student_reaction_date')
                     ->label('تاريخ التفاعل')
                     ->date('Y-m-d')
                     ->sortable()
                     ->placeholder('لا يوجد')
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                Tables\Columns\IconColumn::make('has_been_contacted')
+                IconColumn::make('has_been_contacted')
                     ->label('تم التواصل')
                     ->boolean()
                     ->state(fn(StudentDisconnection $record): bool => $record->contact_date !== null)
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('contact_date')
+                TextColumn::make('contact_date')
                     ->label('تاريخ التواصل')
                     ->date('Y-m-d')
                     ->sortable()
@@ -280,41 +300,41 @@ class StudentDisconnectionResource extends Resource
                     ->selectablePlaceholder(false)
                     ->rules(['required']),
 
-                Tables\Columns\TextColumn::make('questionnaire_sent_at')
+                TextColumn::make('questionnaire_sent_at')
                     ->label('تاريخ الرسالة الاستفسارية')
                     ->dateTime('Y-m-d H:i')
                     ->sortable()
                     ->placeholder('لم يتم الإرسال')
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                Tables\Columns\ToggleColumn::make('has_been_converted_to_mandatory_group')
+                ToggleColumn::make('has_been_converted_to_mandatory_group')
                     ->label('مجموعة إلزامية')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('status')
+                TextColumn::make('status')
                     ->label('الحالة')
                     ->badge(),
 
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->label('تاريخ الإنشاء')
                     ->dateTime('Y-m-d H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('group_id')
+                SelectFilter::make('group_id')
                     ->label('المجموعة')
                     ->relationship('group', 'name', modifyQueryUsing: fn(Builder $query) => $query->withoutGlobalScope('userGroups')),
 
-                Tables\Filters\SelectFilter::make('message_response')
+                SelectFilter::make('message_response')
                     ->label('حالة التواصل')
                     ->options(MessageResponseStatus::class),
 
-                Tables\Filters\SelectFilter::make('student_reaction')
+                SelectFilter::make('student_reaction')
                     ->label('تفاعل الطالب')
                     ->options(StudentReactionStatus::class),
 
-                Tables\Filters\TernaryFilter::make('has_questionnaire')
+                TernaryFilter::make('has_questionnaire')
                     ->label('حالة الرسالة الاستفسارية')
                     ->placeholder('الكل')
                     ->trueLabel('تم الإرسال')
@@ -324,29 +344,29 @@ class StudentDisconnectionResource extends Resource
                         false: fn(Builder $query) => $query->whereNull('questionnaire_sent_at'),
                     ),
 
-                Tables\Filters\TernaryFilter::make('has_been_converted_to_mandatory_group')
+                TernaryFilter::make('has_been_converted_to_mandatory_group')
                     ->label('حالة التحويل')
                     ->placeholder('الكل')
                     ->trueLabel('تم التحويل')
                     ->falseLabel('لم يتم التحويل'),
 
-                Tables\Filters\Filter::make('last_present_date')
+                Filter::make('last_present_date')
                     ->label('آخر حضور')
-                    ->form([
-                        Forms\Components\DatePicker::make('last_present_from')
+                    ->schema([
+                        DatePicker::make('last_present_from')
                             ->label('من تاريخ')
                             ->displayFormat('m/d/Y'),
-                        Forms\Components\DatePicker::make('last_present_to')
+                        DatePicker::make('last_present_to')
                             ->label('إلى تاريخ')
                             ->displayFormat('m/d/Y'),
                     ])
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
                         if ($data['last_present_from']) {
-                            $indicators[] = 'من: ' . \Carbon\Carbon::parse($data['last_present_from'])->format('m/d/Y');
+                            $indicators[] = 'من: ' . Carbon::parse($data['last_present_from'])->format('m/d/Y');
                         }
                         if ($data['last_present_to']) {
-                            $indicators[] = 'إلى: ' . \Carbon\Carbon::parse($data['last_present_to'])->format('m/d/Y');
+                            $indicators[] = 'إلى: ' . Carbon::parse($data['last_present_to'])->format('m/d/Y');
                         }
                         return $indicators;
                     })
@@ -366,8 +386,8 @@ class StudentDisconnectionResource extends Resource
                         });
                     }),
             ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
+            ->recordActions([
+                EditAction::make(),
                 SendWhatsAppMessageToDisconnectedAction::make(),
                 // Tables\Actions\Action::make('mark_contacted')
                 // ->label('تم التواصل')
@@ -397,23 +417,23 @@ class StudentDisconnectionResource extends Resource
                 // ->requiresConfirmation()
                 // ->modalHeading('تحديث حالة التواصل'),
 
-                Tables\Actions\DeleteAction::make(),
+                DeleteAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                     SendWhatsAppBulkToDisconnectedAction::make(),
                     MoveDisconnectedStudentToGroupAction::make(),
-                    Tables\Actions\BulkAction::make('mark_contacted_bulk')
+                    BulkAction::make('mark_contacted_bulk')
                         ->label('تم التواصل')
                         ->icon('heroicon-o-phone')
                         ->color('info')
                         ->form([
-                            Forms\Components\DatePicker::make('contact_date')
+                            DatePicker::make('contact_date')
                                 ->label('تاريخ التواصل')
                                 ->required()
                                 ->default(now()),
-                            Forms\Components\Select::make('message_response')
+                            Select::make('message_response')
                                 ->label('حالة التواصل')
                                 ->options([
                                     MessageResponseStatus::ReminderMessage->value => MessageResponseStatus::ReminderMessage->getLabel(),
@@ -439,12 +459,12 @@ class StudentDisconnectionResource extends Resource
                         })
                         ->requiresConfirmation()
                         ->modalHeading('تحديث حالة التواصل للطلاب المحددين'),
-                    Tables\Actions\BulkAction::make('update_notes_bulk')
+                    BulkAction::make('update_notes_bulk')
                         ->label('تحديث الملاحظات')
                         ->icon('heroicon-o-pencil-square')
                         ->color('warning')
                         ->form([
-                            Forms\Components\Textarea::make('notes')
+                            Textarea::make('notes')
                                 ->label('ملاحظات')
                                 ->rows(3)
                                 ->required(),
@@ -458,7 +478,7 @@ class StudentDisconnectionResource extends Resource
                         })
                         ->requiresConfirmation()
                         ->modalHeading('تحديث الملاحظات للطلاب المحددين'),
-                    Tables\Actions\BulkAction::make('reset_contact_status')
+                    BulkAction::make('reset_contact_status')
                         ->label('إعادة تعيين حالة التواصل')
                         ->icon('heroicon-o-arrow-path')
                         ->color('gray')
@@ -473,7 +493,7 @@ class StudentDisconnectionResource extends Resource
                                 ]);
                             });
                         }),
-                    Tables\Actions\BulkAction::make('convert_to_mandatory')
+                    BulkAction::make('convert_to_mandatory')
                         ->label('تحويل لمجموعة إلزامية')
                         ->icon('heroicon-o-arrow-right-circle')
                         ->color('success')
@@ -487,16 +507,16 @@ class StudentDisconnectionResource extends Resource
                         ->requiresConfirmation()
                         ->modalHeading('تحويل الطلاب لمجموعة إلزامية')
                         ->modalDescription('سيتم وضع علامة على الطلاب المحددين كمحولين لمجموعة إلزامية.'),
-                    Tables\Actions\BulkAction::make('mark_contacted_for_uncontacted')
+                    BulkAction::make('mark_contacted_for_uncontacted')
                         ->label('تم التواصل (للغير متواصلين فقط)')
                         ->icon('heroicon-o-phone')
                         ->color('info')
                         ->form([
-                            Forms\Components\DatePicker::make('contact_date')
+                            DatePicker::make('contact_date')
                                 ->label('تاريخ التواصل')
                                 ->required()
                                 ->default(now()),
-                            Forms\Components\Select::make('message_response')
+                            Select::make('message_response')
                                 ->label('حالة التواصل')
                                 ->options([
                                     MessageResponseStatus::ReminderMessage->value => MessageResponseStatus::ReminderMessage->getLabel(),
@@ -517,20 +537,20 @@ class StudentDisconnectionResource extends Resource
                         ->requiresConfirmation()
                         ->modalHeading('تحديث حالة التواصل للطلاب غير المتواصلين')
                         ->modalDescription('سيتم تحديث حالة التواصل للطلاب الذين لم يتم التواصل معهم بعد.'),
-                    Tables\Actions\BulkAction::make('record_student_reaction')
+                    BulkAction::make('record_student_reaction')
                         ->label('تسجيل تفاعل الطالب')
                         ->icon('heroicon-o-hand-thumb-up')
                         ->color('success')
                         ->form([
-                            Forms\Components\Select::make('student_reaction')
+                            Select::make('student_reaction')
                                 ->label('تفاعل الطالب')
                                 ->options(StudentReactionStatus::class)
                                 ->required(),
-                            Forms\Components\DatePicker::make('student_reaction_date')
+                            DatePicker::make('student_reaction_date')
                                 ->label('تاريخ التفاعل')
                                 ->required()
                                 ->default(now()),
-                            Forms\Components\Textarea::make('notes')
+                            Textarea::make('notes')
                                 ->label('ملاحظات')
                                 ->rows(2),
                         ])
@@ -561,8 +581,8 @@ class StudentDisconnectionResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListStudentDisconnections::route('/'),
-            'create' => Pages\CreateStudentDisconnection::route('/create'),
+            'index' => ListStudentDisconnections::route('/'),
+            'create' => CreateStudentDisconnection::route('/create'),
         ];
     }
 

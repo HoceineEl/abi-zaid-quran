@@ -2,6 +2,13 @@
 
 namespace App\Filament\Resources;
 
+use Filament\Actions\ActionGroup;
+use Filament\Tables\Enums\RecordActionsPosition;
+use Filament\Actions\Action;
+use Exception;
+use Log;
+use Filament\Forms\Components\TextInput;
+use App\Filament\Resources\WhatsAppSessionResource\Pages\ListWhatsAppSessions;
 use App\Classes\BaseResource;
 use App\Enums\WhatsAppConnectionStatus;
 use App\Filament\Actions\CheckWhatsAppStatusAction;
@@ -11,19 +18,16 @@ use App\Models\WhatsAppSession;
 use App\Services\WhatsAppService;
 use Filament\Notifications\Notification;
 use Filament\Tables;
-use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\Action as TableAction;
 use Filament\Tables\Columns\ViewColumn;
-use Filament\Tables\Enums\ActionsPosition;
 use Filament\Tables\Table;
 
 class WhatsAppSessionResource extends BaseResource
 {
     protected static ?string $model = WhatsAppSession::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-chat-bubble-left-right';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-chat-bubble-left-right';
 
-    protected static ?string $navigationGroup = 'التواصل';
+    protected static string | \UnitEnum | null $navigationGroup = 'التواصل';
 
     protected static ?int $navigationSort = 10;
 
@@ -49,8 +53,8 @@ class WhatsAppSessionResource extends BaseResource
                     ->view('filament.resources.whatsapp-session-resource.session-details'),
             ])
 
-            ->actions([
-                Tables\Actions\ActionGroup::make([
+            ->recordActions([
+                ActionGroup::make([
                     self::getStartSessionAction(),
                     self::getCheckStatusAction(),
                     self::getReloadQrAction(),
@@ -61,7 +65,7 @@ class WhatsAppSessionResource extends BaseResource
                     SendMessageAction::make(),
                 ])
                     ->button()->color('primary')->size('xl'),
-            ], position: ActionsPosition::AfterColumns);
+            ], position: RecordActionsPosition::AfterColumns);
     }
 
     public static function getReloadQrAction(): Action
@@ -88,7 +92,7 @@ class WhatsAppSessionResource extends BaseResource
                             ->warning()
                             ->send();
                     }
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                     Notification::make()
                         ->title('فشل في تحديث رمز QR')
                         ->body($e->getMessage())
@@ -125,8 +129,8 @@ class WhatsAppSessionResource extends BaseResource
                             ->info()
                             ->send();
                     }
-                } catch (\Exception $e) {
-                    \Log::error('Failed to start session', [
+                } catch (Exception $e) {
+                    Log::error('Failed to start session', [
                         'session_id' => $record->id,
                         'error' => $e->getMessage(),
                     ]);
@@ -140,15 +144,15 @@ class WhatsAppSessionResource extends BaseResource
             });
     }
 
-    public static function getCreateSessionAction(): Tables\Actions\Action
+    public static function getCreateSessionAction(): Action
     {
-        return Tables\Actions\Action::make('create_session')
+        return Action::make('create_session')
             ->label('إنشاء جلسة')
             ->icon('heroicon-o-plus')
             ->color('success')
             ->visible(fn () => ! self::hasUserSession())
-            ->form([
-                \Filament\Forms\Components\TextInput::make('name')
+            ->schema([
+                TextInput::make('name')
                     ->label('اسم الجلسة')
                     ->required()
                     ->default(fn () => 'جلسة واتساب - '.auth()->user()->name)
@@ -198,7 +202,7 @@ class WhatsAppSessionResource extends BaseResource
                         $whatsappService = app(WhatsAppService::class);
                         $whatsappService->refreshQrCode($record);
                         $record->refresh();
-                    } catch (\Exception) {
+                    } catch (Exception) {
                     }
                 }
 
@@ -231,7 +235,7 @@ class WhatsAppSessionResource extends BaseResource
                         ->title('تم تسجيل الخروج بنجاح')
                         ->success()
                         ->send();
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                     Notification::make()
                         ->title('فشل في تسجيل الخروج')
                         ->body($e->getMessage())
@@ -241,9 +245,9 @@ class WhatsAppSessionResource extends BaseResource
             });
     }
 
-    public static function getDeleteSessionAction(): TableAction
+    public static function getDeleteSessionAction(): Action
     {
-        return TableAction::make('delete_session')
+        return Action::make('delete_session')
             ->label('حذف الجلسة')
             ->icon('heroicon-o-trash')
             ->color('danger')
@@ -263,9 +267,9 @@ class WhatsAppSessionResource extends BaseResource
                             ->success()
                             ->send();
                     } else {
-                        throw new \Exception('فشل في حذف الجلسة');
+                        throw new Exception('فشل في حذف الجلسة');
                     }
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                     Notification::make()
                         ->title('فشل في حذف الجلسة')
                         ->body('حدث خطأ أثناء حذف الجلسة: '.$e->getMessage())
@@ -294,7 +298,7 @@ class WhatsAppSessionResource extends BaseResource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListWhatsAppSessions::route('/'),
+            'index' => ListWhatsAppSessions::route('/'),
         ];
     }
 }

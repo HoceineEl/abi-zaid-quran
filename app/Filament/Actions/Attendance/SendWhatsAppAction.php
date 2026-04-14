@@ -2,14 +2,14 @@
 
 namespace App\Filament\Actions\Attendance;
 
+use Filament\Actions\Action;
+use Filament\Support\Enums\Size;
 use App\Enums\MemorizationScore;
 use App\Enums\Troubles;
 use App\Models\Memorizer;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Support\Colors\Color;
-use Filament\Support\Enums\ActionSize;
-use Filament\Tables\Actions\Action;
 
 class SendWhatsAppAction extends Action
 {
@@ -25,7 +25,7 @@ class SendWhatsAppAction extends Action
         $this
             ->tooltip('إرسال رسالة واتساب')
             ->label('')
-            ->size(ActionSize::ExtraLarge)
+            ->size(Size::ExtraLarge)
             ->icon('tabler-message-circle')
             ->color('success')
             ->hidden(fn (Memorizer $record) => ! static::resolvePhone($record))

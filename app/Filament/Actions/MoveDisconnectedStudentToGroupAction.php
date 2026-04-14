@@ -2,12 +2,14 @@
 
 namespace App\Filament\Actions;
 
+use Filament\Actions\BulkAction;
+use Filament\Forms\Components\Select;
+use Exception;
 use App\Models\Group;
 use App\Models\Student;
 use App\Models\StudentDisconnection;
 use Filament\Forms;
 use Filament\Notifications\Notification;
-use Filament\Tables\Actions\BulkAction;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
 
@@ -26,7 +28,7 @@ class MoveDisconnectedStudentToGroupAction extends BulkAction
             ->icon('heroicon-o-arrow-right')
             ->color('warning')
             ->form([
-                Forms\Components\Select::make('target_group_id')
+                Select::make('target_group_id')
                     ->label('اختر المجموعة المستهدفة')
                     ->relationship('group', 'name', modifyQueryUsing: fn ($query) => $query->withoutGlobalScope('userGroups'))
                     ->searchable()
@@ -101,7 +103,7 @@ class MoveDisconnectedStudentToGroupAction extends BulkAction
                     'student_name' => $originalStudent->name,
                 ]);
 
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 $skippedCount++;
                 $errors[] = "خطأ في نسخ الطالب {$disconnection->student->name}: {$e->getMessage()}";
 

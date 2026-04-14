@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use RuntimeException;
+use Exception;
 use App\Enums\WhatsAppMessageStatus;
 use App\Jobs\SendWhatsAppMessageJob;
 use App\Models\WhatsAppMessageHistory;
@@ -47,7 +49,7 @@ class WhatsAppService
     protected function getApiKey(): string
     {
         if (empty($this->apiKey)) {
-            throw new \RuntimeException('WhatsApp API key is not configured.');
+            throw new RuntimeException('WhatsApp API key is not configured.');
         }
 
         return $this->apiKey;
@@ -160,8 +162,8 @@ class WhatsAppService
                 return $result;
             }
 
-            throw new \RuntimeException("HTTP {$response->status()}: ".$response->body());
-        } catch (\Exception $e) {
+            throw new RuntimeException("HTTP {$response->status()}: ".$response->body());
+        } catch (Exception $e) {
             Log::error('Failed to send WhatsApp message', [
                 'instance' => $instanceName,
                 'to' => $to,
@@ -203,8 +205,8 @@ class WhatsAppService
                 return $result;
             }
 
-            throw new \RuntimeException("HTTP {$response->status()}: ".$response->body());
-        } catch (\Exception $e) {
+            throw new RuntimeException("HTTP {$response->status()}: ".$response->body());
+        } catch (Exception $e) {
             Log::error('Failed to send WhatsApp media message', [
                 'instance' => $instanceName,
                 'to' => $to,
@@ -258,11 +260,11 @@ class WhatsAppService
                 return;
             }
 
-            throw new \RuntimeException('No QR code available for instance');
-        } catch (\RuntimeException $e) {
+            throw new RuntimeException('No QR code available for instance');
+        } catch (RuntimeException $e) {
             throw $e;
-        } catch (\Exception $e) {
-            throw new \RuntimeException('Failed to refresh QR code: '.$e->getMessage(), previous: $e);
+        } catch (Exception $e) {
+            throw new RuntimeException('Failed to refresh QR code: '.$e->getMessage(), previous: $e);
         }
     }
 }

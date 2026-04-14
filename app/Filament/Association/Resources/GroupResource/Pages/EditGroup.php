@@ -2,6 +2,7 @@
 
 namespace App\Filament\Association\Resources\GroupResource\Pages;
 
+use Filament\Actions\DeleteAction;
 use App\Filament\Association\Resources\GroupResource;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
@@ -13,7 +14,7 @@ class EditGroup extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make()
+            DeleteAction::make()
                 ->hidden(fn() => auth()->user()->isTeacher()),
         ];
     }

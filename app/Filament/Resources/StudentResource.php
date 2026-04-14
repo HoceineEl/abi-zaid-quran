@@ -2,11 +2,26 @@
 
 namespace App\Filament\Resources;
 
+use Filament\Schemas\Schema;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Select;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Actions\ViewAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\Action;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Textarea;
+use Filament\Actions\DeleteBulkAction;
+use App\Filament\Resources\StudentResource\Widgets\StudentStatsOverview;
+use App\Filament\Resources\StudentResource\Widgets\StudentAttendanceChart;
+use App\Filament\Resources\StudentResource\Pages\ListStudents;
+use App\Filament\Resources\StudentResource\Pages\CreateStudent;
+use App\Filament\Resources\StudentResource\Pages\ViewStudent;
+use App\Filament\Resources\StudentResource\Pages\EditStudent;
 use App\Filament\Resources\StudentResource\Pages;
 use App\Models\Group;
 use App\Models\Student;
 use Filament\Forms;
-use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
@@ -19,7 +34,7 @@ class StudentResource extends Resource
 
     protected static ?string $navigationLabel = 'الطلاب';
 
-    protected static ?string $navigationIcon = 'heroicon-o-user-group';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-user-group';
 
     protected static ?string $modelLabel = 'طالب';
 
@@ -29,28 +44,28 @@ class StudentResource extends Resource
 
     protected static bool $shouldRegisterNavigation = true;
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('name')
+        return $schema
+            ->components([
+                TextInput::make('name')
                     ->label('الاسم')
                     ->required(),
-                Forms\Components\TextInput::make('phone')
+                TextInput::make('phone')
                     ->label('رقم الهاتف')
                     ->default('06')
                     ->required(),
-                Forms\Components\Select::make('group_id')
+                Select::make('group_id')
                     ->options(Group::all()->pluck('fullName', 'id')->toArray())
                     ->label('المجموعة'),
-                Forms\Components\Select::make('sex')
+                Select::make('sex')
                     ->label('الجنس')
                     ->options([
                         'male' => 'ذكر',
                         'female' => 'أنثى',
                     ])
                     ->default('male'),
-                Forms\Components\TextInput::make('city')
+                TextInput::make('city')
                     ->label('المدينة')
                     ->required(),
             ]);
@@ -102,24 +117,24 @@ class StudentResource extends Resource
                     ->toggledHiddenByDefault(),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('group_id')
+                SelectFilter::make('group_id')
                     ->label('المجموعة')
                     ->options(Group::pluck('name', 'id'))
                     ->searchable(),
             ])
-            ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\Action::make('add_disconnection')
+            ->recordActions([
+                ViewAction::make(),
+                EditAction::make(),
+                Action::make('add_disconnection')
                     ->label('إضافة انقطاع')
                     ->icon('heroicon-o-exclamation-triangle')
                     ->color('danger')
-                    ->form([
-                        Forms\Components\DatePicker::make('disconnection_date')
+                    ->schema([
+                        DatePicker::make('disconnection_date')
                             ->label('تاريخ الانقطاع')
                             ->required()
                             ->default(now()),
-                        Forms\Components\Textarea::make('notes')
+                        Textarea::make('notes')
                             ->label('ملاحظات')
                             ->rows(3),
                     ])
@@ -135,16 +150,16 @@ class StudentResource extends Resource
                     ->modalDescription('سيتم إضافة سجل انقطاع جديد للطالب.')
                     ->modalSubmitActionLabel('إضافة الانقطاع'),
             ])
-            ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                DeleteBulkAction::make(),
             ]);
     }
 
     public static function getWidgets(): array
     {
         return [
-            StudentResource\Widgets\StudentStatsOverview::class,
-            StudentResource\Widgets\StudentAttendanceChart::class,
+            StudentStatsOverview::class,
+            StudentAttendanceChart::class,
         ];
     }
 
@@ -163,10 +178,10 @@ class StudentResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListStudents::route('/'),
-            'create' => Pages\CreateStudent::route('/create'),
-            'view' => Pages\ViewStudent::route('/{record}'),
-            'edit' => Pages\EditStudent::route('/{record}/edit'),
+            'index' => ListStudents::route('/'),
+            'create' => CreateStudent::route('/create'),
+            'view' => ViewStudent::route('/{record}'),
+            'edit' => EditStudent::route('/{record}/edit'),
         ];
     }
 

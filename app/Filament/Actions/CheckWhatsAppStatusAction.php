@@ -2,6 +2,7 @@
 
 namespace App\Filament\Actions;
 
+use Exception;
 use App\Models\WhatsAppSession;
 use App\Services\WhatsAppService;
 use Filament\Actions\Action;
@@ -53,7 +54,7 @@ class CheckWhatsAppStatusAction extends Action
                 ->body("الحالة الحالية: {$session->status->getLabel()}")
                 ->success()
                 ->send();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Notification::make()
                 ->title('فشل في فحص الحالة')
                 ->body($e->getMessage())

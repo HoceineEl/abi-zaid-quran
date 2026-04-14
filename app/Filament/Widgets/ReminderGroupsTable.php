@@ -2,6 +2,8 @@
 
 namespace App\Filament\Widgets;
 
+use Filament\Support\Enums\IconSize;
+use Filament\Support\Enums\TextSize;
 use App\Models\Group;
 use App\Models\Student;
 use App\Models\User;
@@ -29,7 +31,7 @@ class ReminderGroupsTable extends BaseWidget
 
     public function table(Table $table): Table
     {
-        $date = $this->filters['date'] ?? now()->toDateString();
+        $date = $this->pageFilters['date'] ?? now()->toDateString();
 
         $remindedByGroup = Student::query()
             ->whereHas('progresses', function ($q) use ($date) {
@@ -56,13 +58,13 @@ class ReminderGroupsTable extends BaseWidget
                     ->label('')
                     ->state(fn (Group $record) => $remindedByGroup->get($record->id, 0) > 0)
                     ->boolean()
-                    ->size(IconColumn\IconColumnSize::Small),
+                    ->size(IconSize::Small),
 
                 TextColumn::make('name')
                     ->label('المجموعة')
                     ->searchable()
                     ->weight('bold')
-                    ->size(TextColumn\TextColumnSize::ExtraSmall)
+                    ->size(TextSize::ExtraSmall)
                     ->description(fn (Group $record) => $record->managers
                         ->reject(fn ($m) => $m->isAdministrator() || in_array(trim($m->name), $hiddenManagers))
                         ->pluck('name')

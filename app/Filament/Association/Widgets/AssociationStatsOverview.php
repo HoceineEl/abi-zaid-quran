@@ -2,6 +2,7 @@
 
 namespace App\Filament\Association\Widgets;
 
+use Illuminate\Support\HtmlString;
 use App\Models\Attendance;
 use App\Models\MemoGroup;
 use App\Models\Memorizer;
@@ -18,12 +19,12 @@ class AssociationStatsOverview extends BaseWidget
 {
     use InteractsWithPageFilters;
 
-    protected static ?string $pollingInterval = '300s';
+    protected ?string $pollingInterval = '300s';
 
     protected function getStats(): array
     {
-        $dateFrom = isset($this->filters['date_from']) ? Carbon::parse($this->filters['date_from']) : now()->startOfYear();
-        $dateTo = isset($this->filters['date_to']) ? Carbon::parse($this->filters['date_to']) : now();
+        $dateFrom = isset($this->pageFilters['date_from']) ? Carbon::parse($this->pageFilters['date_from']) : now()->startOfYear();
+        $dateTo = isset($this->pageFilters['date_to']) ? Carbon::parse($this->pageFilters['date_to']) : now();
 
         // إحصاء عدد الطلاب المسجلين في الفترة المحددة
         $uniqueStudents = Memorizer::count();
@@ -51,7 +52,7 @@ class AssociationStatsOverview extends BaseWidget
                 ->color('success'),
 
             Stat::make('الرسوم المحصّلة للفترة من ' . $dateFrom->format('d/m') . ' إلى ' . $dateTo->format('d/m'), Number::format($periodPayments) . ' درهم')
-                ->description(new \Illuminate\Support\HtmlString(sprintf(
+                ->description(new HtmlString(sprintf(
                     '
                     <div class="flex flex-col gap-1">
                         <div class="text-info-500">الطلاب المسددون: %d</div>

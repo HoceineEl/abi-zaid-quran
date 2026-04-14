@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use RuntimeException;
 use App\Enums\MessageResponseStatus;
 use App\Enums\WhatsAppMessageStatus;
 use App\Jobs\Middleware\WhatsAppRateLimited;
@@ -134,13 +135,13 @@ class SendWhatsAppMessageJob implements ShouldQueue
         if (! $session) {
             $this->updateMessageHistory(WhatsAppMessageStatus::FAILED, errorMessage: 'Session not found');
 
-            throw new \RuntimeException('Session not found');
+            throw new RuntimeException('Session not found');
         }
 
         if (! $session->isConnected()) {
             $this->updateMessageHistory(WhatsAppMessageStatus::FAILED, errorMessage: 'Session not connected');
 
-            throw new \RuntimeException('Session not connected');
+            throw new RuntimeException('Session not connected');
         }
 
         return $session;

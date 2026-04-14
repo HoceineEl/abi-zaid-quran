@@ -9,9 +9,9 @@ use Illuminate\Support\Carbon;
 
 class AttendanceTrendsWidget extends ChartWidget
 {
-    protected static ?string $heading = 'تحليل نسب الحضور الأسبوعية';
-    protected static ?string $maxHeight = '300px';
-    protected static ?string $pollingInterval = '300s';
+    protected ?string $heading = 'تحليل نسب الحضور الأسبوعية';
+    protected ?string $maxHeight = '300px';
+    protected ?string $pollingInterval = '300s';
 
     protected function getData(): array
     {

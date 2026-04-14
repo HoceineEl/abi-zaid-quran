@@ -2,6 +2,7 @@
 
 namespace App\Filament\Association\Resources\GroupResource\Pages;
 
+use Filament\Actions\EditAction;
 use App\Filament\Association\Resources\GroupResource;
 use Filament\Actions;
 use Filament\Actions\Action;
@@ -14,14 +15,14 @@ class ViewGroup extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\EditAction::make()
+            EditAction::make()
                 ->hidden(fn() => auth()->user()->isTeacher()),
             Action::make('export_attendance_grades')
                 ->label('تصدير حضور وتقييم Excel')
                 ->icon('heroicon-o-table-cells')
                 ->color('primary')
                 ->hidden(fn() => auth()->user()->isTeacher())
-                ->form(GroupResource::getAttendanceExportFormSchema())
+                ->schema(GroupResource::getAttendanceExportFormSchema())
                 ->action(fn(array $data) => GroupResource::exportAttendanceWorkbook($this->record, $data)),
         ];
     }

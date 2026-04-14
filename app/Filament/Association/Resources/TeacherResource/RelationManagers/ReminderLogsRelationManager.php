@@ -2,6 +2,8 @@
 
 namespace App\Filament\Association\Resources\TeacherResource\RelationManagers;
 
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\IconColumn;
 use App\Models\ReminderLog;
 use App\Models\User;
 use Carbon\Carbon;
@@ -30,12 +32,12 @@ class ReminderLogsRelationManager extends RelationManager
         return $table
             ->query(fn() => $teacher->reminderLogs())
             ->columns([
-                Tables\Columns\TextColumn::make('memorizer.name')
+                TextColumn::make('memorizer.name')
                     ->label('اسم الطالب(ة)')
                     ->searchable()
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('type')
+                TextColumn::make('type')
                     ->label('النوع')
                     ->formatStateUsing(fn(string $state): string => match ($state) {
                         'payment' => 'تذكير بالدفع',
@@ -62,20 +64,20 @@ class ReminderLogsRelationManager extends RelationManager
                         default => 'secondary',
                     }),
 
-                Tables\Columns\TextColumn::make('phone_number')
+                TextColumn::make('phone_number')
                     ->label('رقم الهاتف')
                     ->extraCellAttributes(['dir' => 'ltr'])
                     ->alignRight(),
 
-                Tables\Columns\TextColumn::make('message')
+                TextColumn::make('message')
                     ->label('الرسالة')
                     ->limit(50),
 
-                Tables\Columns\IconColumn::make('is_parent')
+                IconColumn::make('is_parent')
                     ->label('ولي الأمر')
                     ->boolean(),
 
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->label('تاريخ الإرسال')
                     ->dateTime('Y-m-d H:i:s')
                     ->sortable(),
@@ -99,7 +101,7 @@ class ReminderLogsRelationManager extends RelationManager
                     ]),
                 Filter::make('created_at')
                     ->label('تاريخ الإرسال')
-                    ->form([
+                    ->schema([
                         DatePicker::make('created_at')
                             ->default(now())
                             ->label('تاريخ'),
@@ -114,10 +116,10 @@ class ReminderLogsRelationManager extends RelationManager
                             );
                     })
             ])
-            ->actions([
+            ->recordActions([
                 //
             ])
-            ->bulkActions([
+            ->toolbarActions([
                 //
             ]);
     }

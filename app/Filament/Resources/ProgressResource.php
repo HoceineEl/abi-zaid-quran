@@ -2,12 +2,14 @@
 
 namespace App\Filament\Resources;
 
+use Filament\Schemas\Schema;
+use Filament\Actions\EditAction;
+use Filament\Actions\DeleteBulkAction;
 use App\Filament\Resources\ProgressResource\Pages\CreateProgress;
 use App\Filament\Resources\ProgressResource\Pages\EditProgress;
 use App\Filament\Resources\ProgressResource\Pages\ListProgress;
 use App\Helpers\ProgressFormHelper;
 use App\Models\Progress;
-use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Columns\SelectColumn;
@@ -20,7 +22,7 @@ class ProgressResource extends Resource
 {
     protected static ?string $model = Progress::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-chart-bar';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-chart-bar';
 
     protected static ?string $navigationLabel = 'التقدم اليومي';
 
@@ -30,10 +32,10 @@ class ProgressResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'date';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema(
+        return $schema
+            ->components(
                 ProgressFormHelper::getProgressFormSchema(),
             );
     }
@@ -71,11 +73,11 @@ class ProgressResource extends Resource
                     ->label('المجموعة')
                     ->relationship('student.group', 'name'),
             ], FiltersLayout::AboveContent)
-            ->actions([
-                Tables\Actions\EditAction::make(),
+            ->recordActions([
+                EditAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                DeleteBulkAction::make(),
             ]);
     }
 

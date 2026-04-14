@@ -2,6 +2,7 @@
 
 namespace App\Filament\Association\Resources\TeacherResource\RelationManagers;
 
+use Illuminate\Database\Eloquent\Model;
 use App\Enums\WhatsAppMessageStatus;
 use App\Models\User;
 use Carbon\Carbon;
@@ -25,7 +26,7 @@ class WhatsAppMessagesRelationManager extends RelationManager
 
     protected static ?string $pluralModelLabel = 'الرسائل';
 
-    public static function canViewForRecord(\Illuminate\Database\Eloquent\Model $ownerRecord, string $pageClass): bool
+    public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {
         return auth()->user()?->hasAssociationAccess() ?? false;
     }
@@ -82,7 +83,7 @@ class WhatsAppMessagesRelationManager extends RelationManager
 
                 Filter::make('created_at')
                     ->label('التاريخ')
-                    ->form([
+                    ->schema([
                         DatePicker::make('date')
                             ->label('تاريخ')
                             ->default(now()),

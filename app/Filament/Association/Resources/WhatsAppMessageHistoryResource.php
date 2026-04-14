@@ -2,6 +2,11 @@
 
 namespace App\Filament\Association\Resources;
 
+use Filament\Actions\Action;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use App\Filament\Association\Resources\WhatsAppMessageHistoryResource\Pages\ListWhatsAppMessageHistories;
 use App\Enums\WhatsAppMessageStatus;
 use App\Filament\Association\Resources\WhatsAppMessageHistoryResource\Pages;
 use App\Jobs\SendWhatsAppMessageJob;
@@ -12,7 +17,6 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables;
-use Filament\Tables\Actions\Action;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
@@ -23,11 +27,11 @@ class WhatsAppMessageHistoryResource extends Resource
 {
     protected static ?string $model = WhatsAppMessageHistory::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-chat-bubble-bottom-center-text';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-chat-bubble-bottom-center-text';
 
     protected static ?string $navigationLabel = 'سجل الرسائل';
 
-    protected static ?string $navigationGroup = 'التواصل';
+    protected static string | \UnitEnum | null $navigationGroup = 'التواصل';
 
     protected static ?int $navigationSort = 20;
 
@@ -119,7 +123,7 @@ class WhatsAppMessageHistoryResource extends Resource
 
                 Filter::make('date_range')
                     ->label('الفترة الزمنية')
-                    ->form([
+                    ->schema([
                         DatePicker::make('from')
                             ->label('من تاريخ')
                             ->native(false),
@@ -136,7 +140,7 @@ class WhatsAppMessageHistoryResource extends Resource
                     ->toggle()
                     ->query(fn (Builder $query): Builder => $query->whereJsonContains('metadata->payment_reminder', true)),
             ])
-            ->actions([
+            ->recordActions([
                 Action::make('view_message')
                     ->label('عرض الرسالة')
                     ->icon('heroicon-o-eye')
@@ -159,11 +163,11 @@ class WhatsAppMessageHistoryResource extends Resource
                     ->modalDescription('سيتم إعادة جدولة الرسالة للإرسال.')
                     ->action(fn (WhatsAppMessageHistory $record) => self::retryMessage($record)),
 
-                Tables\Actions\DeleteAction::make(),
+                DeleteAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ])
             ->defaultSort('created_at', 'desc')
@@ -203,7 +207,7 @@ class WhatsAppMessageHistoryResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListWhatsAppMessageHistories::route('/'),
+            'index' => ListWhatsAppMessageHistories::route('/'),
         ];
     }
 }

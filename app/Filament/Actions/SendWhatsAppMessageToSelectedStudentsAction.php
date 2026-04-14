@@ -2,6 +2,9 @@
 
 namespace App\Filament\Actions;
 
+use Filament\Actions\BulkAction;
+use Filament\Schemas\Components\Utilities\Get;
+use Exception;
 use App\Classes\Core;
 use App\Enums\WhatsAppMessageStatus;
 use App\Jobs\SendWhatsAppMessageJob;
@@ -12,9 +15,7 @@ use App\Models\WhatsAppMessageHistory;
 use App\Models\WhatsAppSession;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Get;
 use Filament\Notifications\Notification;
-use Filament\Tables\Actions\BulkAction;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
@@ -196,7 +197,7 @@ class SendWhatsAppMessageToSelectedStudentsAction extends BulkAction
                 )->delay(now()->addSeconds($delay));
 
                 $messagesQueued++;
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 Log::error('Failed to queue message for student', [
                     'student_id' => $student->id,
                     'error' => $e->getMessage(),
@@ -222,7 +223,7 @@ class SendWhatsAppMessageToSelectedStudentsAction extends BulkAction
     {
         try {
             return str_replace('+', '', phone($phone, 'MA')->formatE164());
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return null;
         }
     }

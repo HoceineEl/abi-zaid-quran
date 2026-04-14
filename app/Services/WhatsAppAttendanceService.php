@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use Throwable;
+use RuntimeException;
 use App\Classes\Core;
 use App\Enums\MessageSubmissionType;
 use App\Enums\WhatsAppMessageStatus;
@@ -79,7 +81,7 @@ class WhatsAppAttendanceService
 
         try {
             $senderPhones = $this->fetchWhatsAppSenders($group, $date);
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             Log::error('Failed to build WhatsApp attendance preview', [
                 'group_id' => $group->id,
                 'date' => $date,
@@ -256,7 +258,7 @@ class WhatsAppAttendanceService
                 $result['invalid_reminder_phones'] += $applyResult['invalid_reminder_phones'];
                 $result['reminder_failures'] += $applyResult['reminder_failures'];
                 $result['groups'][] = $applyResult;
-            } catch (\Throwable $exception) {
+            } catch (Throwable $exception) {
                 Log::error('Bulk WhatsApp attendance apply failed for group', [
                     'group_id' => $groupPreview['group_id'],
                     'date' => $date,
@@ -494,7 +496,7 @@ ARABIC;
                 )->delay(now()->addSeconds($delay));
 
                 $remindersQueued++;
-            } catch (\Throwable $exception) {
+            } catch (Throwable $exception) {
                 Log::error('Failed to queue WhatsApp attendance reminder', [
                     'group_id' => $group->id,
                     'student_id' => $student->id,
@@ -539,7 +541,7 @@ ARABIC;
         $session = WhatsAppSession::getUserSession(auth()->id());
 
         if (! $session?->isConnected()) {
-            throw new \RuntimeException('جلسة واتساب غير متصلة');
+            throw new RuntimeException('جلسة واتساب غير متصلة');
         }
 
         return $session;

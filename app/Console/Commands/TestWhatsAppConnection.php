@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use Exception;
 use App\Services\WhatsAppService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
@@ -39,7 +40,7 @@ class TestWhatsAppConnection extends Command
             } else {
                 $this->warn("API returned status: {$response->status()}");
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->error('API health check failed: '.$e->getMessage());
         }
         try {
@@ -67,7 +68,7 @@ class TestWhatsAppConnection extends Command
                 $this->error("Instances endpoint failed with status: {$response->status()}");
                 $this->line('Response: '.$response->body());
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->error('Instances endpoint failed: '.$e->getMessage());
         }
         try {
@@ -76,7 +77,7 @@ class TestWhatsAppConnection extends Command
 
             $instances = $service->getAllInstances();
             $this->info('WhatsAppService is working ('.count($instances).' instances found)');
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->error('WhatsAppService failed: '.$e->getMessage());
         }
 

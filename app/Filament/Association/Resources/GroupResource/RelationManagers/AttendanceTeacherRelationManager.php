@@ -2,6 +2,15 @@
 
 namespace App\Filament\Association\Resources\GroupResource\RelationManagers;
 
+use Filament\Schemas\Schema;
+use App\Enums\MemorizationScore;
+use Filament\Actions\EditAction;
+use Filament\Tables\Enums\RecordActionsPosition;
+use Filament\Actions\CreateAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\Action;
+use Filament\Support\Enums\Size;
+use Filament\Actions\BulkAction;
 use App\Enums\AttendanceStatus;
 use App\Filament\Actions\Attendance\AddNotesAction;
 use App\Filament\Actions\Attendance\ClearAttendanceAction;
@@ -16,21 +25,13 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TextInput;
 use Ysfkaya\FilamentPhoneInput\Forms\PhoneInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Table;
-use Filament\Tables\Actions\BulkAction;
-use Filament\Tables\Actions\CreateAction;
-use Filament\Tables\Actions\DeleteBulkAction;
-use Filament\Tables\Actions\EditAction;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Model;
-use Filament\Tables\Enums\ActionsPosition;
-use Filament\Tables\Actions\Action;
 use Filament\Forms\Components\Textarea;
-use Filament\Support\Enums\ActionSize;
 
 class AttendanceTeacherRelationManager extends RelationManager
 {
@@ -44,7 +45,7 @@ class AttendanceTeacherRelationManager extends RelationManager
 
     protected static ?string $pluralModelLabel = 'الطلاب';
 
-    protected static ?string $icon = 'heroicon-o-user-group';
+    protected static string | \BackedEnum | null $icon = 'heroicon-o-user-group';
 
     protected function canView(Model $record): bool
     {
@@ -56,9 +57,9 @@ class AttendanceTeacherRelationManager extends RelationManager
         return false;
     }
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form->schema([
+        return $schema->components([
             TextInput::make('name')
                 ->label('الإسم')
                 ->required(),
@@ -108,7 +109,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                         if ($status) {
                             return $status->getLabel(); // full: "غائب غير مبرر" not short "غائب"
                         }
-                        $score = \App\Enums\MemorizationScore::tryFrom($state);
+                        $score = MemorizationScore::tryFrom($state);
                         return $score ? $score->getLabel() : $state;
                     })
                     ->color(fn (string $state): string|array|null => AttendanceStatus::getDisplayColor($state))
@@ -136,7 +137,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                         return $parts ? implode(' · ', $parts) : null;
                     }),
             ])
-            ->actions([
+            ->recordActions([
                 SendWhatsAppAction::make(),
                 MarkPresentAction::make(),
                 MarkAbsentAction::make(),
@@ -144,12 +145,12 @@ class AttendanceTeacherRelationManager extends RelationManager
                 AddNotesAction::make(),
                 EditAction::make()->slideOver()->iconButton(),
                 JustifyPastAbsenceAction::make(),
-            ], ActionsPosition::BeforeColumns)
+            ], RecordActionsPosition::BeforeColumns)
             ->headerActions([
                 CreateAction::make()->slideOver()->label('إضافة طالب'),
                 $this->exportTableAction(),
             ])
-            ->bulkActions([
+            ->toolbarActions([
                 $this->markPresentBulkAction(),
                 $this->markAbsentBulkAction(),
                 $this->revertAttendanceBulkAction(),
@@ -193,7 +194,7 @@ class AttendanceTeacherRelationManager extends RelationManager
         return Action::make('export_table')
             ->label('إرسال التقرير اليومي')
             ->icon('heroicon-o-share')
-            ->size(ActionSize::Small)
+            ->size(Size::Small)
             ->color('success')
             ->action(function () {
                 $date = now()->format('Y-m-d');
@@ -232,7 +233,7 @@ class AttendanceTeacherRelationManager extends RelationManager
             ->label('حاضرين')
             ->icon(AttendanceStatus::PRESENT->getIcon())
             ->color(AttendanceStatus::PRESENT->getColor())
-            ->size(ActionSize::ExtraSmall)
+            ->size(Size::ExtraSmall)
             ->action(function ($livewire) {
                 $records = Memorizer::find($livewire->getSelectedTableRecords());
                 $records->each(function (Memorizer $memorizer) {
@@ -257,7 +258,7 @@ class AttendanceTeacherRelationManager extends RelationManager
             ->label('غائبين')
             ->icon(AttendanceStatus::ABSENT_UNJUSTIFIED->getIcon())
             ->color(AttendanceStatus::ABSENT_UNJUSTIFIED->getColor())
-            ->size(ActionSize::ExtraSmall)
+            ->size(Size::ExtraSmall)
             ->requiresConfirmation()
             ->modalHeading('تأكيد تسجيل الغياب الجماعي')
             ->modalDescription('')
@@ -303,7 +304,7 @@ class AttendanceTeacherRelationManager extends RelationManager
             ->label('إلغاء')
             ->icon('heroicon-o-arrow-uturn-left')
             ->color('warning')
-            ->size(ActionSize::ExtraSmall)
+            ->size(Size::ExtraSmall)
             ->requiresConfirmation()
             ->modalHeading('تأكيد إلغاء التسجيل الجماعي')
             ->modalDescription('هل أنت متأكد من إلغاء تسجيل الحضور/الغياب للطلاب المحددين؟')

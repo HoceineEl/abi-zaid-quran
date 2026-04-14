@@ -2,8 +2,11 @@
 
 namespace App\Filament\Association\Resources\GroupResource\RelationManagers;
 
+use Filament\Schemas\Schema;
+use DatePeriod;
+use DateTime;
+use DateInterval;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Support\Enums\IconSize;
 use Filament\Tables\Columns\IconColumn;
@@ -30,9 +33,9 @@ class AttendancesRelationManager extends RelationManager
     {
         return !auth()->user()->isTeacher();
     }
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form->schema([]);
+        return $schema->components([]);
     }
 
     public function table(Table $table): Table
@@ -42,10 +45,10 @@ class AttendancesRelationManager extends RelationManager
 
         $workingDays = $this->ownerRecord->days ?? [];
 
-        $fullRange = new \DatePeriod(
-            new \DateTime($this->dateFrom),
-            new \DateInterval('P1D'),
-            (new \DateTime($this->dateTo))->modify('+1 day')
+        $fullRange = new DatePeriod(
+            new DateTime($this->dateFrom),
+            new DateInterval('P1D'),
+            (new DateTime($this->dateTo))->modify('+1 day')
         );
 
         $dateRange = $workingDays
@@ -100,7 +103,7 @@ class AttendancesRelationManager extends RelationManager
                 Filter::make('date')
                     ->columnSpan(4)
                     ->columns()
-                    ->form([
+                    ->schema([
                         DatePicker::make('date_from')
                             ->label('من تاريخ')
                             ->reactive()
@@ -125,8 +128,8 @@ class AttendancesRelationManager extends RelationManager
             })
             ->paginated(false)
             ->headerActions([])
-            ->actions([])
-            ->bulkActions([]);
+            ->recordActions([])
+            ->toolbarActions([]);
     }
 
     public function isReadOnly(): bool

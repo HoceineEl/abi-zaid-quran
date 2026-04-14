@@ -2,6 +2,8 @@
 
 namespace App\Traits\WhatsApp;
 
+use RuntimeException;
+use Exception;
 use App\Enums\WhatsAppConnectionStatus;
 use App\Models\WhatsAppSession;
 use Illuminate\Support\Facades\Http;
@@ -24,8 +26,8 @@ trait SessionManagement
                 return $response->json();
             }
 
-            throw new \RuntimeException("HTTP {$response->status()}: ".$response->body());
-        } catch (\Exception $e) {
+            throw new RuntimeException("HTTP {$response->status()}: ".$response->body());
+        } catch (Exception $e) {
             Log::error('Failed to create WhatsApp instance', [
                 'instance' => $instanceName,
                 'error' => $e->getMessage(),
@@ -46,8 +48,8 @@ trait SessionManagement
                 return $response->json();
             }
 
-            throw new \RuntimeException("HTTP {$response->status()}: ".$response->body());
-        } catch (\Exception $e) {
+            throw new RuntimeException("HTTP {$response->status()}: ".$response->body());
+        } catch (Exception $e) {
             Log::error('Failed to connect WhatsApp instance', [
                 'instance' => $instanceName,
                 'error' => $e->getMessage(),
@@ -68,8 +70,8 @@ trait SessionManagement
                 return $response->json();
             }
 
-            throw new \RuntimeException("HTTP {$response->status()}: ".$response->body());
-        } catch (\Exception $e) {
+            throw new RuntimeException("HTTP {$response->status()}: ".$response->body());
+        } catch (Exception $e) {
             Log::error('Failed to get all WhatsApp instances', [
                 'error' => $e->getMessage(),
             ]);
@@ -89,8 +91,8 @@ trait SessionManagement
                 return $response->json();
             }
 
-            throw new \RuntimeException("HTTP {$response->status()}: ".$response->body());
-        } catch (\Exception $e) {
+            throw new RuntimeException("HTTP {$response->status()}: ".$response->body());
+        } catch (Exception $e) {
             Log::error('Failed to get WhatsApp instance status', [
                 'instance' => $instanceName,
                 'error' => $e->getMessage(),
@@ -151,7 +153,7 @@ trait SessionManagement
                 ]);
 
                 return $connectResult;
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 Log::info('Instance not found, creating new one', [
                     'instance' => $instanceName,
                     'error' => $e->getMessage(),
@@ -175,7 +177,7 @@ trait SessionManagement
             ]);
 
             return $connectResult;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to start WhatsApp instance async', [
                 'instance' => $session->name,
                 'error' => $e->getMessage(),
@@ -211,7 +213,7 @@ trait SessionManagement
                 if ($base64Qr) {
                     $qrCode = $this->cleanQrCodeData($base64Qr);
                 }
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 Log::warning('Could not get QR code during status update', [
                     'instance' => $session->name,
                     'error' => $e->getMessage(),
@@ -240,8 +242,8 @@ trait SessionManagement
                 return $response->json();
             }
 
-            throw new \RuntimeException("HTTP {$response->status()}: ".$response->body());
-        } catch (\Exception $e) {
+            throw new RuntimeException("HTTP {$response->status()}: ".$response->body());
+        } catch (Exception $e) {
             Log::error('Failed to delete WhatsApp instance', [
                 'instance' => $instanceName,
                 'error' => $e->getMessage(),
@@ -264,8 +266,8 @@ trait SessionManagement
                 return $response->json();
             }
 
-            throw new \RuntimeException("HTTP {$response->status()}: ".$response->body());
-        } catch (\Exception $e) {
+            throw new RuntimeException("HTTP {$response->status()}: ".$response->body());
+        } catch (Exception $e) {
             Log::error('Failed to logout WhatsApp instance', [
                 'instance' => $instanceName,
                 'error' => $e->getMessage(),
@@ -283,7 +285,7 @@ trait SessionManagement
 
         try {
             $this->logoutInstance($instanceName);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::warning('Logout API call failed, trying delete', [
                 'instance' => $instanceName,
                 'error' => $e->getMessage(),
@@ -292,7 +294,7 @@ trait SessionManagement
 
         try {
             $result = $this->deleteInstance($instanceName);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::warning('Delete API call failed', [
                 'instance' => $instanceName,
                 'error' => $e->getMessage(),

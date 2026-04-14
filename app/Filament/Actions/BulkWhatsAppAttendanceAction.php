@@ -2,6 +2,12 @@
 
 namespace App\Filament\Actions;
 
+use Filament\Actions\BulkAction;
+use Filament\Support\Enums\Width;
+use Filament\Schemas\Components\Wizard\Step;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
+use Throwable;
 use App\Models\Group;
 use App\Models\WhatsAppSession;
 use App\Services\WhatsAppAttendanceService;
@@ -9,12 +15,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Toggle;
-use Filament\Forms\Components\Wizard\Step;
-use Filament\Forms\Get;
-use Filament\Forms\Set;
 use Filament\Notifications\Notification;
-use Filament\Support\Enums\MaxWidth;
-use Filament\Tables\Actions\BulkAction;
 use Illuminate\Support\HtmlString;
 
 class BulkWhatsAppAttendanceAction extends BulkAction
@@ -31,7 +32,7 @@ class BulkWhatsAppAttendanceAction extends BulkAction
         $this->label('حضور تلقائي عبر واتساب')
             ->icon('heroicon-o-signal')
             ->color('success')
-            ->modalWidth(MaxWidth::SevenExtraLarge)
+            ->modalWidth(Width::SevenExtraLarge)
             ->modalHeading('الحضور التلقائي عبر واتساب')
             ->modalSubmitActionLabel('تأكيد الحضور')
             ->visible(fn (): bool => WhatsAppSession::getUserSession(auth()->id())?->isConnected() === true)
@@ -105,7 +106,7 @@ class BulkWhatsAppAttendanceAction extends BulkAction
                         (bool) ($data['mark_others_absent'] ?? false),
                         (bool) ($data['remind_remaining_students'] ?? false),
                     );
-                } catch (\Throwable $exception) {
+                } catch (Throwable $exception) {
                     Notification::make()
                         ->danger()
                         ->title('فشل تنفيذ الحضور الجماعي')

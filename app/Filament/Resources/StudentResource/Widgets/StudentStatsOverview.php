@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class StudentStatsOverview extends BaseWidget
 {
-    protected static ?string $pollingInterval = null;
+    protected ?string $pollingInterval = null;
 
     public ?Model $record = null;
 

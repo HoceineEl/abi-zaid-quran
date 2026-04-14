@@ -2,6 +2,18 @@
 
 namespace App\Filament\Association\Resources\GroupResource\RelationManagers;
 
+use Filament\Schemas\Schema;
+use Filament\Actions\CreateAction;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\EditAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\ViewAction;
+use Filament\Actions\Action;
+use Filament\Tables\Enums\RecordActionsPosition;
+use Filament\Actions\BulkAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use App\Enums\Troubles;
 use App\Enums\MemorizationScore;
 use App\Filament\Actions\Attendance\SendWhatsAppAction;
 use App\Filament\Association\Resources\MemorizerResource;
@@ -15,25 +27,18 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\ToggleButtons;
-use Filament\Forms\Form;
 use Filament\Infolists\Components\Grid;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
-use Filament\Infolists\Infolist;
-use Filament\Notifications\Actions\Action as ActionsAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Support\Colors\Color;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables;
-use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\ActionGroup;
-use Filament\Tables\Actions\BulkAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
-use Filament\Tables\Enums\ActionsPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -55,12 +60,12 @@ class MemorizersRelationManager extends RelationManager
 
     protected static ?string $pluralModelLabel = 'الطلبة';
 
-    protected static ?string $icon = 'heroicon-o-user-group';
+    protected static string | \BackedEnum | null $icon = 'heroicon-o-user-group';
 
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return MemorizerResource::form($form);
+        return MemorizerResource::form($schema);
     }
 
     public function table(Table $table): Table
@@ -126,7 +131,7 @@ class MemorizersRelationManager extends RelationManager
             ->filters([
                 Filter::make('troublemakers')
                     ->label('الأكثر مشاكل')
-                    ->form([
+                    ->schema([
                         TextInput::make('trouble_threshold')
                             ->label('عدد المشاكل على الأقل')
                             ->numeric(),
@@ -144,13 +149,13 @@ class MemorizersRelationManager extends RelationManager
                     ->indicator('الأكثر مشاكل'),
             ])
             ->headerActions([
-                Tables\Actions\CreateAction::make(),
+                CreateAction::make(),
             ])
-            ->actions([
+            ->recordActions([
                 ActionGroup::make([
-                    Tables\Actions\EditAction::make(),
-                    Tables\Actions\DeleteAction::make(),
-                    Tables\Actions\ViewAction::make(),
+                    EditAction::make(),
+                    DeleteAction::make(),
+                    ViewAction::make(),
                     self::getTroublesAction(),
                     SendWhatsAppAction::make()
                         ->label('إرسال رسالة واتساب'),
@@ -177,8 +182,8 @@ class MemorizersRelationManager extends RelationManager
                         return MemorizerResource::getWhatsAppUrl($record);
                     }, true),
 
-            ], ActionsPosition::BeforeColumns)
-            ->bulkActions([
+            ], RecordActionsPosition::BeforeColumns)
+            ->toolbarActions([
                 BulkAction::make('pay_monthly_fee_bulk')
                     ->label('تسديد الرسوم للمحددين')
                     ->requiresConfirmation()
@@ -254,8 +259,8 @@ class MemorizersRelationManager extends RelationManager
                 //             ->send();
                 //     }),
 
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ])->paginated(false);
     }
@@ -270,7 +275,7 @@ class MemorizersRelationManager extends RelationManager
             ->hidden(fn(Memorizer $record) => $record->has_payment_this_month)
             ->modalDescription('هل تريد تسجيل دفعة جديدة لهذا الشهر؟')
             ->modalHeading('تسجيل دفعة جديدة')
-            ->form(function (Memorizer $record) {
+            ->schema(function (Memorizer $record) {
                 return [
                     TextInput::make('amount')
                         ->label('المبلغ')
@@ -293,7 +298,7 @@ class MemorizersRelationManager extends RelationManager
                     ->success()
                     ->persistent()
                     ->actions([
-                        ActionsAction::make('print_receipt')
+                        Action::make('print_receipt')
                             ->label('طباعة الإيصال')
                             ->icon('heroicon-o-printer')
                             ->button()
@@ -304,10 +309,10 @@ class MemorizersRelationManager extends RelationManager
             });
     }
 
-    public function infolist(Infolist $infolist): Infolist
+    public function infolist(Schema $schema): Schema
     {
-        return $infolist
-            ->schema([
+        return $schema
+            ->components([
                 TextEntry::make('name')
                     ->label('الاسم'),
                 TextEntry::make('attendances')
@@ -317,7 +322,7 @@ class MemorizersRelationManager extends RelationManager
                         foreach ($record->attendances as $attendance) {
                             if ($attendance->notes) {
                                 foreach ($attendance->notes as $note) {
-                                    $troubles[] = \App\Enums\Troubles::tryFrom($note)?->getLabel();
+                                    $troubles[] = Troubles::tryFrom($note)?->getLabel();
                                 }
                             }
                         }
@@ -335,13 +340,13 @@ class MemorizersRelationManager extends RelationManager
             ->modalHeading('قائمة المشاكل')
             ->modalSubmitAction(false)
             ->modalCancelAction(false)
-            ->infolist(fn(Memorizer $record) => self::getTroublesInfolist($record));
+            ->schema(fn(Memorizer $record) => self::getTroublesInfolist($record));
     }
-    public static function getTroublesInfolist(Memorizer $record): Infolist
+    public static function getTroublesInfolist(Memorizer $record): Schema
     {
-        return Infolist::make()
+        return Schema::make()
             ->record($record)
-            ->schema([
+            ->components([
                 RepeatableEntry::make('attendancesWithTroubles')
                     ->label('قائمة المشاكل')
                     ->schema([
@@ -352,7 +357,7 @@ class MemorizersRelationManager extends RelationManager
                             ->label('المشاكل')
                             ->badge()
                             ->hidden(fn($state) => empty($state))
-                            ->getStateUsing(fn($record) => $record->notes ? array_map(fn($note) => \App\Enums\Troubles::tryFrom($note)?->getLabel(), $record->notes) : []),
+                            ->getStateUsing(fn($record) => $record->notes ? array_map(fn($note) => Troubles::tryFrom($note)?->getLabel(), $record->notes) : []),
                         TextEntry::make('score')
                             ->label('التقييم')
                             ->badge()

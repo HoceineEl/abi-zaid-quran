@@ -15,7 +15,7 @@ class ReminderReport extends Page
 {
     use HasFiltersAction;
 
-    protected static ?string $navigationIcon = 'heroicon-o-bell-alert';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-bell-alert';
 
     protected static ?string $navigationLabel = 'تقرير التذكيرات';
 
@@ -23,9 +23,9 @@ class ReminderReport extends Page
 
     protected static ?string $slug = 'reminder-report';
 
-    protected static string $view = 'filament.pages.reminder-report';
+    protected string $view = 'filament.pages.reminder-report';
 
-    protected static ?string $navigationGroup = 'التقارير';
+    protected static string | \UnitEnum | null $navigationGroup = 'التقارير';
 
     public static function canAccess(): bool
     {
@@ -52,7 +52,7 @@ class ReminderReport extends Page
             FilterAction::make()
                 ->label('تغيير التاريخ')
                 ->modalHeading('اختر التاريخ')
-                ->form([
+                ->schema([
                     DatePicker::make('date')
                         ->label('التاريخ')
                         ->default(fn () => $this->filters['date'] ?? now()->toDateString())
@@ -76,12 +76,12 @@ class ReminderReport extends Page
         ];
     }
 
-    public function getHeaderWidgetsColumns(): int|string|array
+    public function getHeaderWidgetsColumns(): int|array
     {
         return 1;
     }
 
-    public function getFooterWidgetsColumns(): int|string|array
+    public function getFooterWidgetsColumns(): int|array
     {
         return 1;
     }

@@ -2,12 +2,14 @@
 
 namespace App\Filament\Resources\GroupResource\Pages;
 
+use Filament\Actions\CreateAction;
+use Filament\Schemas\Components\Tabs\Tab;
+use Closure;
 use App\Filament\Actions\CheckWhatsAppStatusAction;
 use App\Filament\Resources\GroupResource;
 use App\Models\Group;
 use Carbon\Carbon;
 use Filament\Actions;
-use Filament\Resources\Components\Tab;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -31,7 +33,7 @@ class ListGroups extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make()
+            CreateAction::make()
                 ->visible(auth()->user()->isAdministrator()),
             CheckWhatsAppStatusAction::make(),
         ];
@@ -50,7 +52,7 @@ class ListGroups extends ListRecords
         ];
     }
 
-    protected function makeAttendanceTab(string $label, string $color, \Closure $filter): Tab
+    protected function makeAttendanceTab(string $label, string $color, Closure $filter): Tab
     {
         return Tab::make($label)
             ->badge(fn (): int => $this->getGroupsWithAttendance()

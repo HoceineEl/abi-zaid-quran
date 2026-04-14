@@ -8,7 +8,7 @@
         "php": "^8.2",
         "bacon/bacon-qr-code": "^3.0",
         "barryvdh/laravel-dompdf": "^3.0",
-        "filament/filament": "^3.2.0",
+        "filament/filament": "^4.0",
         "laravel/framework": "^11.0",
         "laravel/tinker": "^2.9",
         "livewire/livewire": "^3.5",
@@ -17,15 +17,16 @@
         "propaganistas/laravel-phone": "^6.0",
         "secondnetwork/blade-tabler-icons": "^3.36",
         "silviolleite/laravelpwa": "^2.0",
-        "stechstudio/filament-impersonate": "^3.16",
+        "stechstudio/filament-impersonate": "^4.0",
         "symfony/console": "^7.3.0 <7.4",
         "symfony/string": "^7.3.0 <7.4",
         "twilio/sdk": "^8.0",
-        "ysfkaya/filament-phone-input": "^3.2"
+        "ysfkaya/filament-phone-input": "^4.0"
     },
     "require-dev": {
         "barryvdh/laravel-debugbar": "^3.14",
         "fakerphp/faker": "^1.23",
+        "filament/upgrade": "^4.0",
         "laravel/boost": "^1.0",
         "laravel/pint": "^1.16",
         "laravel/sail": "^1.26",

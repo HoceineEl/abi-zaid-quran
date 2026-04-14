@@ -2,11 +2,11 @@
 
 namespace App\Filament\Actions\Attendance;
 
+use Filament\Actions\Action;
+use Filament\Support\Enums\Size;
 use App\Models\Memorizer;
 use Filament\Notifications\Notification;
-use Filament\Support\Enums\ActionSize;
 use Filament\Support\Enums\IconSize;
-use Filament\Tables\Actions\Action;
 
 class ClearAttendanceAction extends Action
 {
@@ -22,7 +22,7 @@ class ClearAttendanceAction extends Action
         $this
             ->tooltip('إلغاء التسجيل')
             ->label('')
-            ->size(ActionSize::ExtraLarge)
+            ->size(Size::ExtraLarge)
             ->iconSize(IconSize::Large)
             ->extraAttributes(['class' => '[&_svg]:w-8 [&_svg]:h-8'])
             ->icon('heroicon-o-trash')

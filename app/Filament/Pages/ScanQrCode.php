@@ -2,20 +2,20 @@
 
 namespace App\Filament\Pages;
 
+use Filament\Support\Enums\Width;
 use Filament\Facades\Filament;
 use Filament\Pages\Page;
-use Filament\Support\Enums\MaxWidth;
 use Illuminate\Contracts\Support\Htmlable;
 
 class ScanQrCode extends Page
 {
-    protected static ?string $navigationIcon = 'heroicon-o-qr-code';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-qr-code';
 
-    protected static string $view = 'filament.pages.scan-qr-code';
+    protected string $view = 'filament.pages.scan-qr-code';
 
-    public function getMaxContentWidth(): MaxWidth
+    public function getMaxContentWidth(): Width
     {
-        return MaxWidth::Full;
+        return Width::Full;
     }
 
     public function getTitle(): string|Htmlable
@@ -24,7 +24,7 @@ class ScanQrCode extends Page
     }
     public static function shouldRegisterNavigation(): bool
     {
-        return \Filament\Facades\Filament::getCurrentPanel()->getId() === 'association';
+        return Filament::getCurrentOrDefaultPanel()->getId() === 'association';
     }
     public function getHeading(): string
     {

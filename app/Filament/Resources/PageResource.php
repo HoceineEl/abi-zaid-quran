@@ -2,13 +2,18 @@
 
 namespace App\Filament\Resources;
 
+use Filament\Schemas\Schema;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Placeholder;
+use Filament\Actions\EditAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
 use App\Filament\Resources\PageResource\Pages\CreatePage;
 use App\Filament\Resources\PageResource\Pages\EditPage;
 use App\Filament\Resources\PageResource\Pages\ListPages;
 use App\Filament\Resources\PageResource\RelationManagers\AyahsRelationManager;
 use App\Models\Page;
 use Filament\Forms;
-use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
@@ -18,7 +23,7 @@ class PageResource extends Resource
 {
     protected static ?string $model = Page::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-document';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-document';
 
     protected static ?string $navigationLabel = 'الصفحات';
 
@@ -26,17 +31,17 @@ class PageResource extends Resource
 
     protected static ?string $pluralModelLabel = 'الصفحات';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('number')
+        return $schema
+            ->components([
+                TextInput::make('number')
                     ->label('رقم الصفحة')
                     ->required(),
-                Forms\Components\Placeholder::make('surah_name')
+                Placeholder::make('surah_name')
                     ->content(fn ($record) => $record->surah_name)
                     ->label('اسم السورة'),
-                Forms\Components\TextInput::make('lines_count')
+                TextInput::make('lines_count')
                     ->label('عدد الأسطر')
                     ->required(),
             ]);
@@ -62,12 +67,12 @@ class PageResource extends Resource
             ->filters([
                 //
             ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
+            ->recordActions([
+                EditAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }

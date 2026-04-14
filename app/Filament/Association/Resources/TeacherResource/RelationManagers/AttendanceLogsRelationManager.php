@@ -2,6 +2,7 @@
 
 namespace App\Filament\Association\Resources\TeacherResource\RelationManagers;
 
+use Filament\Tables\Columns\IconColumn;
 use App\Filament\Association\Resources\GroupResource;
 use App\Filament\Association\Resources\MemorizerResource;
 use App\Models\Attendance;
@@ -31,19 +32,19 @@ class AttendanceLogsRelationManager extends RelationManager
         return $table
             ->modifyQueryUsing(fn(Builder $query) => $query->whereDate('date', today()))
             ->columns([
-                Tables\Columns\TextColumn::make('memorizer.name')
+                TextColumn::make('memorizer.name')
                     ->label('اسم الطالب(ة)')
                     ->url(fn(Attendance $record) => MemorizerResource::getUrl('edit', ['record' => $record->memorizer->id]))
                     ->searchable()
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('group.name')
+                TextColumn::make('group.name')
                     ->label('المجموعة')
                     ->searchable()
                     ->url(fn(Attendance $record) => GroupResource::getUrl('view', ['record' => $record->group->id]))
                     ->sortable(),
 
-                Tables\Columns\IconColumn::make('check_in_time')
+                IconColumn::make('check_in_time')
                     ->label('الحالة')
                     ->getStateUsing(fn(Attendance $record) => $record->check_in_time ? true : false)
                     ->boolean()
@@ -55,11 +56,11 @@ class AttendanceLogsRelationManager extends RelationManager
                 TextColumn::make('score')
                     ->label('العلامة')
                     ->badge(),
-                Tables\Columns\TextColumn::make('note')
+                TextColumn::make('note')
                     ->label('ملاحظات')
                     ->limit(50),
 
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->label('تاريخ التسجيل')
                     ->dateTime()
                     ->formatStateUsing(fn(string $state): string => Carbon::parse($state)->translatedFormat('d M Y h:i A'))
@@ -82,7 +83,7 @@ class AttendanceLogsRelationManager extends RelationManager
 
                 Filter::make('date')
                     ->label('تاريخ الحضور')
-                    ->form([
+                    ->schema([
                         DatePicker::make('date')
                             ->label('التاريخ')
                             ->default(now()),
@@ -105,10 +106,10 @@ class AttendanceLogsRelationManager extends RelationManager
                     ->query(fn(Builder $query): Builder => $query->whereNotNull('check_out_time'))
                     ->toggle(),
             ])
-            ->actions([
+            ->recordActions([
                 //
             ])
-            ->bulkActions([
+            ->toolbarActions([
                 //
             ]);
     }

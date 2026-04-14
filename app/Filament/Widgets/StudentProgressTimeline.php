@@ -8,8 +8,8 @@ use Illuminate\Support\Carbon;
 
 class StudentProgressTimeline extends ChartWidget
 {
-    protected static ?string $heading = 'تطور الحضور والغياب';
-    protected static ?string $maxHeight = '300px';
+    protected ?string $heading = 'تطور الحضور والغياب';
+    protected ?string $maxHeight = '300px';
     protected static ?int $sort = 2;
     protected int | string | array $columnSpan = 'full';
 

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Association\Widgets;
 
+use Exception;
 use App\Models\Attendance;
 use App\Models\Memorizer;
 use App\Models\Payment;
@@ -14,7 +15,7 @@ use Illuminate\Support\Facades\Log;
 
 class DetailedStatsOverview extends BaseWidget
 {
-    protected static ?string $pollingInterval = '30s';
+    protected ?string $pollingInterval = '30s';
 
     protected function getStats(): array
     {
@@ -28,7 +29,7 @@ class DetailedStatsOverview extends BaseWidget
                 $this->getAveragePaymentStat($startDate, $endDate),
                 $this->getExemptStudentsStat(),
             ];
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Error generating detailed stats: ' . $e->getMessage());
             return $this->getFallbackStats();
         }
@@ -110,7 +111,7 @@ class DetailedStatsOverview extends BaseWidget
                 ->orderBy('attendance_date')
                 ->pluck('daily_count')
                 ->toArray();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Error getting attendance trend: ' . $e->getMessage());
             return [];
         }

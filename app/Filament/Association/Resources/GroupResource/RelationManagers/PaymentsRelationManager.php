@@ -2,8 +2,8 @@
 
 namespace App\Filament\Association\Resources\GroupResource\RelationManagers;
 
+use Filament\Schemas\Schema;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -30,9 +30,9 @@ class PaymentsRelationManager extends RelationManager
     {
         return !auth()->user()->isTeacher();
     }
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form->schema([]);
+        return $schema->components([]);
     }
 
     public function table(Table $table): Table
@@ -62,8 +62,8 @@ class PaymentsRelationManager extends RelationManager
             })
             ->paginated(false)
             ->headerActions([])
-            ->actions([])
-            ->bulkActions([]);
+            ->recordActions([])
+            ->toolbarActions([]);
     }
 
     private function generatePaymentColumns(): array
@@ -110,7 +110,7 @@ class PaymentsRelationManager extends RelationManager
         return Filter::make('date')
             ->columnSpan(4)
             ->columns()
-            ->form([
+            ->schema([
                 DatePicker::make('date_from')
                     ->label('من تاريخ')
                     ->reactive()

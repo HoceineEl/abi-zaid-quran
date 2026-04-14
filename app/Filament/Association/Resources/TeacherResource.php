@@ -2,6 +2,16 @@
 
 namespace App\Filament\Association\Resources;
 
+use Filament\Schemas\Schema;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Actions\ViewAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use App\Filament\Association\Resources\TeacherResource\Pages\ListTeachers;
+use App\Filament\Association\Resources\TeacherResource\Pages\CreateTeacher;
+use App\Filament\Association\Resources\TeacherResource\Pages\ViewTeacher;
+use App\Filament\Association\Resources\TeacherResource\Pages\EditTeacher;
 use App\Filament\Association\Resources\TeacherResource\Pages;
 use App\Filament\Association\Resources\TeacherResource\RelationManagers\AttendanceLogsRelationManager;
 use App\Filament\Association\Resources\TeacherResource\RelationManagers\ReminderLogsRelationManager;
@@ -9,7 +19,6 @@ use App\Filament\Association\Resources\TeacherResource\RelationManagers\WhatsApp
 use App\Models\User;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\ToggleButtons;
-use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Columns\SelectColumn;
@@ -25,7 +34,7 @@ class TeacherResource extends Resource
 {
     protected static ?string $model = User::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-academic-cap';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-academic-cap';
 
     protected static ?string $navigationLabel = 'الأساتذة';
 
@@ -40,10 +49,10 @@ class TeacherResource extends Resource
             ->withCount(['reminderLogs', 'whatsAppMessages']);
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
+        return $schema
+            ->components([
                 TextInput::make('name')
                     ->label('الاسم')
                     ->required()
@@ -125,8 +134,8 @@ class TeacherResource extends Resource
             ->filters([
                 Filter::make('created_after')
                     ->label('تاريخ الإنشاء بعد')
-                    ->form([
-                        \Filament\Forms\Components\DateTimePicker::make('created_after')
+                    ->schema([
+                        DateTimePicker::make('created_after')
                             ->label('تم إنشاؤه بعد'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
@@ -136,15 +145,15 @@ class TeacherResource extends Resource
                         );
                     }),
             ])
-            ->actions([
+            ->recordActions([
                 Impersonate::make()
                     ->redirectTo('/teacher'),
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
+                ViewAction::make(),
+                EditAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }
@@ -161,10 +170,10 @@ class TeacherResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListTeachers::route('/'),
-            'create' => Pages\CreateTeacher::route('/create'),
-            'view' => Pages\ViewTeacher::route('/{record}'),
-            'edit' => Pages\EditTeacher::route('/{record}/edit'),
+            'index' => ListTeachers::route('/'),
+            'create' => CreateTeacher::route('/create'),
+            'view' => ViewTeacher::route('/{record}'),
+            'edit' => EditTeacher::route('/{record}/edit'),
         ];
     }
 }

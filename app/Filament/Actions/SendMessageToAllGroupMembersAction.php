@@ -2,6 +2,11 @@
 
 namespace App\Filament\Actions;
 
+use Filament\Actions\Action;
+use Filament\Forms\Components\Select;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Forms\Components\Placeholder;
+use Exception;
 use App\Classes\Core;
 use App\Enums\WhatsAppMessageStatus;
 use App\Jobs\SendWhatsAppMessageJob;
@@ -11,9 +16,7 @@ use App\Models\WhatsAppMessageHistory;
 use App\Models\WhatsAppSession;
 use Filament\Forms;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Get;
 use Filament\Notifications\Notification;
-use Filament\Tables\Actions\Action;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -37,7 +40,7 @@ class SendMessageToAllGroupMembersAction extends Action
                 $isAdmin = auth()->user()->isAdministrator();
 
                 if ($isAdmin) {
-                    $fields[] = Forms\Components\Select::make('template_source')
+                    $fields[] = Select::make('template_source')
                         ->label('مصدر القالب')
                         ->options([
                             'group_default' => 'استخدام القالب الافتراضي لكل مجموعة',
@@ -48,7 +51,7 @@ class SendMessageToAllGroupMembersAction extends Action
                         ->reactive()
                         ->helperText('اختر كيفية تحديد محتوى الرسالة لكل مجموعة');
 
-                    $fields[] = Forms\Components\Select::make('global_template_id')
+                    $fields[] = Select::make('global_template_id')
                         ->label('اختر القالب الموحد')
                         ->options(function () {
                             $userGroups = $this->getUserGroups();
@@ -75,7 +78,7 @@ class SendMessageToAllGroupMembersAction extends Action
                         ->visible(fn (Get $get) => $get('template_source') === 'custom');
                 }
 
-                $fields[] = Forms\Components\Placeholder::make('groups_summary')
+                $fields[] = Placeholder::make('groups_summary')
                     ->label('ملخص المجموعات')
                     ->content(function () {
                         $userGroups = $this->getUserGroups();
@@ -233,7 +236,7 @@ class SendMessageToAllGroupMembersAction extends Action
                 )->delay(now()->addSeconds($delay));
 
                 $messagesQueued++;
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 Log::error('Failed to queue group message for student', [
                     'student_id' => $student->id,
                     'group_name' => $group->name,
@@ -249,7 +252,7 @@ class SendMessageToAllGroupMembersAction extends Action
     {
         try {
             return str_replace('+', '', phone($phone, 'MA')->formatE164());
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return null;
         }
     }

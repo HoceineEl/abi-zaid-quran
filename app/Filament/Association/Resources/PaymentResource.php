@@ -2,6 +2,17 @@
 
 namespace App\Filament\Association\Resources;
 
+use Filament\Schemas\Schema;
+use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\Action;
+use Filament\Actions\EditAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use App\Filament\Association\Resources\PaymentResource\Pages\ListPayments;
+use App\Filament\Association\Resources\PaymentResource\Pages\CreatePayment;
 use App\Filament\Association\Resources\PaymentResource\Pages;
 use App\Models\MemoGroup;
 use App\Models\Memorizer;
@@ -10,13 +21,9 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Form;
-use Filament\Forms\Get;
-use Filament\Forms\Set;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
-use Filament\Tables\Actions\ActionGroup;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -26,15 +33,15 @@ class PaymentResource extends Resource
 {
     protected static ?string $model = Payment::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-banknotes';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-banknotes';
 
     protected static ?string $modelLabel = 'دفعة';
 
     protected static ?string $pluralModelLabel = 'الدفعات';
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
+        return $schema
+            ->components([
                 Select::make('memorizer_id')
                     ->label('الطالب')
                     ->relationship('memorizer', 'name')
@@ -116,9 +123,9 @@ class PaymentResource extends Resource
                     ->query(fn(Builder $query, $state) => $query->when($state['value'], fn($query) => $query->whereYear('payment_date', $state['value'])))
                     ->label('السنة'),
             ])
-            ->actions([
+            ->recordActions([
                 ActionGroup::make([
-                    Tables\Actions\Action::make('show_receipt')
+                    Action::make('show_receipt')
                         ->label('عرض الإيصال')
                         ->icon('heroicon-o-printer')
                         ->modalContent(fn(Payment $record) => view('filament.resources.payment-resource.pages.receipt-preview', [
@@ -126,9 +133,9 @@ class PaymentResource extends Resource
                         ]))
                         ->modalWidth('4xl')
                         ->slideOver(),
-                    Tables\Actions\EditAction::make()
+                    EditAction::make()
                         ->slideOver()
-                        ->form([
+                        ->schema([
                             TextInput::make('amount')
                                 ->label('المبلغ')
                                 ->required(),
@@ -143,15 +150,15 @@ class PaymentResource extends Resource
                                 ->success()
                                 ->send();
                         }),
-                    Tables\Actions\DeleteAction::make(),
+                    DeleteAction::make(),
                 ])
             ])
             ->emptyStateHeading('لا توجد دفعات مسجلة للفترة المحددة في الفلتر')
             ->emptyStateDescription('يمكنك إضافة دفعات جديدة بالضغط على زر الإضافة')
             ->emptyStateIcon('heroicon-o-banknotes')
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }
@@ -166,8 +173,8 @@ class PaymentResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListPayments::route('/'),
-            'create' => Pages\CreatePayment::route('/create'),
+            'index' => ListPayments::route('/'),
+            'create' => CreatePayment::route('/create'),
         ];
     }
 }

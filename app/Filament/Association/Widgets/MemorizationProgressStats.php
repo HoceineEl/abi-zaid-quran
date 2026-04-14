@@ -15,12 +15,12 @@ class MemorizationProgressStats extends BaseWidget
 {
     use InteractsWithPageFilters;
 
-    protected static ?string $pollingInterval = '300s';
+    protected ?string $pollingInterval = '300s';
 
     protected function getStats(): array
     {
-        $dateFrom = $this->filters['date_from'] ?? now()->startOfYear();
-        $dateTo = $this->filters['date_to'] ?? now();
+        $dateFrom = $this->pageFilters['date_from'] ?? now()->startOfYear();
+        $dateTo = $this->pageFilters['date_to'] ?? now();
 
         $excellentCount = Attendance::whereBetween('date', [$dateFrom, $dateTo])
             ->where('score', MemorizationScore::EXCELLENT->value)

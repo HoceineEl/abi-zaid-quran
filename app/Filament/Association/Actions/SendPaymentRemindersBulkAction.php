@@ -2,11 +2,11 @@
 
 namespace App\Filament\Association\Actions;
 
+use Filament\Actions\BulkAction;
 use App\Models\Memorizer;
 use App\Models\WhatsAppSession;
 use Carbon\Carbon;
 use Filament\Notifications\Notification;
-use Filament\Tables\Actions\BulkAction;
 use Illuminate\Database\Eloquent\Collection;
 
 class SendPaymentRemindersBulkAction extends BulkAction

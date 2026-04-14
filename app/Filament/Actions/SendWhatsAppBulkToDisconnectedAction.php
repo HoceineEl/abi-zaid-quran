@@ -2,6 +2,11 @@
 
 namespace App\Filament\Actions;
 
+use Filament\Actions\BulkAction;
+use Filament\Forms\Components\ToggleButtons;
+use Filament\Forms\Components\Select;
+use Filament\Schemas\Components\Utilities\Get;
+use Exception;
 use App\Classes\Core;
 use App\Enums\MessageResponseStatus;
 use App\Enums\WhatsAppMessageStatus;
@@ -12,9 +17,7 @@ use App\Models\WhatsAppMessageHistory;
 use App\Models\WhatsAppSession;
 use Filament\Forms;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Get;
 use Filament\Notifications\Notification;
-use Filament\Tables\Actions\BulkAction;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
 
@@ -45,7 +48,7 @@ class SendWhatsAppBulkToDisconnectedAction extends BulkAction
         $isAdmin = auth()->user()->isAdministrator();
 
         $fields = [
-            Forms\Components\ToggleButtons::make('message_type')
+            ToggleButtons::make('message_type')
                 ->label('نوع الرسالة')
                 ->options([
                     'reminder' => 'الرسالة التذكيرية',
@@ -57,7 +60,7 @@ class SendWhatsAppBulkToDisconnectedAction extends BulkAction
         ];
 
         if ($isAdmin) {
-            $fields[] = Forms\Components\Select::make('template_id')
+            $fields[] = Select::make('template_id')
                 ->label('اختر قالب الرسالة')
                 ->options(function () {
                     $templates = GroupMessageTemplate::pluck('name', 'id')->toArray();
@@ -148,7 +151,7 @@ ARABIC
                 )->delay(now()->addSeconds($delay));
 
                 $messagesQueued++;
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 Log::error('Failed to queue message for disconnected student', [
                     'student_id' => $student->id,
                     'error' => $e->getMessage(),

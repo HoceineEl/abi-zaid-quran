@@ -10,9 +10,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class StudentAttendanceChart extends ChartWidget
 {
-    protected static ?string $heading = 'سجل الحضور - آخر 30 يوم';
-    protected static ?string $maxHeight = '300px';
-    protected static ?string $pollingInterval = null;
+    protected ?string $heading = 'سجل الحضور - آخر 30 يوم';
+    protected ?string $maxHeight = '300px';
+    protected ?string $pollingInterval = null;
     protected int | string | array $columnSpan = 'full';
 
     public ?Model $record = null;

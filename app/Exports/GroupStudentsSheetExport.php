@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use Exception;
 use App\Models\Group;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
@@ -189,7 +190,7 @@ class GroupStudentsSheetExport implements FromCollection, ShouldAutoSize, WithEv
 
         try {
             return phone($phone, 'MA')->formatNational();
-        } catch (\Exception) {
+        } catch (Exception) {
             return $phone;
         }
     }

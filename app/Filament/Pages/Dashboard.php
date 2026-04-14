@@ -17,7 +17,7 @@ class Dashboard extends BaseDashboard
         return [
             FilterAction::make()
                 ->modalDescription('اختر الفترة المراد عرض الإحصائيات عليها')
-                ->form([
+                ->schema([
                     DatePicker::make('date_from')
                         ->label('من تاريخ')
                         ->default(now()->startOfMonth())

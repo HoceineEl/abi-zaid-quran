@@ -2,6 +2,8 @@
 
 namespace App\Traits\WhatsApp;
 
+use RuntimeException;
+use Exception;
 use App\Models\WhatsAppSession;
 use Carbon\Carbon;
 use Illuminate\Http\Client\Pool;
@@ -42,8 +44,8 @@ trait UtilityOperations
                 return $response->json();
             }
 
-            throw new \RuntimeException("HTTP {$response->status()}: ".$response->body());
-        } catch (\Exception $e) {
+            throw new RuntimeException("HTTP {$response->status()}: ".$response->body());
+        } catch (Exception $e) {
             Log::error('Failed to check WhatsApp number', [
                 'instance' => $instanceName,
                 'number' => $number,
@@ -81,7 +83,7 @@ trait UtilityOperations
         // Layer 3: Evolution API (slow, last resort)
         try {
             $groups = $this->fetchSessionGroupsFromApi($instanceName);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to get WhatsApp groups', [
                 'instance' => $instanceName,
                 'error' => $e->getMessage(),
@@ -121,7 +123,7 @@ trait UtilityOperations
                     ->values()
                     ->all();
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::warning('fetchAllGroups failed, trying findChats fallback', [
                 'instance' => $instanceName,
                 'error' => $e->getMessage(),
@@ -144,7 +146,7 @@ trait UtilityOperations
                     ->values()
                     ->all();
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::warning('findChats fallback also failed', [
                 'instance' => $instanceName,
                 'error' => $e->getMessage(),
@@ -186,8 +188,8 @@ trait UtilityOperations
                 return $data;
             }
 
-            throw new \RuntimeException("HTTP {$response->status()}: ".$response->body());
-        } catch (\Exception $e) {
+            throw new RuntimeException("HTTP {$response->status()}: ".$response->body());
+        } catch (Exception $e) {
             Log::error('Failed to get WhatsApp group participants', [
                 'instance' => $instanceName,
                 'group_jid' => $groupJid,
@@ -219,8 +221,8 @@ trait UtilityOperations
                 return $data;
             }
 
-            throw new \RuntimeException("HTTP {$response->status()}: ".$response->body());
-        } catch (\Exception $e) {
+            throw new RuntimeException("HTTP {$response->status()}: ".$response->body());
+        } catch (Exception $e) {
             Log::error('Failed to generate WhatsApp group invite link', [
                 'instance' => $instanceName,
                 'group_jid' => $groupJid,
@@ -254,8 +256,8 @@ trait UtilityOperations
                 return $data;
             }
 
-            throw new \RuntimeException("HTTP {$response->status()}: ".$response->body());
-        } catch (\Exception $e) {
+            throw new RuntimeException("HTTP {$response->status()}: ".$response->body());
+        } catch (Exception $e) {
             Log::error('Failed to create WhatsApp group', [
                 'instance' => $instanceName,
                 'group_name' => $name,
@@ -317,8 +319,8 @@ trait UtilityOperations
                 return $records;
             }
 
-            throw new \RuntimeException("HTTP {$response->status()}: ".$response->body());
-        } catch (\Exception $e) {
+            throw new RuntimeException("HTTP {$response->status()}: ".$response->body());
+        } catch (Exception $e) {
             Log::error('Failed to find WhatsApp group messages', [
                 'instance' => $instanceName,
                 'group_jid' => $groupJid,
@@ -473,7 +475,7 @@ trait UtilityOperations
                 $response = Http::withHeaders($this->evolutionHeaders())
                     ->timeout(5)
                     ->get("{$this->baseUrl}/instance/connectionState/{$instanceName}");
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 return null;
             }
         }
@@ -513,7 +515,7 @@ trait UtilityOperations
 
                 return $map;
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::warning('Sequential participants fetch failed, using cache', [
                 'instance' => $instanceName,
                 'group_jid' => $groupJid,
@@ -643,8 +645,8 @@ trait UtilityOperations
                 return $data;
             }
 
-            throw new \RuntimeException("HTTP {$response->status()}: ".$response->body());
-        } catch (\Exception $e) {
+            throw new RuntimeException("HTTP {$response->status()}: ".$response->body());
+        } catch (Exception $e) {
             Log::error('Failed to add participants to WhatsApp group', [
                 'instance' => $instanceName,
                 'group_jid' => $groupJid,
@@ -679,8 +681,8 @@ trait UtilityOperations
                 return $data;
             }
 
-            throw new \RuntimeException("HTTP {$response->status()}: ".$response->body());
-        } catch (\Exception $e) {
+            throw new RuntimeException("HTTP {$response->status()}: ".$response->body());
+        } catch (Exception $e) {
             Log::error('Failed to promote participants in WhatsApp group', [
                 'instance' => $instanceName,
                 'group_jid' => $groupJid,

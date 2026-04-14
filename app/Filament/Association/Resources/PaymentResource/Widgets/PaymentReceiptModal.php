@@ -8,7 +8,7 @@ use Livewire\Attributes\On;
 
 class PaymentReceiptModal extends Widget
 {
-    protected static string $view = 'filament.resources.payment-resource.widgets.payment-receipt-modal';
+    protected string $view = 'filament.resources.payment-resource.widgets.payment-receipt-modal';
 
     public Collection $payments;
 

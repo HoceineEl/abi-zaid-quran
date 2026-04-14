@@ -2,6 +2,8 @@
 
 namespace App\Filament\Actions;
 
+use Filament\Actions\BulkAction;
+use Exception;
 use App\Enums\WhatsAppMessageStatus;
 use App\Helpers\PhoneHelper;
 use App\Jobs\SendWhatsAppMessageJob;
@@ -10,7 +12,6 @@ use App\Models\WhatsAppMessageHistory;
 use App\Models\WhatsAppSession;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
-use Filament\Tables\Actions\BulkAction;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
@@ -86,7 +87,7 @@ class SendMessageToSelectedUsersAction extends BulkAction
             // Clean phone number using phone helper (remove + sign)
             try {
                 $phoneNumber = str_replace('+', '', phone($user->phone, 'MA')->formatE164());
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 $phoneNumber = null;
             }
 
@@ -123,7 +124,7 @@ class SendMessageToSelectedUsersAction extends BulkAction
 
                 $messagesQueued++;
 
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 Log::error('Failed to queue bulk message for user', [
                     'user_id' => $user->id,
                     'user_name' => $user->name,

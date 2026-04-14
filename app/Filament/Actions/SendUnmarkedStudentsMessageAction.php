@@ -2,6 +2,10 @@
 
 namespace App\Filament\Actions;
 
+use Filament\Actions\Action;
+use Filament\Forms\Components\Select;
+use Filament\Schemas\Components\Utilities\Get;
+use Exception;
 use App\Classes\Core;
 use App\Enums\WhatsAppMessageStatus;
 use App\Jobs\SendWhatsAppMessageJob;
@@ -12,9 +16,7 @@ use App\Models\WhatsAppSession;
 use Filament\Forms;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
-use Filament\Forms\Get;
 use Filament\Notifications\Notification;
-use Filament\Tables\Actions\Action;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
 
@@ -44,7 +46,7 @@ class SendUnmarkedStudentsMessageAction extends Action
 
                 // Only show template selection for admins
                 if ($isAdmin) {
-                    $fields[] = Forms\Components\Select::make('template_id')
+                    $fields[] = Select::make('template_id')
                         ->label('اختر قالب الرسالة')
                         ->options(function () use ($ownerRecord) {
                             if ($ownerRecord && method_exists($ownerRecord, 'messageTemplates')) {
@@ -264,7 +266,7 @@ class SendUnmarkedStudentsMessageAction extends Action
                 )->delay(now()->addSeconds($delay));
 
                 $messagesQueued++;
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 Log::error('Failed to queue WhatsApp message for unmarked student', [
                     'student_id' => $student->id,
                     'error' => $e->getMessage(),
@@ -283,7 +285,7 @@ class SendUnmarkedStudentsMessageAction extends Action
     {
         try {
             return str_replace('+', '', phone($phone, 'MA')->formatE164());
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return null;
         }
     }

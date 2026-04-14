@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Filament\Resources\GroupResource\RelationManagers\StudentsRelationManager;
 use App\Models\Group;
 use Illuminate\Support\Collection;
 
@@ -14,7 +15,7 @@ class AttendanceReportService
      */
     public static function prepareGroupExportData(Group $group, ?string $date = null): array
     {
-        $students = \App\Filament\Resources\GroupResource\RelationManagers\StudentsRelationManager::getSortedStudentsForAttendanceReport($group, $date);
+        $students = StudentsRelationManager::getSortedStudentsForAttendanceReport($group, $date);
 
         $countableStudents = $students->filter(fn($student) => self::shouldCountForAttendance($student));
         $presencePercentage = self::calculatePresencePercentage($countableStudents);

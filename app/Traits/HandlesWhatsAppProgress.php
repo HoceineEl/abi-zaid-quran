@@ -2,6 +2,7 @@
 
 namespace App\Traits;
 
+use Illuminate\Support\Collection;
 use App\Models\Student;
 
 trait HandlesWhatsAppProgress
@@ -44,7 +45,7 @@ trait HandlesWhatsAppProgress
     /**
      * Mark multiple students with WhatsApp progress records
      *
-     * @param \Illuminate\Support\Collection $students Collection of students
+     * @param Collection $students Collection of students
      * @param string|null $date Optional date, defaults to today
      * @return void
      */

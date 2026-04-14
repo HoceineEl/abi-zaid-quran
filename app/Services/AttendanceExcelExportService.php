@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use InvalidArgumentException;
 use App\Enums\AttendanceStatus;
 use App\Enums\MemorizationScore;
 use App\Enums\Troubles;
@@ -71,12 +72,12 @@ class AttendanceExcelExportService
 
         $dates = $this->filterDatesForGroup($group, $dates);
         if ($dates->isEmpty()) {
-            throw new \InvalidArgumentException('لا توجد أيام عمل لهذه المجموعة داخل الفترة المحددة.');
+            throw new InvalidArgumentException('لا توجد أيام عمل لهذه المجموعة داخل الفترة المحددة.');
         }
         $this->filterAttendancesToDates($memorizers, $dates);
 
         if ($memorizers->isEmpty()) {
-            throw new \InvalidArgumentException('لا يوجد طلاب مطابقون لفلتر الجنس في هذه المجموعة.');
+            throw new InvalidArgumentException('لا يوجد طلاب مطابقون لفلتر الجنس في هذه المجموعة.');
         }
 
         $spreadsheet = new Spreadsheet();
@@ -150,7 +151,7 @@ class AttendanceExcelExportService
         }
 
         if ($groups->isEmpty()) {
-            throw new \InvalidArgumentException('لا توجد مجموعات تحتوي على طلاب مطابقين لفلتر الجنس حالياً.');
+            throw new InvalidArgumentException('لا توجد مجموعات تحتوي على طلاب مطابقين لفلتر الجنس حالياً.');
         }
 
         $spreadsheet = new Spreadsheet();
@@ -178,7 +179,7 @@ class AttendanceExcelExportService
         })->filter(fn (array $context) => $context['dates']->isNotEmpty())->values();
 
         if ($contexts->isEmpty()) {
-            throw new \InvalidArgumentException('لا توجد مجموعات لها أيام عمل ضمن الفترة المحددة.');
+            throw new InvalidArgumentException('لا توجد مجموعات لها أيام عمل ضمن الفترة المحددة.');
         }
 
         $this->buildAllGroupsSummarySheet($spreadsheet, $contexts, $dateFrom, $dateTo);
@@ -230,7 +231,7 @@ class AttendanceExcelExportService
         $dateTo = Carbon::parse($to)->startOfDay();
 
         if ($dateFrom->greaterThan($dateTo)) {
-            throw new \InvalidArgumentException('يجب أن يكون تاريخ البداية قبل أو يساوي تاريخ النهاية.');
+            throw new InvalidArgumentException('يجب أن يكون تاريخ البداية قبل أو يساوي تاريخ النهاية.');
         }
 
         $dates = collect(CarbonPeriod::create($dateFrom, $dateTo))
@@ -238,7 +239,7 @@ class AttendanceExcelExportService
             ->values();
 
         if ($dates->count() > self::MAX_EXPORT_DAYS) {
-            throw new \InvalidArgumentException('لا يمكن تصدير أكثر من 183 يوماً في ملف واحد.');
+            throw new InvalidArgumentException('لا يمكن تصدير أكثر من 183 يوماً في ملف واحد.');
         }
 
         return [$dateFrom, $dateTo, $dates];

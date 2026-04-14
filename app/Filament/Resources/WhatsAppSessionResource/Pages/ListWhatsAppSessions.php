@@ -2,6 +2,10 @@
 
 namespace App\Filament\Resources\WhatsAppSessionResource\Pages;
 
+use Throwable;
+use Log;
+use Exception;
+use Filament\Forms\Components\TextInput;
 use App\Enums\WhatsAppConnectionStatus;
 use App\Filament\Resources\WhatsAppSessionResource;
 use App\Models\WhatsAppSession;
@@ -62,7 +66,7 @@ class ListWhatsAppSessions extends ListRecords
 
                 $this->refreshTable();
             }
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->handlePollingError($record, $e);
         }
     }
@@ -86,11 +90,11 @@ class ListWhatsAppSessions extends ListRecords
         cache()->put("poll_count_{$record->id}", $pollCount, now()->addHours(1));
     }
 
-    protected function handlePollingError(WhatsAppSession $record, \Throwable $e): void
+    protected function handlePollingError(WhatsAppSession $record, Throwable $e): void
     {
         $errorCount = cache()->increment("error_count_{$record->id}");
 
-        \Log::warning('WhatsApp polling error', [
+        Log::warning('WhatsApp polling error', [
             'session_id' => $record->id,
             'error_count' => $errorCount,
             'error' => $e->getMessage(),
@@ -175,7 +179,7 @@ class ListWhatsAppSessions extends ListRecords
             $this->dispatch('polling-interval-changed', ['interval' => $record->status->getPollingInterval()]);
 
             $this->refreshTable();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $record->markAsDisconnected();
 
             Notification::make()
@@ -196,8 +200,8 @@ class ListWhatsAppSessions extends ListRecords
                 ->icon('heroicon-o-plus')
                 ->color('success')
                 ->hidden(fn () => $this->hasActiveSession())
-                ->form([
-                    Forms\Components\TextInput::make('name')
+                ->schema([
+                    TextInput::make('name')
                         ->label('اسم الجلسة')
                         ->maxLength(255)
                         ->required()
@@ -223,7 +227,7 @@ class ListWhatsAppSessions extends ListRecords
                             ->body('سيظهر رمز QR خلال ثوانٍ قليلة')
                             ->info()
                             ->send();
-                    } catch (\Exception $e) {
+                    } catch (Exception $e) {
                         $record->markAsDisconnected();
 
                         Notification::make()
@@ -259,7 +263,7 @@ class ListWhatsAppSessions extends ListRecords
             try {
                 $whatsappService = app(WhatsAppService::class);
                 $whatsappService->logout($session);
-            } catch (\Exception) {
+            } catch (Exception) {
                 // Silent fail
             }
 
@@ -287,8 +291,8 @@ class ListWhatsAppSessions extends ListRecords
                     ->info()
                     ->send();
             }
-        } catch (\Exception $e) {
-            \Log::warning('Failed to cleanup existing sessions', [
+        } catch (Exception $e) {
+            Log::warning('Failed to cleanup existing sessions', [
                 'user_id' => auth()->id(),
                 'error' => $e->getMessage(),
             ]);

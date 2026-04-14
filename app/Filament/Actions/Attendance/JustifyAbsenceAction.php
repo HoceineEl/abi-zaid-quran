@@ -2,12 +2,12 @@
 
 namespace App\Filament\Actions\Attendance;
 
+use Filament\Actions\Action;
+use Filament\Support\Enums\Size;
 use App\Enums\AttendanceStatus;
 use App\Models\Memorizer;
 use Filament\Notifications\Notification;
-use Filament\Support\Enums\ActionSize;
 use Filament\Support\Enums\IconSize;
-use Filament\Tables\Actions\Action;
 
 class JustifyAbsenceAction extends Action
 {
@@ -25,7 +25,7 @@ class JustifyAbsenceAction extends Action
             ->label('')
             ->icon(AttendanceStatus::ABSENT_JUSTIFIED->getIcon())
             ->color(AttendanceStatus::ABSENT_JUSTIFIED->getColor())
-            ->size(ActionSize::ExtraLarge)
+            ->size(Size::ExtraLarge)
             ->iconSize(IconSize::Large)
             ->requiresConfirmation()
             ->modalHeading('تبرير الغياب')

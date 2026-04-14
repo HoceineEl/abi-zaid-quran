@@ -2,16 +2,16 @@
 
 namespace App\Filament\Actions;
 
+use Filament\Actions\BulkAction;
+use Filament\Support\Enums\Width;
+use Filament\Schemas\Components\Wizard\Step;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use App\Models\Group;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
-use Filament\Forms\Components\Wizard\Step;
-use Filament\Forms\Get;
-use Filament\Forms\Set;
 use Filament\Notifications\Notification;
-use Filament\Support\Enums\MaxWidth;
-use Filament\Tables\Actions\BulkAction;
 use Illuminate\Support\HtmlString;
 
 class BulkMarkAbsentAction extends BulkAction
@@ -28,7 +28,7 @@ class BulkMarkAbsentAction extends BulkAction
         $this->label('تسجيل الغائبين')
             ->icon('heroicon-o-x-circle')
             ->color('danger')
-            ->modalWidth(MaxWidth::Large)
+            ->modalWidth(Width::Large)
             ->modalHeading('تسجيل الغائبين جماعياً')
             ->modalSubmitActionLabel('تسجيل الغائبين')
             ->steps([

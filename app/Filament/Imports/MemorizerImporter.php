@@ -2,6 +2,7 @@
 
 namespace App\Filament\Imports;
 
+use Filament\Actions\Imports\Exceptions\RowImportFailedException;
 use App\Models\Memorizer;
 use App\Models\MemoGroup;
 use App\Models\Teacher;
@@ -215,7 +216,7 @@ class MemorizerImporter extends Importer
 
         // Skip record if no group assigned
         if (empty($this->record->memo_group_id)) {
-            throw new \Filament\Actions\Imports\Exceptions\RowImportFailedException('لم يتم تحديد المجموعة');
+            throw new RowImportFailedException('لم يتم تحديد المجموعة');
         }
 
         // Ensure the group has a teacher assigned (for sex derivation)

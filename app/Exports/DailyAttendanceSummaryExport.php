@@ -2,6 +2,8 @@
 
 namespace App\Exports;
 
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use Illuminate\Support\Collection;
 use App\Models\Group;
 use Carbon\Carbon;
 use Maatwebsite\Excel\Concerns\FromCollection;
@@ -24,7 +26,7 @@ class DailyAttendanceSummaryExport implements FromCollection, WithHeadings, Shou
     }
 
     /**
-     * @return \Illuminate\Support\Collection
+     * @return Collection
      */
     public function collection()
     {
@@ -94,31 +96,31 @@ class DailyAttendanceSummaryExport implements FromCollection, WithHeadings, Shou
 
                     // Color for total students (blue)
                     $sheet->getStyle($totalStudentsCell)->getFill()
-                        ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                        ->setFillType(Fill::FILL_SOLID)
                         ->getStartColor()->setARGB('BDD7EE');
                     $sheet->getStyle($totalStudentsCell)->getFont()->getColor()->setARGB('1F4E79');
 
                     // Color for present (green)
                     $sheet->getStyle($presentCell)->getFill()
-                        ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                        ->setFillType(Fill::FILL_SOLID)
                         ->getStartColor()->setARGB('C6EFCE');
                     $sheet->getStyle($presentCell)->getFont()->getColor()->setARGB('006100');
 
                     // Color for absent without reason (red)
                     $sheet->getStyle($absentCell)->getFill()
-                        ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                        ->setFillType(Fill::FILL_SOLID)
                         ->getStartColor()->setARGB('FFC7CE');
                     $sheet->getStyle($absentCell)->getFont()->getColor()->setARGB('9C0006');
 
                     // Color for absent with reason (yellow/amber)
                     $sheet->getStyle($absentWithReasonCell)->getFill()
-                        ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                        ->setFillType(Fill::FILL_SOLID)
                         ->getStartColor()->setARGB('FFEB9C');
                     $sheet->getStyle($absentWithReasonCell)->getFont()->getColor()->setARGB('9C6500');
 
                     // Color for not specified (gray)
                     $sheet->getStyle($notSpecifiedCell)->getFill()
-                        ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                        ->setFillType(Fill::FILL_SOLID)
                         ->getStartColor()->setARGB('D9D9D9');
                     $sheet->getStyle($notSpecifiedCell)->getFont()->getColor()->setARGB('595959');
                 }

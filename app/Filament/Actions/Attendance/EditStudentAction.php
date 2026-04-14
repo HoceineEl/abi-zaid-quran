@@ -2,10 +2,10 @@
 
 namespace App\Filament\Actions\Attendance;
 
+use Filament\Actions\Action;
 use App\Models\Memorizer;
 use Filament\Forms\Components\DatePicker;
 use Filament\Notifications\Notification;
-use Filament\Tables\Actions\Action;
 
 class EditStudentAction extends Action
 {

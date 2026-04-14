@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use Exception;
 use Filament\Pages\Page;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
@@ -9,12 +10,12 @@ use Filament\Notifications\Notification;
 
 class SubtitleCleaner extends Page
 {
-    protected static ?string $navigationIcon = 'heroicon-o-document-text';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-document-text';
     protected static ?string $navigationLabel = 'منظف الترجمات';
     protected static ?string $title = 'منظف ملفات الترجمة';
     protected static ?string $slug = 'subtitle-cleaner';
-    protected static string $view = 'filament.pages.subtitle-cleaner';
-    protected static ?string $navigationGroup = 'أدوات';
+    protected string $view = 'filament.pages.subtitle-cleaner';
+    protected static string | \UnitEnum | null $navigationGroup = 'أدوات';
 
     protected function getHeaderActions(): array
     {
@@ -23,7 +24,7 @@ class SubtitleCleaner extends Page
                 ->label('تنظيف ملف الترجمة')
                 ->icon('heroicon-o-document-text')
                 ->color('success')
-                ->form([
+                ->schema([
                     FileUpload::make('subtitle_file')
                         ->label('رفع ملف SRT')
                         ->required()
@@ -70,7 +71,7 @@ class SubtitleCleaner extends Page
                             'Content-Type' => 'text/plain',
                             'Content-Disposition' => 'attachment; filename=' . $cleanedFileName
                         ]);
-                    } catch (\Exception $e) {
+                    } catch (Exception $e) {
                         Notification::make()
                             ->title('خطأ في معالجة الملف')
                             ->danger()

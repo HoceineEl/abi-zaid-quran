@@ -2,6 +2,11 @@
 
 namespace App\Filament\Actions;
 
+use Filament\Actions\Action;
+use Filament\Forms\Components\ToggleButtons;
+use Filament\Forms\Components\Select;
+use Filament\Schemas\Components\Utilities\Get;
+use Exception;
 use App\Classes\Core;
 use App\Enums\MessageResponseStatus;
 use App\Enums\WhatsAppMessageStatus;
@@ -13,9 +18,7 @@ use App\Models\WhatsAppMessageHistory;
 use App\Models\WhatsAppSession;
 use Filament\Forms;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Get;
 use Filament\Notifications\Notification;
-use Filament\Tables\Actions\Action;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
 
@@ -58,7 +61,7 @@ class SendWhatsAppMessageToDisconnectedAction extends Action
         }
 
         $fields = [
-            Forms\Components\ToggleButtons::make('message_type')
+            ToggleButtons::make('message_type')
                 ->label('نوع الرسالة')
                 ->options([
                     'reminder' => 'الرسالة التذكيرية',
@@ -71,7 +74,7 @@ class SendWhatsAppMessageToDisconnectedAction extends Action
 
         // Template selection for admins
         if ($isAdmin && $group && method_exists($group, 'messageTemplates')) {
-            $fields[] = Forms\Components\Select::make('template_id')
+            $fields[] = Select::make('template_id')
                 ->label('اختر قالب الرسالة')
                 ->options(function () use ($group) {
                     return $group->messageTemplates()
@@ -178,7 +181,7 @@ ARABIC;
                 ->success()
                 ->send();
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to queue WhatsApp message for disconnected student', [
                 'student_id' => $student->id,
                 'error' => $e->getMessage(),

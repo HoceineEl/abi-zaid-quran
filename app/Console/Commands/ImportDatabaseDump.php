@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use Throwable;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
@@ -61,7 +62,7 @@ class ImportDatabaseDump extends Command
 
             DB::statement('SET FOREIGN_KEY_CHECKS = 1');
             $this->info('All tables dropped successfully.');
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->error('Failed to drop tables: '.$e->getMessage());
 
             return self::FAILURE;

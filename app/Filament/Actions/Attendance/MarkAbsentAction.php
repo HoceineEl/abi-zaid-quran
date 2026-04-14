@@ -2,14 +2,14 @@
 
 namespace App\Filament\Actions\Attendance;
 
+use Filament\Actions\Action;
+use Filament\Support\Enums\Size;
 use App\Enums\AttendanceStatus;
 use App\Models\Attendance;
 use App\Models\Memorizer;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
-use Filament\Support\Enums\ActionSize;
 use Filament\Support\Enums\IconSize;
-use Filament\Tables\Actions\Action;
 
 class MarkAbsentAction extends Action
 {
@@ -25,7 +25,7 @@ class MarkAbsentAction extends Action
         $this
             ->tooltip('تسجيل غياب')
             ->label('')
-            ->size(ActionSize::ExtraLarge)
+            ->size(Size::ExtraLarge)
             ->iconSize(IconSize::Large)
             ->extraAttributes(['class' => '[&_svg]:w-8 [&_svg]:h-8'])
             ->icon(AttendanceStatus::ABSENT_UNJUSTIFIED->getIcon())

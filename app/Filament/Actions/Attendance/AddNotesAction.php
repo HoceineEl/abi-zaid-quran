@@ -2,17 +2,17 @@
 
 namespace App\Filament\Actions\Attendance;
 
+use Filament\Actions\Action;
+use Filament\Support\Enums\Size;
+use Filament\Schemas\Components\Section;
+use App\Filament\Association\Resources\GroupResource;
 use App\Enums\MemorizationScore;
 use App\Enums\Troubles;
 use App\Models\Memorizer;
 use App\Models\User;
-use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\ToggleButtons;
-use Filament\Notifications\Actions\Action as NotificationAction;
 use Filament\Notifications\Notification;
-use Filament\Support\Enums\ActionSize;
-use Filament\Tables\Actions\Action;
 
 class AddNotesAction extends Action
 {
@@ -29,7 +29,7 @@ class AddNotesAction extends Action
             ->tooltip('إضافة ملاحظات وتقييم')
             ->label('')
             ->icon('heroicon-o-document-text')
-            ->size(ActionSize::ExtraLarge)
+            ->size(Size::ExtraLarge)
             ->color('info')
             ->slideOver()
             ->modalSubmitActionLabel('حفظ')
@@ -139,9 +139,9 @@ class AddNotesAction extends Action
             ->body("قام الطالب {$record->name} في مجموعة {$ownerRecord->name} بـ {$troublesLabels} بتاريخ " . now()->format('Y-m-d'))
             ->warning()
             ->actions([
-                NotificationAction::make('view_attendance')
+                Action::make('view_attendance')
                     ->label('عرض الحضور')
-                    ->url(fn () => \App\Filament\Association\Resources\GroupResource::getUrl(
+                    ->url(fn () => GroupResource::getUrl(
                         'view',
                         ['record' => $ownerRecord, 'activeRelationManager' => '0'],
                         panel: 'association'
