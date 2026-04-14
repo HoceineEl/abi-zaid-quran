@@ -12,7 +12,6 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class PaymentsRelationManager extends RelationManager
@@ -77,7 +76,7 @@ class PaymentsRelationManager extends RelationManager
             ->filters([
                 $this->getDateFilter(),
             ], layout: FiltersLayout::AboveContent)
-            ->query(fn (): Builder => $this->getQuery())
+            ->query(fn () => $this->getQuery())
             ->paginated(false)
             ->headerActions([])
             ->recordActions([])
@@ -134,7 +133,7 @@ class PaymentsRelationManager extends RelationManager
             ]);
     }
 
-    private function getQuery(): Builder
+    private function getQuery()
     {
         return $this->ownerRecord->memorizers()
             ->withCount(['payments as payment_count' => fn ($query) => $query->whereBetween('payment_date', [$this->dateFrom, $this->dateTo])])
