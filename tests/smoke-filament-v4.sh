@@ -86,11 +86,20 @@ filament_login() {
         ]);
     ' -- "$decoded_snapshot" "$email" "$password" "$token")
 
-    local base="${login_url%/*}"
+    # Livewire v4 uses a hashed prefix. Extract it from the page JS config.
+    local livewire_update_url
+    livewire_update_url=$(echo "$page" | grep -oE '[^"]+/update[^"]*' | grep 'livewire' | head -1)
+    if [[ -z "$livewire_update_url" ]]; then
+        # Fallback: derive from route list
+        livewire_update_url=$(php artisan route:list 2>/dev/null | grep "livewire.*update" | grep -oE 'livewire[^ ]+/update' | head -1)
+        livewire_update_url="${BASE_URL%/}/${livewire_update_url}"
+    fi
+    [[ "$livewire_update_url" != http* ]] && livewire_update_url="${BASE_URL%/}/${livewire_update_url#/}"
+
     local origin="${BASE_URL%/}"
     local update_resp
     update_resp=$(curl "${CURL_OPTS[@]}" -c "$cookies" -b "$cookies" \
-        -X POST "${origin}/livewire/update" \
+        -X POST "${livewire_update_url}" \
         -H "Content-Type: application/json" \
         -H "X-CSRF-TOKEN: $token" \
         -H "X-Livewire: true" \
