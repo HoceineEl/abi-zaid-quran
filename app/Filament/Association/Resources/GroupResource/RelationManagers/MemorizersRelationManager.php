@@ -340,13 +340,7 @@ class MemorizersRelationManager extends RelationManager
             ->modalHeading('قائمة المشاكل')
             ->modalSubmitAction(false)
             ->modalCancelAction(false)
-            ->schema(fn(Memorizer $record) => self::getTroublesInfolist($record));
-    }
-    public static function getTroublesInfolist(Memorizer $record): Schema
-    {
-        return Schema::make()
-            ->record($record)
-            ->components([
+            ->infolist(fn(Memorizer $record): array => [
                 RepeatableEntry::make('attendancesWithTroubles')
                     ->label('قائمة المشاكل')
                     ->schema([
@@ -369,7 +363,7 @@ class MemorizersRelationManager extends RelationManager
                             ->hidden(fn($state) => empty($state))
                             ->getStateUsing(fn($record) => $record->custom_note),
                     ])
-                    ->grid(2)
+                    ->grid(2),
             ]);
     }
 }
