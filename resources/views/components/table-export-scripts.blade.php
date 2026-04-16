@@ -378,9 +378,9 @@
                 const wrapper = document.createElement('div');
                 wrapper.style.cssText = `
                     background: ${dark ? '#0f172a' : '#f8fafc'};
-                    padding: 24px;
+                    padding: 24px 28px;
                     direction: rtl;
-                    width: 960px;
+                    width: 1040px;
                     font-family: Almarai, sans-serif;
                     color: ${dark ? '#f1f5f9' : '#1e293b'};
                 `;
@@ -472,27 +472,36 @@
                         background: ${card.bg};
                         border: 1px solid ${card.border};
                         border-radius: 10px;
-                        padding: 12px 8px;
+                        padding: 14px 8px 12px;
                         text-align: center;
+                        direction: ltr;
                     `;
 
-                    const valEl = document.createElement('div');
-                    valEl.style.cssText = `font-size:1.4rem; font-weight:800; color:${card.color}; line-height:1.1;`;
-                    valEl.textContent = card.value;
+                    // Number — large, always on its own line
+                    const numEl = document.createElement('div');
+                    numEl.style.cssText = `font-size:1.55rem; font-weight:800; color:${card.color}; line-height:1; letter-spacing:-0.5px;`;
+                    numEl.textContent = card.value;
+                    cardEl.appendChild(numEl);
 
+                    // Percentage — smaller, clearly below the number
                     if (card.pct !== null) {
-                        const pctEl = document.createElement('span');
-                        pctEl.style.cssText = `font-size:0.75rem; font-weight:400; opacity:0.70; margin-right:3px;`;
-                        pctEl.textContent = ` ${card.pct}%`;
-                        valEl.appendChild(pctEl);
+                        const pctEl = document.createElement('div');
+                        pctEl.style.cssText = `font-size:0.78rem; font-weight:600; color:${card.color}; opacity:0.65; margin-top:5px; letter-spacing:0.5px;`;
+                        pctEl.textContent = `${card.pct}%`;
+                        cardEl.appendChild(pctEl);
+                    } else {
+                        // spacer so cards with no pct have the same height
+                        const spacer = document.createElement('div');
+                        spacer.style.cssText = 'height:19px;';
+                        cardEl.appendChild(spacer);
                     }
 
+                    // Label — muted, at the bottom
                     const labelEl = document.createElement('div');
-                    labelEl.style.cssText = `font-size:0.7rem; color:${dark ? '#94a3b8' : '#64748b'}; margin-top:5px; font-weight:500;`;
+                    labelEl.style.cssText = `font-size:0.68rem; color:${dark ? '#94a3b8' : '#64748b'}; margin-top:6px; font-weight:600; direction:rtl;`;
                     labelEl.textContent = card.label;
-
-                    cardEl.appendChild(valEl);
                     cardEl.appendChild(labelEl);
+
                     statsRow.appendChild(cardEl);
                 });
 
@@ -534,7 +543,7 @@
                         backgroundColor: dark ? '#0f172a' : '#f8fafc',
                         useCORS:         true,
                         logging:         false,
-                        windowWidth:     960,
+                        windowWidth:     1040,
                     });
 
                     const blob = await new Promise(resolve => canvas.toBlob(resolve));
