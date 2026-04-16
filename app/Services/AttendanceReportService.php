@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Group;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
 class AttendanceReportService
@@ -65,5 +66,46 @@ class AttendanceReportService
     public static function prepareBulkExportData(Collection $groups, ?string $date = null): array
     {
         return $groups->map(fn (Group $group) => self::prepareGroupExportData($group, $date))->values()->all();
+    }
+
+    /**
+     * Prepare daily attendance summary export data for image export.
+     *
+     * @return array{html: string, date: string, formattedDate: string, totals: array<string, int|float>}
+     */
+    public static function prepareDailySummaryExportData(string $date, ?int $userId = null): array
+    {
+        $groups = Group::getDailyAttendanceSummary($date, $userId);
+
+        $totalStudents = $groups->sum('total_students');
+        $totalPresent = $groups->sum('present');
+        $totalAbsent = $groups->sum('absent');
+        $totalAbsentWithReason = $groups->sum('absent_with_reason');
+        $totalNotSpecified = $groups->sum('not_specified');
+
+        $percentage = fn (int $count): int => $totalStudents > 0
+            ? (int) round($count / $totalStudents * 100)
+            : 0;
+
+        $totals = [
+            'total_students' => $totalStudents,
+            'present' => $totalPresent,
+            'absent' => $totalAbsent,
+            'absent_with_reason' => $totalAbsentWithReason,
+            'not_specified' => $totalNotSpecified,
+            'present_pct' => $percentage($totalPresent),
+            'absent_pct' => $percentage($totalAbsent),
+            'absent_reason_pct' => $percentage($totalAbsentWithReason),
+            'not_specified_pct' => $percentage($totalNotSpecified),
+        ];
+
+        $html = view('components.daily-summary-export-table', compact('groups'))->render();
+
+        return [
+            'html' => $html,
+            'date' => $date,
+            'formattedDate' => Carbon::parse($date)->locale('ar')->translatedFormat('l، j F Y'),
+            'totals' => $totals,
+        ];
     }
 }

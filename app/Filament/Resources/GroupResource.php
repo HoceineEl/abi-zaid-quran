@@ -315,7 +315,7 @@ class GroupResource extends Resource
 
                 ActionsAction::make('export_daily_attendance_summary')
                     ->label('تصدير موجز الحضور اليومي')
-                    ->icon('heroicon-o-document-arrow-down')
+                    ->icon('heroicon-o-photo')
                     ->color('success')
                     ->size(ActionSize::ExtraSmall)
                     // ->visible(fn() => auth()->user()->role === 'admin')
@@ -329,10 +329,12 @@ class GroupResource extends Resource
                             ->format('Y-m-d')
                             ->native(false),
                     ])
-                    ->action(function (array $data) {
-                        $selectedDate = $data['export_date'];
-
-                        return Excel::download(new DailyAttendanceSummaryExport($selectedDate, auth()->id()), 'daily-attendance-summary-'.$selectedDate.'.xlsx');
+                    ->action(function (array $data, ListRecords $livewire) {
+                        $exportData = AttendanceReportService::prepareDailySummaryExportData(
+                            $data['export_date'],
+                            auth()->id()
+                        );
+                        $livewire->dispatch('export-daily-summary', $exportData);
                     }),
             ])
             ->bulkActions([

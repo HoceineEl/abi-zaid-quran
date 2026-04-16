@@ -372,7 +372,181 @@
                 showShareNotification(blobs, [groupData.groupName]);
             });
 
-            // Bulk export for multiple groups
+            // ── Daily Attendance Summary image export ─────────────────────────────
+
+            function buildDailySummaryWrapper(page, summaryData, totalPages, pageNum, dates, dark) {
+                const wrapper = document.createElement('div');
+                wrapper.style.cssText = `
+                    background: ${dark ? '#0f172a' : '#f8fafc'};
+                    padding: 24px;
+                    direction: rtl;
+                    width: 960px;
+                    font-family: Almarai, sans-serif;
+                    color: ${dark ? '#f1f5f9' : '#1e293b'};
+                `;
+                wrapper.setAttribute('data-theme', dark ? 'dark' : 'light');
+
+                // ── Header ──────────────────────────────────────────────────────────
+                const header = document.createElement('div');
+                header.style.cssText = `
+                    background: linear-gradient(135deg, #1e3a5f 0%, #1d4ed8 100%);
+                    padding: 18px 24px;
+                    border-radius: 12px;
+                    margin-bottom: 18px;
+                    text-align: center;
+                    color: white;
+                    box-shadow: 0 4px 12px rgba(29,78,216,0.35);
+                `;
+
+                const mainTitle = document.createElement('h2');
+                mainTitle.style.cssText = 'font-size:1.45rem; font-weight:bold; margin:0 0 4px;';
+                mainTitle.textContent = `تقرير الحضور ليوم: ${summaryData.formattedDate}`;
+                if (totalPages > 1) mainTitle.textContent += ` — صفحة ${pageNum} / ${totalPages}`;
+
+                const hijriEl = document.createElement('p');
+                hijriEl.style.cssText = 'font-size:0.9rem; opacity:0.75; margin:0;';
+                hijriEl.textContent = dates.hijriDate;
+
+                header.appendChild(mainTitle);
+                header.appendChild(hijriEl);
+                wrapper.appendChild(header);
+
+                // ── Summary stat cards ───────────────────────────────────────────────
+                const t = summaryData.totals;
+
+                const statsRow = document.createElement('div');
+                statsRow.style.cssText = `
+                    display: flex;
+                    gap: 10px;
+                    margin-bottom: 18px;
+                    flex-wrap: nowrap;
+                `;
+
+                const statCards = [
+                    {
+                        label : 'إجمالي الطلاب',
+                        value : String(t.total_students),
+                        pct   : null,
+                        color : dark ? '#60a5fa' : '#1d4ed8',
+                        bg    : dark ? 'rgba(29,78,216,0.18)' : '#dbeafe',
+                        border: dark ? 'rgba(96,165,250,0.35)' : '#bfdbfe',
+                    },
+                    {
+                        label : 'حاضر',
+                        value : String(t.present),
+                        pct   : t.present_pct,
+                        color : dark ? '#4ade80' : '#15803d',
+                        bg    : dark ? 'rgba(21,128,61,0.18)' : '#dcfce7',
+                        border: dark ? 'rgba(74,222,128,0.35)' : '#bbf7d0',
+                    },
+                    {
+                        label : 'غائب',
+                        value : String(t.absent),
+                        pct   : t.absent_pct,
+                        color : dark ? '#f87171' : '#b91c1c',
+                        bg    : dark ? 'rgba(185,28,28,0.18)' : '#fee2e2',
+                        border: dark ? 'rgba(248,113,113,0.35)' : '#fecaca',
+                    },
+                    {
+                        label : 'غائب بعذر',
+                        value : String(t.absent_with_reason),
+                        pct   : t.absent_reason_pct,
+                        color : dark ? '#fbbf24' : '#b45309',
+                        bg    : dark ? 'rgba(180,83,9,0.18)' : '#fef3c7',
+                        border: dark ? 'rgba(251,191,36,0.35)' : '#fde68a',
+                    },
+                    {
+                        label : 'لم يحدد',
+                        value : String(t.not_specified),
+                        pct   : t.not_specified_pct,
+                        color : dark ? '#94a3b8' : '#475569',
+                        bg    : dark ? 'rgba(71,85,105,0.25)' : '#f1f5f9',
+                        border: dark ? 'rgba(148,163,184,0.30)' : '#e2e8f0',
+                    },
+                ];
+
+                statCards.forEach(card => {
+                    const cardEl = document.createElement('div');
+                    cardEl.style.cssText = `
+                        flex: 1;
+                        background: ${card.bg};
+                        border: 1px solid ${card.border};
+                        border-radius: 10px;
+                        padding: 12px 8px;
+                        text-align: center;
+                    `;
+
+                    const valEl = document.createElement('div');
+                    valEl.style.cssText = `font-size:1.4rem; font-weight:800; color:${card.color}; line-height:1.1;`;
+                    valEl.textContent = card.value;
+
+                    if (card.pct !== null) {
+                        const pctEl = document.createElement('span');
+                        pctEl.style.cssText = `font-size:0.75rem; font-weight:400; opacity:0.70; margin-right:3px;`;
+                        pctEl.textContent = ` ${card.pct}%`;
+                        valEl.appendChild(pctEl);
+                    }
+
+                    const labelEl = document.createElement('div');
+                    labelEl.style.cssText = `font-size:0.7rem; color:${dark ? '#94a3b8' : '#64748b'}; margin-top:5px; font-weight:500;`;
+                    labelEl.textContent = card.label;
+
+                    cardEl.appendChild(valEl);
+                    cardEl.appendChild(labelEl);
+                    statsRow.appendChild(cardEl);
+                });
+
+                wrapper.appendChild(statsRow);
+
+                // ── Table ────────────────────────────────────────────────────────────
+                wrapper.appendChild(page.cloneNode(true));
+
+                // ── Footer ───────────────────────────────────────────────────────────
+                const footer = document.createElement('div');
+                footer.style.cssText = `margin-top:14px; text-align:left; font-size:11px; color:${dark ? '#475569' : '#94a3b8'};`;
+                footer.textContent = `تم التصدير في: ${dates.formattedDate}`;
+                wrapper.appendChild(footer);
+
+                return wrapper;
+            }
+
+            Livewire.on('export-daily-summary', async (data) => {
+                const summaryData = data[0];
+                const dark  = isDarkMode();
+                const dates = getFormattedDates();
+
+                const container = document.createElement('div');
+                container.style.cssText = 'position:absolute; left:-9999px;';
+                container.innerHTML = summaryData.html;
+                container.setAttribute('data-theme', dark ? 'dark' : 'light');
+                document.body.appendChild(container);
+
+                const pages = container.querySelectorAll('.table-page');
+                const blobs = [];
+
+                for (const page of pages) {
+                    const pageNum = page.getAttribute('data-page') || '1';
+                    const wrapper = buildDailySummaryWrapper(page, summaryData, pages.length, pageNum, dates, dark);
+                    document.body.appendChild(wrapper);
+
+                    const canvas = await html2canvas(wrapper, {
+                        scale:           2,
+                        backgroundColor: dark ? '#0f172a' : '#f8fafc',
+                        useCORS:         true,
+                        logging:         false,
+                        windowWidth:     960,
+                    });
+
+                    const blob = await new Promise(resolve => canvas.toBlob(resolve));
+                    blobs.push(blob);
+                    document.body.removeChild(wrapper);
+                }
+
+                document.body.removeChild(container);
+                showShareNotification(blobs, ['موجز-الحضور-اليومي']);
+            });
+
+            // ── Bulk export for multiple groups ──────────────────────────────────
             Livewire.on('export-tables-bulk', async (data) => {
                 const groups = data[0].groups;
                 const allBlobs = [];
