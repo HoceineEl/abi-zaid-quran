@@ -424,14 +424,6 @@
 
                 const statCards = [
                     {
-                        label : 'إجمالي الطلاب',
-                        value : String(t.total_students),
-                        pct   : null,
-                        color : dark ? '#60a5fa' : '#1d4ed8',
-                        bg    : dark ? 'rgba(29,78,216,0.18)' : '#dbeafe',
-                        border: dark ? 'rgba(96,165,250,0.35)' : '#bfdbfe',
-                    },
-                    {
                         label : 'حاضر',
                         value : String(t.present),
                         pct   : t.present_pct,
@@ -477,10 +469,10 @@
                         direction: ltr;
                     `;
 
-                    // Big display — percentage for stat cards, raw count for total students
+                    // Big percentage display
                     const displayEl = document.createElement('div');
                     displayEl.style.cssText = `font-size:1.75rem; font-weight:800; color:${card.color}; line-height:1; letter-spacing:-0.5px;`;
-                    displayEl.textContent = card.pct !== null ? `${card.pct}%` : card.value;
+                    displayEl.textContent = `${card.pct}%`;
                     cardEl.appendChild(displayEl);
 
                     // Label — muted, at the bottom
