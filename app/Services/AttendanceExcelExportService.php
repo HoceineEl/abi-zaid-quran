@@ -961,6 +961,7 @@ class AttendanceExcelExportService
             MemorizationScore::GOOD => ['BBF7D0', '166534'],
             MemorizationScore::VERY_GOOD => ['BFDBFE', '1D4ED8'],
             MemorizationScore::FAIR => ['FDE68A', '92400E'],
+            MemorizationScore::AVERAGE => ['FEF3C7', '92400E'],
             MemorizationScore::ACCEPTABLE => ['E5E7EB', '374151'],
             MemorizationScore::POOR => ['FCA5A5', '991B1B'],
             MemorizationScore::NOT_MEMORIZED => ['FDA4AF', '9F1239'],

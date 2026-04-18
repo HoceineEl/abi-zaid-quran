@@ -9,9 +9,10 @@ use Filament\Support\Contracts\HasIcon;
 enum MemorizationScore: string implements HasColor, HasLabel, HasIcon
 {
     case EXCELLENT = 'excellent';
-    case GOOD = 'good'; 
+    case GOOD = 'good';
     case VERY_GOOD = 'very_good';
     case FAIR = 'fair';
+    case AVERAGE = 'average';
     case ACCEPTABLE = 'acceptable';
     case POOR = 'poor';
     case NOT_MEMORIZED = 'not_memorized';
@@ -23,6 +24,7 @@ enum MemorizationScore: string implements HasColor, HasLabel, HasIcon
             self::GOOD => 'success',
             self::VERY_GOOD => 'info',
             self::FAIR => 'warning',
+            self::AVERAGE => 'warning',
             self::ACCEPTABLE => 'gray',
             self::POOR, self::NOT_MEMORIZED => 'danger',
         };
@@ -34,7 +36,8 @@ enum MemorizationScore: string implements HasColor, HasLabel, HasIcon
             self::EXCELLENT => 'ممتاز',
             self::GOOD => 'جيد',
             self::VERY_GOOD => 'حسن',
-            self::FAIR => 'مستحسن', 
+            self::FAIR => 'مستحسن',
+            self::AVERAGE => 'متوسط',
             self::ACCEPTABLE => 'لا بأس به',
             self::POOR => 'لم يحفظ',
             self::NOT_MEMORIZED => 'لم يستظهر',
@@ -48,6 +51,7 @@ enum MemorizationScore: string implements HasColor, HasLabel, HasIcon
             self::GOOD => 'tabler-thumb-up',
             self::VERY_GOOD => 'tabler-award',
             self::FAIR => 'tabler-circle-check',
+            self::AVERAGE => 'tabler-minus',
             self::ACCEPTABLE => 'tabler-mood-neutral',
             self::POOR => 'tabler-thumb-down',
             self::NOT_MEMORIZED => 'tabler-circle-x',

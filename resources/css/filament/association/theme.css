@@ -331,6 +331,22 @@ body {
     background: #777;
 }
 
+.fi-fo-toggle-buttons {
+    gap: 0.375rem !important;
+}
+
+.fi-fo-toggle-buttons-item {
+    padding: 0.375rem 0.75rem !important;
+    font-size: 0.8125rem !important;
+    min-height: unset !important;
+}
+
+.fi-fo-toggle-buttons-item .fi-icon,
+.fi-fo-toggle-buttons-item svg {
+    width: 1rem !important;
+    height: 1rem !important;
+}
+
 
 
 

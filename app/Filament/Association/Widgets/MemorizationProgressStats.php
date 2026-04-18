@@ -40,8 +40,9 @@ class MemorizationProgressStats extends BaseWidget
                 WHEN score = "' . MemorizationScore::VERY_GOOD->value . '" THEN 4
                 WHEN score = "' . MemorizationScore::GOOD->value . '" THEN 3
                 WHEN score = "' . MemorizationScore::FAIR->value . '" THEN 2
+                WHEN score = "' . MemorizationScore::AVERAGE->value . '" THEN 1.5
                 WHEN score = "' . MemorizationScore::POOR->value . '" THEN 1
-                ELSE 0 
+                ELSE 0
             END'));
 
         $presentWithoutScoreCount = Attendance::whereBetween('date', [$dateFrom, $dateTo])
