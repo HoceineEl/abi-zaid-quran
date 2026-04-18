@@ -4,6 +4,8 @@ namespace App\Filament\Association\Resources\GroupResource\RelationManagers;
 
 use App\Enums\AttendanceStatus;
 use App\Filament\Actions\Attendance\AddNotesAction;
+use App\Filament\Actions\Attendance\BulkAddNotesAction;
+use App\Filament\Actions\Attendance\BulkSendWhatsAppAction;
 use App\Filament\Actions\Attendance\ClearAttendanceAction;
 use App\Filament\Actions\Attendance\EditStudentAction;
 use App\Filament\Actions\Attendance\JustifyPastAbsenceAction;
@@ -30,7 +32,6 @@ use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Model;
 use Filament\Tables\Enums\ActionsPosition;
 use Filament\Tables\Actions\Action;
-use Filament\Forms\Components\Textarea;
 use Filament\Support\Enums\ActionSize;
 
 class AttendanceTeacherRelationManager extends RelationManager
@@ -153,6 +154,8 @@ class AttendanceTeacherRelationManager extends RelationManager
             ->bulkActions([
                 $this->markPresentBulkAction(),
                 $this->markAbsentBulkAction(),
+                BulkAddNotesAction::make(),
+                BulkSendWhatsAppAction::make(),
                 BulkActionGroup::make([
                     $this->revertAttendanceBulkAction(),
                     DeleteBulkAction::make(),

@@ -5,7 +5,7 @@ namespace App\Filament\Actions\Attendance;
 use App\Enums\MemorizationScore;
 use App\Enums\Troubles;
 use App\Models\Memorizer;
-use App\Models\User;
+use App\Services\AttendanceActionService;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\ToggleButtons;
@@ -93,60 +93,33 @@ class AddNotesAction extends Action
                 ->where('check_in_time', '!=', null)
                 ->exists())
             ->action(function (Memorizer $record, array $data): void {
-                $attendance = $record->attendances()
-                    ->whereDate('date', now()->toDateString())
-                    ->first();
+                $saved = AttendanceActionService::saveNotes($record, $data);
 
-                if (! $attendance) {
+                if (! $saved) {
                     return;
                 }
 
-                $attendance->update([
-                    'notes' => $data['behavioral_issues'],
-                    'score' => $data['score'],
-                    'custom_note' => $data['custom_note'],
-                ]);
+                if (! empty($data['behavioral_issues'])) {
+                    $ownerRecord = $this->getLivewire()->getOwnerRecord();
 
-                $this->notifyAdminsIfTroubles($record, $data);
+                    AttendanceActionService::notifyAdminsOfTroubles(
+                        $record,
+                        $data['behavioral_issues'],
+                        $ownerRecord->name,
+                        NotificationAction::make('view_attendance')
+                            ->label('عرض الحضور')
+                            ->url(fn () => \App\Filament\Association\Resources\GroupResource::getUrl(
+                                'view',
+                                ['record' => $ownerRecord, 'activeRelationManager' => '0'],
+                                panel: 'association'
+                            )),
+                    );
+                }
 
                 Notification::make()
                     ->title('تم حفظ الملاحظات بنجاح')
                     ->success()
                     ->send();
             });
-    }
-
-    /**
-     * Send notifications to association admins when behavioral issues are recorded.
-     */
-    private function notifyAdminsIfTroubles(Memorizer $record, array $data): void
-    {
-        if (empty($data['behavioral_issues'])) {
-            return;
-        }
-
-        $associationAdmins = User::where('email', 'LIKE', '%@association.com')->get();
-
-        $troublesLabels = collect($data['behavioral_issues'])
-            ->map(fn (string $trouble) => Troubles::tryFrom($trouble)?->getLabel())
-            ->filter()
-            ->implode('، ');
-
-        $ownerRecord = $this->getLivewire()->getOwnerRecord();
-
-        Notification::make()
-            ->title("مشكلة سلوكية للطالب {$record->name}")
-            ->body("قام الطالب {$record->name} في مجموعة {$ownerRecord->name} بـ {$troublesLabels} بتاريخ " . now()->format('Y-m-d'))
-            ->warning()
-            ->actions([
-                NotificationAction::make('view_attendance')
-                    ->label('عرض الحضور')
-                    ->url(fn () => \App\Filament\Association\Resources\GroupResource::getUrl(
-                        'view',
-                        ['record' => $ownerRecord, 'activeRelationManager' => '0'],
-                        panel: 'association'
-                    )),
-            ])
-            ->sendToDatabase($associationAdmins);
     }
 }

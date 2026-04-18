@@ -5,6 +5,7 @@ namespace App\Filament\Actions\Attendance;
 use App\Enums\MemorizationScore;
 use App\Enums\Troubles;
 use App\Models\Memorizer;
+use App\Services\AttendanceActionService;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Support\Colors\Color;
@@ -28,7 +29,7 @@ class SendWhatsAppAction extends Action
             ->size(ActionSize::ExtraLarge)
             ->icon('tabler-message-circle')
             ->color('success')
-            ->hidden(fn (Memorizer $record) => ! static::resolvePhone($record))
+            ->hidden(fn (Memorizer $record) => ! AttendanceActionService::resolvePhone($record))
             ->form([
                 ToggleButtons::make('message_type')
                     ->label('نوع الرسالة')
@@ -67,23 +68,19 @@ class SendWhatsAppAction extends Action
                     ->rows(8),
             ])
             ->action(function (Memorizer $record, array $data) {
-                $phone = static::resolvePhone($record);
-                if (! $phone) {
+                $dispatch = AttendanceActionService::buildWhatsAppDispatch(
+                    $record,
+                    $data['message_type'],
+                    $data['message'],
+                );
+
+                if (! $dispatch) {
                     return;
                 }
 
-                $isParent = ! $record->phone && (bool) $record->guardian?->phone;
-                $phone = preg_replace('/[^0-9]/', '', $phone);
-                $originalMessage = $data['message'];
+                AttendanceActionService::logWhatsAppReminder($record, $data['message_type'], $dispatch);
 
-                $record->reminderLogs()->create([
-                    'type' => $data['message_type'],
-                    'phone_number' => $phone,
-                    'message' => mb_substr($originalMessage, 0, 50),
-                    'is_parent' => $isParent,
-                ]);
-
-                return redirect()->away("https://wa.me/{$phone}?text=" . rawurlencode($originalMessage));
+                return redirect()->away($dispatch['url']);
             });
     }
 
@@ -118,10 +115,5 @@ class SendWhatsAppAction extends Action
         }
 
         return 'absence';
-    }
-
-    private static function resolvePhone(Memorizer $record): ?string
-    {
-        return $record->phone ?: $record->guardian?->phone;
     }
 }
