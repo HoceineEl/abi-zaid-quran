@@ -30,9 +30,9 @@
             font-weight: 800;
             font-size: 0.95rem;
             color: #ffffff;
-            white-space: pre-line;
+            white-space: nowrap;
             line-height: 1.3;
-            letter-spacing: 0.3px;
+            letter-spacing: 0;
         }
 
         .ds-table tbody td {
