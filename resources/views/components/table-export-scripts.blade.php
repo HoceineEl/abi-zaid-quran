@@ -472,33 +472,20 @@
                         background: ${card.bg};
                         border: 1px solid ${card.border};
                         border-radius: 10px;
-                        padding: 14px 8px 12px;
+                        padding: 16px 8px 14px;
                         text-align: center;
                         direction: ltr;
                     `;
 
-                    // Number — large, always on its own line
-                    const numEl = document.createElement('div');
-                    numEl.style.cssText = `font-size:1.55rem; font-weight:800; color:${card.color}; line-height:1; letter-spacing:-0.5px;`;
-                    numEl.textContent = card.value;
-                    cardEl.appendChild(numEl);
-
-                    // Percentage — smaller, clearly below the number
-                    if (card.pct !== null) {
-                        const pctEl = document.createElement('div');
-                        pctEl.style.cssText = `font-size:0.78rem; font-weight:600; color:${card.color}; opacity:0.65; margin-top:5px; letter-spacing:0.5px;`;
-                        pctEl.textContent = `${card.pct}%`;
-                        cardEl.appendChild(pctEl);
-                    } else {
-                        // spacer so cards with no pct have the same height
-                        const spacer = document.createElement('div');
-                        spacer.style.cssText = 'height:19px;';
-                        cardEl.appendChild(spacer);
-                    }
+                    // Big display — percentage for stat cards, raw count for total students
+                    const displayEl = document.createElement('div');
+                    displayEl.style.cssText = `font-size:1.75rem; font-weight:800; color:${card.color}; line-height:1; letter-spacing:-0.5px;`;
+                    displayEl.textContent = card.pct !== null ? `${card.pct}%` : card.value;
+                    cardEl.appendChild(displayEl);
 
                     // Label — muted, at the bottom
                     const labelEl = document.createElement('div');
-                    labelEl.style.cssText = `font-size:0.68rem; color:${dark ? '#94a3b8' : '#64748b'}; margin-top:6px; font-weight:600; direction:rtl;`;
+                    labelEl.style.cssText = `font-size:0.72rem; color:${dark ? '#94a3b8' : '#64748b'}; margin-top:10px; font-weight:600; direction:rtl;`;
                     labelEl.textContent = card.label;
                     cardEl.appendChild(labelEl);
 

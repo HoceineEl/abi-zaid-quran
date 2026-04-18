@@ -16,68 +16,85 @@
 
         .ds-table {
             width: 100%;
-            border-collapse: collapse;
-            font-size: 0.85rem;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 0.9rem;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
         }
 
         .ds-table thead tr th {
-            padding: 12px 8px;
+            padding: 16px 10px;
             text-align: center;
-            font-weight: 700;
-            font-size: 0.8rem;
+            font-weight: 800;
+            font-size: 0.95rem;
             color: #ffffff;
             white-space: pre-line;
-            line-height: 1.35;
+            line-height: 1.3;
+            letter-spacing: 0.3px;
         }
 
         .ds-table tbody td {
-            padding: 7px 8px;
+            padding: 12px 10px;
             border-bottom: 1px solid var(--border-color);
             text-align: center;
             vertical-align: middle;
             color: var(--text-primary);
         }
 
+        .ds-table tbody tr:last-child td { border-bottom: none; }
+
         .ds-table tbody tr:nth-child(even) td { background-color: var(--bg-secondary); }
         .ds-table tbody tr:nth-child(odd)  td { background-color: var(--bg-primary);   }
 
-        .th-name      { background-color: #1e3a5f; min-width: 170px; text-align: right !important; padding-right: 14px !important; }
-        .th-total     { background-color: #1d4ed8; min-width: 72px; }
-        .th-present   { background-color: #15803d; min-width: 72px; }
-        .th-absent    { background-color: #b91c1c; min-width: 72px; }
-        .th-justified { background-color: #b45309; min-width: 80px; }
-        .th-undefined { background-color: #475569; min-width: 72px; }
+        .th-name      { background-color: #1e3a5f; min-width: 200px; text-align: right !important; padding-right: 16px !important; }
+        .th-total     { background-color: #1d4ed8; min-width: 90px; }
+        .th-present   { background-color: #15803d; min-width: 90px; }
+        .th-absent    { background-color: #b91c1c; min-width: 90px; }
+        .th-justified { background-color: #b45309; min-width: 100px; }
+        .th-undefined { background-color: #475569; min-width: 90px; }
 
         .td-name {
             text-align: right !important;
-            font-weight: 600;
+            font-weight: 700;
+            font-size: 0.95rem;
             color: var(--text-primary);
-            padding-right: 14px !important;
+            padding-right: 16px !important;
         }
 
-        /* Each stat cell shows number + pct stacked */
+        /* Each stat cell: big number on top, clearly separated percentage pill below */
         .cell-block {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 0;
+            gap: 5px;
             line-height: 1;
+            direction: ltr;
         }
 
         .cell-num {
-            font-weight: 700;
-            font-size: 1rem;
-            line-height: 1.2;
+            font-weight: 800;
+            font-size: 1.3rem;
+            line-height: 1;
+            letter-spacing: -0.5px;
         }
 
         .cell-pct {
-            font-size: 0.65rem;
-            font-weight: 500;
-            opacity: 0.58;
-            line-height: 1.2;
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 999px;
+            line-height: 1.3;
+            letter-spacing: 0.3px;
+            display: inline-block;
         }
 
-        .cell-dash { opacity: 0.4; font-size: 0.9rem; }
+        .cell-dash {
+            opacity: 0.3;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
 
         .td-total     .cell-num { color: #1d4ed8; }
         .td-present   .cell-num { color: #15803d; }
@@ -85,11 +102,10 @@
         .td-justified .cell-num { color: #92400e; }
         .td-undefined .cell-num { color: #475569; }
 
-        .td-total     .cell-pct { color: #1d4ed8; }
-        .td-present   .cell-pct { color: #15803d; }
-        .td-absent    .cell-pct { color: #b91c1c; }
-        .td-justified .cell-pct { color: #92400e; }
-        .td-undefined .cell-pct { color: #475569; }
+        .td-present   .cell-pct { background: #dcfce7; color: #15803d; }
+        .td-absent    .cell-pct { background: #fee2e2; color: #b91c1c; }
+        .td-justified .cell-pct { background: #fef3c7; color: #92400e; }
+        .td-undefined .cell-pct { background: #f1f5f9; color: #475569; }
 
         [data-theme="dark"] .td-total     .cell-num { color: #60a5fa; }
         [data-theme="dark"] .td-present   .cell-num { color: #4ade80; }
@@ -97,21 +113,22 @@
         [data-theme="dark"] .td-justified .cell-num { color: #fbbf24; }
         [data-theme="dark"] .td-undefined .cell-num { color: #94a3b8; }
 
-        [data-theme="dark"] .td-total     .cell-pct { color: #60a5fa; }
-        [data-theme="dark"] .td-present   .cell-pct { color: #4ade80; }
-        [data-theme="dark"] .td-absent    .cell-pct { color: #f87171; }
-        [data-theme="dark"] .td-justified .cell-pct { color: #fbbf24; }
-        [data-theme="dark"] .td-undefined .cell-pct { color: #94a3b8; }
+        [data-theme="dark"] .td-present   .cell-pct { background: rgba(21,128,61,0.25);  color: #4ade80; }
+        [data-theme="dark"] .td-absent    .cell-pct { background: rgba(185,28,28,0.25);  color: #f87171; }
+        [data-theme="dark"] .td-justified .cell-pct { background: rgba(180,83,9,0.25);   color: #fbbf24; }
+        [data-theme="dark"] .td-undefined .cell-pct { background: rgba(71,85,105,0.35);  color: #94a3b8; }
+
+        .table-page + .table-page { margin-top: 20px; }
     </style>
 
     @php
-        $chunks = $groups->chunk(28);
+        $chunks = $groups->chunk(18);
 
         $statColumns = [
             ['key' => 'present',            'class' => 'present',   'label' => "حاضر"],
             ['key' => 'absent',             'class' => 'absent',    'label' => "غائب"],
-            ['key' => 'absent_with_reason', 'class' => 'justified', 'label' => "غائب\nبعذر"],
-            ['key' => 'not_specified',      'class' => 'undefined', 'label' => "لم\nيحدد"],
+            ['key' => 'absent_with_reason', 'class' => 'justified', 'label' => "غائب بعذر"],
+            ['key' => 'not_specified',      'class' => 'undefined', 'label' => "لم يحدد"],
         ];
     @endphp
 
@@ -121,7 +138,7 @@
                 <thead>
                     <tr>
                         <th class="th-name">اسم المجموعة</th>
-                        <th class="th-total">إجمالي&#10;الطلاب</th>
+                        <th class="th-total">إجمالي الطلاب</th>
                         @foreach ($statColumns as $column)
                             <th class="th-{{ $column['class'] }}">{{ $column['label'] }}</th>
                         @endforeach
