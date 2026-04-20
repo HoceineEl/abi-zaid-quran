@@ -18,17 +18,17 @@
             width: 100%;
             border-collapse: separate;
             border-spacing: 0;
-            font-size: 0.9rem;
+            font-size: 1.05rem;
             border-radius: 10px;
             overflow: hidden;
             box-shadow: 0 1px 3px rgba(0,0,0,0.06);
         }
 
         .ds-table thead tr th {
-            padding: 16px 10px;
+            padding: 18px 10px;
             text-align: center;
             font-weight: 800;
-            font-size: 0.95rem;
+            font-size: 1.15rem;
             color: #ffffff;
             white-space: nowrap;
             line-height: 1.3;
@@ -36,7 +36,7 @@
         }
 
         .ds-table tbody td {
-            padding: 12px 10px;
+            padding: 14px 10px;
             border-bottom: 1px solid var(--border-color);
             text-align: center;
             vertical-align: middle;
@@ -48,17 +48,17 @@
         .ds-table tbody tr:nth-child(even) td { background-color: var(--bg-secondary); }
         .ds-table tbody tr:nth-child(odd)  td { background-color: var(--bg-primary);   }
 
-        .th-name      { background-color: #1e3a5f; min-width: 200px; text-align: right !important; padding-right: 16px !important; }
-        .th-total     { background-color: #1d4ed8; min-width: 90px; }
-        .th-present   { background-color: #15803d; min-width: 90px; }
-        .th-absent    { background-color: #b91c1c; min-width: 90px; }
-        .th-justified { background-color: #b45309; min-width: 100px; }
-        .th-undefined { background-color: #475569; min-width: 90px; }
+        .th-name      { background-color: #1e3a5f; min-width: 220px; text-align: right !important; padding-right: 16px !important; }
+        .th-total     { background-color: #1d4ed8; min-width: 100px; }
+        .th-present   { background-color: #15803d; min-width: 100px; }
+        .th-absent    { background-color: #b91c1c; min-width: 100px; }
+        .th-justified { background-color: #b45309; min-width: 110px; }
+        .th-undefined { background-color: #475569; min-width: 100px; }
 
         .td-name {
             text-align: right !important;
             font-weight: 700;
-            font-size: 0.95rem;
+            font-size: 1.2rem;
             color: var(--text-primary);
             padding-right: 16px !important;
         }
@@ -75,15 +75,15 @@
 
         .cell-num {
             font-weight: 800;
-            font-size: 1.3rem;
+            font-size: 1.6rem;
             line-height: 1;
             letter-spacing: -0.5px;
         }
 
         .cell-pct {
-            font-size: 0.7rem;
+            font-size: 0.85rem;
             font-weight: 700;
-            padding: 2px 8px;
+            padding: 3px 10px;
             border-radius: 999px;
             line-height: 1.3;
             letter-spacing: 0.3px;
@@ -92,7 +92,7 @@
 
         .cell-dash {
             opacity: 0.3;
-            font-size: 1.2rem;
+            font-size: 1.5rem;
             font-weight: 600;
         }
 
@@ -122,7 +122,7 @@
     </style>
 
     @php
-        $chunks = $groups->chunk(18);
+        $chunks = $groups->chunk(32);
 
         $statColumns = [
             ['key' => 'present',            'class' => 'present',   'label' => "حاضر"],
