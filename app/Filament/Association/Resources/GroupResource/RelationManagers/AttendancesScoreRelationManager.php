@@ -121,12 +121,23 @@ class AttendancesScoreRelationManager extends RelationManager
                     ->action(function () {
                         $date = now()->format('Y-m-d');
 
-                        $memorizers = $this->ownerRecord->memorizers()->get();
+                        $memorizers = $this->ownerRecord->memorizers()
+                            ->with(['attendances' => fn ($q) => $q->whereDate('date', $date)])
+                            ->get();
+
+                        $presentCount = $memorizers->filter(
+                            fn ($m) => $m->attendances->first()?->check_in_time !== null
+                        )->count();
+
+                        $presencePercentage = $memorizers->count() > 0
+                            ? (int) round(($presentCount / $memorizers->count()) * 100)
+                            : 0;
 
                         $html = view('components.attendance-export-table', [
                             'memorizers' => $memorizers,
                             'group' => $this->ownerRecord,
                             'date' => $date,
+                            'presencePercentage' => $presencePercentage,
                         ])->render();
 
                         $this->dispatch('export-table', [

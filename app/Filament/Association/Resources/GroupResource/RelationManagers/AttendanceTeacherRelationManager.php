@@ -220,12 +220,12 @@ class AttendanceTeacherRelationManager extends RelationManager
                     'memorizers' => $memorizers,
                     'group' => $this->ownerRecord,
                     'date' => $date,
+                    'presencePercentage' => $presencePercentage,
                 ])->render();
 
                 $this->dispatch('export-table', [
                     'html' => $html,
                     'groupName' => $this->ownerRecord->name,
-                    'presencePercentage' => $presencePercentage,
                 ]);
             });
     }
