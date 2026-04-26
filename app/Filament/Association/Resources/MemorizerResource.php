@@ -12,10 +12,12 @@ use App\Filament\Association\Resources\GroupResource\RelationManagers\Memorizers
 use App\Filament\Association\Resources\MemorizerResource\Pages;
 use App\Filament\Association\Resources\MemorizerResource\RelationManagers\PaymentsRelationManager;
 use App\Filament\Association\Resources\MemorizerResource\RelationManagers\ReminderLogsRelationManager;
+use App\Exports\MemorizersYearlyPaymentExport;
 use App\Filament\Exports\MemorizerExporter;
 use App\Filament\Imports\MemorizerImporter;
 use App\Models\MemoGroup;
 use App\Models\Memorizer;
+use Maatwebsite\Excel\Facades\Excel;
 use App\Models\Round;
 use App\Models\User;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
@@ -251,6 +253,51 @@ class MemorizerResource extends Resource
                         }
 
                         return GroupResource::exportAttendanceWorkbook($group, $data);
+                    }),
+
+                Action::make('export_yearly_payments')
+                    ->label('تصدير متابعة الأداء السنوية')
+                    ->icon('heroicon-o-banknotes')
+                    ->color('warning')
+                    ->modalHeading('تصدير متابعة أداء الواجب السنوي')
+                    ->modalDescription('سيتم تصدير جميع الطلاب مع حالة كل شهر من السنة (مدفوع / غير مدفوع / معفي) ورقم الهاتف وعمود فارغ لنتيجة التواصل.')
+                    ->modalSubmitActionLabel('تصدير')
+                    ->form([
+                        Select::make('year')
+                            ->label('السنة')
+                            ->options(collect(range(now()->year, now()->year - 4))
+                                ->mapWithKeys(fn (int $y) => [$y => (string) $y])
+                                ->all())
+                            ->default(now()->year)
+                            ->required(),
+                        Select::make('up_to_month')
+                            ->label('عرض الأشهر حتى')
+                            ->helperText('افتراضياً: الشهر الحالي. اختر دجنبر لعرض السنة كاملة.')
+                            ->options([
+                                1 => 'يناير',
+                                2 => 'فبراير',
+                                3 => 'مارس',
+                                4 => 'أبريل',
+                                5 => 'مايو',
+                                6 => 'يونيو',
+                                7 => 'يوليو',
+                                8 => 'غشت',
+                                9 => 'شتنبر',
+                                10 => 'أكتوبر',
+                                11 => 'نونبر',
+                                12 => 'دجنبر',
+                            ])
+                            ->default(now()->month)
+                            ->required(),
+                    ])
+                    ->action(function (array $data) {
+                        $year = (int) $data['year'];
+                        $upToMonth = (int) $data['up_to_month'];
+
+                        return Excel::download(
+                            new MemorizersYearlyPaymentExport($year, $upToMonth),
+                            "متابعة-أداء-الواجب-{$year}-حتى-شهر-{$upToMonth}.xlsx"
+                        );
                     }),
 
                 ExportAction::make()
