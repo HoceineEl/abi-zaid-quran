@@ -101,7 +101,7 @@
         }
         .mushaf-export .masthead-title {
             font-family: 'Amiri', 'Almarai', serif;
-            font-size: 34px;
+            font-size: 42px;
             font-weight: 700;
             margin: 0;
             color: var(--cream);
@@ -109,13 +109,13 @@
         }
         .mushaf-export .hijri {
             font-family: 'Reem Kufi', 'Almarai', sans-serif;
-            font-size: 16px;
-            margin-top: 10px;
+            font-size: 20px;
+            margin-top: 12px;
             color: #e7d9a8;
         }
         .mushaf-export .greg {
-            font-size: 14px;
-            margin-top: 4px;
+            font-size: 18px;
+            margin-top: 5px;
             color: #d4c088;
         }
         .mushaf-export .page-num {
@@ -154,23 +154,23 @@
             font-family: 'Amiri', 'Almarai', serif;
             font-weight: 700;
             color: var(--emerald);
-            font-size: 20px;
+            font-size: 26px;
             line-height: 1.3;
         }
         .mushaf-export .days {
-            font-size: 13px;
+            font-size: 16px;
             color: var(--gold-2);
-            margin-top: 3px;
+            margin-top: 4px;
         }
         .mushaf-export .percent {
             display: inline-block;
             background: var(--emerald);
             color: var(--cream);
-            padding: 4px 18px;
+            padding: 6px 22px;
             border-radius: 20px;
             font-weight: 800;
-            font-size: 14px;
-            margin-top: 8px;
+            font-size: 18px;
+            margin-top: 10px;
             border: 1px solid var(--gold);
             font-family: 'Reem Kufi', 'Almarai', sans-serif;
         }
@@ -184,19 +184,19 @@
         .mushaf-export .report-table th {
             background: var(--emerald);
             color: var(--cream);
-            padding: 12px 6px;
+            padding: 14px 6px;
             font-family: 'Reem Kufi', 'Almarai', sans-serif;
             border: 1px solid var(--gold);
             font-weight: 600;
-            font-size: 16px;
+            font-size: 19px;
         }
         .mushaf-export .report-table td {
             border: 1px solid var(--row-border);
             background: rgba(255, 255, 255, 0.55);
             text-align: center;
-            padding: 9px 6px;
+            padding: 11px 6px;
             vertical-align: middle;
-            font-size: 15px;
+            font-size: 17px;
         }
         .mushaf-export .report-table tr:nth-child(even) td {
             background: rgba(13, 93, 63, 0.04);
