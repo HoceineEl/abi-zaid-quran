@@ -21,7 +21,6 @@ class DailyAttendanceSummaryExport implements FromCollection, WithHeadings, With
     private const COLOR_WHITE = 'FFFFFFFF';
     private const COLOR_EMERALD = 'FF0D5D3F';
     private const COLOR_CREAM = 'FFFAF4E3';
-    private const COLOR_GOLD = 'FFB8860B';
     private const COLOR_GOLD_TEXT = 'FF8B6914';
     private const COLOR_INK = 'FF2D1F0F';
     private const COLOR_STRIPE = 'FFFDF8E8';
@@ -95,13 +94,11 @@ class DailyAttendanceSummaryExport implements FromCollection, WithHeadings, With
                 $highestRow = $sheet->getHighestRow();
 
                 $this->styleDataRows($sheet, $highestRow);
-                $totalsRow = $this->appendTotalsRow($sheet, $highestRow);
                 $this->setColumnWidths($sheet);
 
                 $sheet->freezePane('A' . self::FIRST_DATA_ROW);
 
-                $finalRow = $totalsRow ?: $highestRow;
-                $sheet->getStyle('A' . self::HEADER_ROW . ':' . self::LAST_COLUMN . $finalRow)
+                $sheet->getStyle('A' . self::HEADER_ROW . ':' . self::LAST_COLUMN . $highestRow)
                     ->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
             },
         ];
@@ -154,40 +151,6 @@ class DailyAttendanceSummaryExport implements FromCollection, WithHeadings, With
         }
     }
 
-    private function appendTotalsRow(Worksheet $sheet, int $highestRow): int
-    {
-        if ($highestRow < self::FIRST_DATA_ROW) {
-            return 0;
-        }
-
-        $totals = $this->collectTotals();
-        $row = $highestRow + 1;
-
-        $sheet->getRowDimension($row)->setRowHeight(30);
-        $sheet->setCellValue("A{$row}", 'الإجمالي');
-        $sheet->setCellValue("B{$row}", $totals['total_students']);
-
-        foreach (self::METRIC_COLUMNS as $column => [, $key, ]) {
-            if ($column === 'B') {
-                continue; // total_students is shown as a raw number, not a percentage
-            }
-            $sheet->setCellValue("{$column}{$row}", $this->formatMetric($totals[$key], $totals['total_students']));
-        }
-
-        $rowStyle = $sheet->getStyle("A{$row}:" . self::LAST_COLUMN . $row);
-        $this->applyBlock($rowStyle, self::COLOR_EMERALD, self::COLOR_WHITE, bold: true, size: 12);
-        $rowStyle->getBorders()->getTop()
-            ->setBorderStyle(Border::BORDER_MEDIUM)
-            ->getColor()->setARGB(self::COLOR_GOLD);
-
-        $sheet->getStyle("A{$row}")
-            ->getAlignment()
-            ->setHorizontal(Alignment::HORIZONTAL_RIGHT)
-            ->setIndent(1);
-
-        return $row;
-    }
-
     private function setColumnWidths(Worksheet $sheet): void
     {
         $sheet->getColumnDimension('A')->setWidth(34);
@@ -238,22 +201,6 @@ class DailyAttendanceSummaryExport implements FromCollection, WithHeadings, With
         $percentage = (int) round($count / $total * 100);
 
         return "{$count} ({$percentage}%)";
-    }
-
-    /**
-     * @return array{total_students: int, present: int, absent: int, absent_with_reason: int, not_specified: int}
-     */
-    private function collectTotals(): array
-    {
-        $rows = $this->rows();
-
-        return [
-            'total_students' => (int) $rows->sum('total_students'),
-            'present' => (int) $rows->sum('present'),
-            'absent' => (int) $rows->sum('absent'),
-            'absent_with_reason' => (int) $rows->sum('absent_with_reason'),
-            'not_specified' => (int) $rows->sum('not_specified'),
-        ];
     }
 
     private function rows(): Collection
