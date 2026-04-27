@@ -13,16 +13,33 @@ use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Style;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class MemorizersYearlyPaymentExport implements FromCollection, WithHeadings, WithTitle, WithEvents
 {
-    private const STATUS_PAID = 'مدفوع';
     private const STATUS_UNPAID = 'غير مدفوع';
     private const STATUS_EXEMPT = 'معفي';
 
     private const CHECKBOX_OFF = '☐';
     private const CHECKBOX_ON = '☑';
+
+    private const PAID_FORMAT = '"مدفوع · "#,##0';
+    private const CURRENCY_FORMAT = '#,##0 "د.م"';
+
+    // Brand colors
+    private const COLOR_WHITE = 'FFFFFFFF';
+    private const COLOR_EMERALD = 'FF0D5D3F';
+    private const COLOR_GOLD = 'FFB8860B';
+    private const COLOR_CREAM = 'FFFAF4E3';
+    private const COLOR_GOLD_TEXT = 'FF8B6914';
+
+    // Status palette: [fill, text]
+    private const PALETTE_PAID = ['FFC6EFCE', 'FF006100'];
+    private const PALETTE_UNPAID = ['FFFFC7CE', 'FF9C0006'];
+    private const PALETTE_EXEMPT = ['FFDDEBF7', 'FF0066CC'];
+    private const PALETTE_NEUTRAL = ['FFF2F2F2', 'FF7F7F7F'];
+    private const PALETTE_PARTIAL = ['FFFFF2CC', 'FF8B6914'];
 
     private const MONTH_NAMES = [
         'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
@@ -61,19 +78,30 @@ class MemorizersYearlyPaymentExport implements FromCollection, WithHeadings, Wit
                 for ($month = 1; $month <= $this->upToMonth; $month++) {
                     $row['month_' . $month] = self::STATUS_EXEMPT;
                 }
+                $row['row_total'] = self::STATUS_EXEMPT;
                 $row['summary'] = self::STATUS_EXEMPT;
             } else {
-                $paidMonths = $memorizer->payments
-                    ->map(fn ($payment) => (int) $payment->payment_date->format('n'))
-                    ->filter(fn (int $m) => $m <= $this->upToMonth)
-                    ->unique();
+                $paymentsByMonth = $memorizer->payments
+                    ->filter(fn ($p) => (int) $p->payment_date->format('n') <= $this->upToMonth)
+                    ->groupBy(fn ($p) => (int) $p->payment_date->format('n'))
+                    ->map(fn ($payments) => (float) $payments->sum('amount'));
+
+                $rowTotal = 0.0;
+                $paidCount = 0;
 
                 for ($month = 1; $month <= $this->upToMonth; $month++) {
-                    $row['month_' . $month] = $paidMonths->contains($month)
-                        ? self::STATUS_PAID
-                        : self::STATUS_UNPAID;
+                    if ($paymentsByMonth->has($month)) {
+                        $amount = $paymentsByMonth->get($month);
+                        $row['month_' . $month] = $amount;
+                        $rowTotal += $amount;
+                        $paidCount++;
+                    } else {
+                        $row['month_' . $month] = self::STATUS_UNPAID;
+                    }
                 }
-                $row['summary'] = "{$paidMonths->count()} / {$this->upToMonth}";
+
+                $row['row_total'] = $rowTotal;
+                $row['summary'] = "{$paidCount} / {$this->upToMonth}";
             }
 
             $row['contacted'] = self::CHECKBOX_OFF;
@@ -91,6 +119,7 @@ class MemorizersYearlyPaymentExport implements FromCollection, WithHeadings, Wit
             'رقم الهاتف',
             'المجموعة',
             ...array_slice(self::MONTH_NAMES, 0, $this->upToMonth),
+            'المجموع (د.م)',
             'الملخص',
             'تم التواصل',
             'نتيجة التواصل',
@@ -111,27 +140,43 @@ class MemorizersYearlyPaymentExport implements FromCollection, WithHeadings, Wit
                 $sheet = $event->sheet->getDelegate();
                 $sheet->setRightToLeft(true);
 
-                $summaryCol = $this->summaryColumn();
-                $contactedCol = $this->contactedColumn();
-                $contactCol = $this->contactColumn();
-                $lastColumn = $contactCol;
+                $columns = $this->columnLayout();
                 $headerRow = 3;
                 $firstDataRow = $headerRow + 1;
 
-                $this->renderTitleBlock($sheet, $lastColumn);
+                $this->renderTitleBlock($sheet, $columns['contact']);
 
                 $highestRow = $sheet->getHighestRow();
 
-                $this->styleHeaderRow($sheet, $headerRow, $lastColumn);
-                $this->styleDataRows($sheet, $firstDataRow, $highestRow, $summaryCol, $contactedCol, $contactCol);
-                $this->setColumnWidths($sheet, $summaryCol, $contactedCol, $contactCol);
-                $this->applyContactedCheckbox($sheet, $firstDataRow, $highestRow, $contactedCol);
+                $this->styleHeaderRow($sheet, $headerRow, $columns['contact']);
+                $this->styleDataRows($sheet, $firstDataRow, $highestRow, $columns);
+                $totalsRow = $this->appendTotalsRow($sheet, $firstDataRow, $highestRow, $columns);
+                $this->setColumnWidths($sheet, $columns);
+                $this->applyContactedCheckbox($sheet, $firstDataRow, $highestRow, $columns['contacted']);
 
                 $sheet->freezePane('E' . $firstDataRow);
 
-                $sheet->getStyle("A1:{$lastColumn}{$highestRow}")->getBorders()->getAllBorders()
-                    ->setBorderStyle(Border::BORDER_THIN);
+                $finalRow = $totalsRow ?: $highestRow;
+                $sheet->getStyle("A{$headerRow}:{$columns['contact']}{$finalRow}")
+                    ->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
             },
+        ];
+    }
+
+    /**
+     * Build the column-letter layout for the sheet.
+     *
+     * @return array{row_total: string, summary: string, contacted: string, contact: string}
+     */
+    private function columnLayout(): array
+    {
+        $base = self::FIXED_LEADING_COLUMNS + $this->upToMonth;
+
+        return [
+            'row_total' => Coordinate::stringFromColumnIndex($base + 1),
+            'summary' => Coordinate::stringFromColumnIndex($base + 2),
+            'contacted' => Coordinate::stringFromColumnIndex($base + 3),
+            'contact' => Coordinate::stringFromColumnIndex($base + 4),
         ];
     }
 
@@ -144,37 +189,30 @@ class MemorizersYearlyPaymentExport implements FromCollection, WithHeadings, Wit
         $sheet->mergeCells("A1:{$lastColumn}1");
         $sheet->setCellValue('A1', "متابعة أداء الواجب · {$this->year} (حتى {$monthName})");
         $sheet->getRowDimension(1)->setRowHeight(32);
-        $titleStyle = $sheet->getStyle('A1');
-        $titleStyle->getFont()->setBold(true)->setSize(16)->getColor()->setARGB('FFFFFFFF');
-        $titleStyle->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF0D5D3F');
-        $titleStyle->getAlignment()
-            ->setHorizontal(Alignment::HORIZONTAL_CENTER)
-            ->setVertical(Alignment::VERTICAL_CENTER);
+        $this->applyBlock($sheet->getStyle('A1'), self::COLOR_EMERALD, self::COLOR_WHITE, bold: true, size: 16);
 
         $sheet->mergeCells("A2:{$lastColumn}2");
         $sheet->setCellValue('A2', 'تاريخ التقرير: ' . now()->format('Y-m-d') . '  ·  مدفوع · غير مدفوع · معفي');
         $sheet->getRowDimension(2)->setRowHeight(20);
-        $subtitleStyle = $sheet->getStyle('A2');
-        $subtitleStyle->getFont()->setBold(true)->setSize(11)->getColor()->setARGB('FF8B6914');
-        $subtitleStyle->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFFAF4E3');
-        $subtitleStyle->getAlignment()
-            ->setHorizontal(Alignment::HORIZONTAL_CENTER)
-            ->setVertical(Alignment::VERTICAL_CENTER);
+        $this->applyBlock($sheet->getStyle('A2'), self::COLOR_CREAM, self::COLOR_GOLD_TEXT, bold: true, size: 11);
     }
 
     private function styleHeaderRow(Worksheet $sheet, int $row, string $lastColumn): void
     {
-        $range = "A{$row}:{$lastColumn}{$row}";
-        $style = $sheet->getStyle($range);
-        $style->getFont()->setBold(true)->setSize(11)->getColor()->setARGB('FFFFFFFF');
-        $style->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF0D5D3F');
-        $style->getAlignment()
-            ->setHorizontal(Alignment::HORIZONTAL_CENTER)
-            ->setVertical(Alignment::VERTICAL_CENTER);
+        $this->applyBlock(
+            $sheet->getStyle("A{$row}:{$lastColumn}{$row}"),
+            self::COLOR_EMERALD,
+            self::COLOR_WHITE,
+            bold: true,
+            size: 11,
+        );
         $sheet->getRowDimension($row)->setRowHeight(28);
     }
 
-    private function styleDataRows(Worksheet $sheet, int $firstDataRow, int $highestRow, string $summaryCol, string $contactedCol, string $contactCol): void
+    /**
+     * @param  array{row_total: string, summary: string, contacted: string, contact: string}  $columns
+     */
+    private function styleDataRows(Worksheet $sheet, int $firstDataRow, int $highestRow, array $columns): void
     {
         if ($highestRow < $firstDataRow) {
             return;
@@ -183,13 +221,11 @@ class MemorizersYearlyPaymentExport implements FromCollection, WithHeadings, Wit
         for ($row = $firstDataRow; $row <= $highestRow; $row++) {
             $sheet->getRowDimension($row)->setRowHeight(22);
 
-            $stripeColor = ($row - $firstDataRow) % 2 === 0 ? 'FFFFFFFF' : 'FFFAF4E3';
-            $sheet->getStyle("A{$row}:D{$row}")->getFill()
-                ->setFillType(Fill::FILL_SOLID)
-                ->getStartColor()->setARGB($stripeColor);
+            $stripeColor = ($row - $firstDataRow) % 2 === 0 ? self::COLOR_WHITE : self::COLOR_CREAM;
 
-            $sheet->getStyle("A{$row}:D{$row}")->getAlignment()
-                ->setVertical(Alignment::VERTICAL_CENTER);
+            $leadingRange = "A{$row}:D{$row}";
+            $this->applyFill($sheet->getStyle($leadingRange), $stripeColor);
+            $sheet->getStyle($leadingRange)->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
             $sheet->getStyle("A{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
             $sheet->getStyle("B{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
             $sheet->getStyle("B{$row}")->getFont()->setBold(true);
@@ -198,29 +234,88 @@ class MemorizersYearlyPaymentExport implements FromCollection, WithHeadings, Wit
 
             for ($month = 1; $month <= $this->upToMonth; $month++) {
                 $cell = $this->monthColumn($month) . $row;
-                $this->paintCell($sheet, $cell, $this->statusColors($sheet->getCell($cell)->getValue()));
+                $value = $sheet->getCell($cell)->getValue();
+                $this->paintCell($sheet, $cell, $this->statusColors($value));
+
+                if (is_numeric($value)) {
+                    $sheet->getStyle($cell)->getNumberFormat()->setFormatCode(self::PAID_FORMAT);
+                }
             }
 
-            $summaryCell = $summaryCol . $row;
+            $rowTotalCell = $columns['row_total'] . $row;
+            $rowTotalValue = $sheet->getCell($rowTotalCell)->getValue();
+            $this->paintCell($sheet, $rowTotalCell, $this->rowTotalColors($rowTotalValue));
+            if (is_numeric($rowTotalValue)) {
+                $sheet->getStyle($rowTotalCell)->getNumberFormat()->setFormatCode(self::CURRENCY_FORMAT);
+            }
+
+            $summaryCell = $columns['summary'] . $row;
             $this->paintCell($sheet, $summaryCell, $this->summaryColors($sheet->getCell($summaryCell)->getValue()));
 
-            $contactedCell = $contactedCol . $row;
+            $contactedCell = $columns['contacted'] . $row;
             $contactedStyle = $sheet->getStyle($contactedCell);
-            $contactedStyle->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB($stripeColor);
-            $contactedStyle->getFont()->setSize(14)->getColor()->setARGB('FF0D5D3F');
+            $this->applyFill($contactedStyle, $stripeColor);
+            $contactedStyle->getFont()->setSize(14)->getColor()->setARGB(self::COLOR_EMERALD);
             $contactedStyle->getAlignment()
                 ->setHorizontal(Alignment::HORIZONTAL_CENTER)
                 ->setVertical(Alignment::VERTICAL_CENTER);
 
-            $contactCell = $contactCol . $row;
-            $sheet->getStyle($contactCell)->getFill()
-                ->setFillType(Fill::FILL_SOLID)
-                ->getStartColor()->setARGB($stripeColor);
-            $sheet->getStyle($contactCell)->getAlignment()
+            $contactCell = $columns['contact'] . $row;
+            $contactStyle = $sheet->getStyle($contactCell);
+            $this->applyFill($contactStyle, $stripeColor);
+            $contactStyle->getAlignment()
                 ->setHorizontal(Alignment::HORIZONTAL_RIGHT)
                 ->setVertical(Alignment::VERTICAL_CENTER)
                 ->setWrapText(true);
         }
+    }
+
+    /**
+     * @param  array{row_total: string, summary: string, contacted: string, contact: string}  $columns
+     */
+    private function appendTotalsRow(Worksheet $sheet, int $firstDataRow, int $highestRow, array $columns): int
+    {
+        if ($highestRow < $firstDataRow) {
+            return 0;
+        }
+
+        $totalsRow = $highestRow + 1;
+        $rowTotalCol = $columns['row_total'];
+        $contactCol = $columns['contact'];
+
+        $sheet->getRowDimension($totalsRow)->setRowHeight(30);
+
+        $sheet->mergeCells("A{$totalsRow}:D{$totalsRow}");
+        $sheet->setCellValue("A{$totalsRow}", 'الإجمالي (د.م)');
+
+        for ($month = 1; $month <= $this->upToMonth; $month++) {
+            $col = $this->monthColumn($month);
+            $sheet->setCellValue(
+                "{$col}{$totalsRow}",
+                "=SUM({$col}{$firstDataRow}:{$col}{$highestRow})"
+            );
+        }
+
+        $sheet->setCellValue(
+            "{$rowTotalCol}{$totalsRow}",
+            "=SUM({$rowTotalCol}{$firstDataRow}:{$rowTotalCol}{$highestRow})"
+        );
+
+        $rowStyle = $sheet->getStyle("A{$totalsRow}:{$contactCol}{$totalsRow}");
+        $this->applyBlock($rowStyle, self::COLOR_EMERALD, self::COLOR_WHITE, bold: true, size: 12);
+        $rowStyle->getBorders()->getTop()
+            ->setBorderStyle(Border::BORDER_MEDIUM)
+            ->getColor()->setARGB(self::COLOR_GOLD);
+
+        $firstMonthCol = $this->monthColumn(1);
+        $sheet->getStyle("{$firstMonthCol}{$totalsRow}:{$rowTotalCol}{$totalsRow}")
+            ->getNumberFormat()->setFormatCode(self::CURRENCY_FORMAT);
+
+        $rowTotalStyle = $sheet->getStyle("{$rowTotalCol}{$totalsRow}");
+        $this->applyFill($rowTotalStyle, self::COLOR_GOLD);
+        $rowTotalStyle->getFont()->setBold(true)->setSize(13)->getColor()->setARGB(self::COLOR_WHITE);
+
+        return $totalsRow;
     }
 
     private function applyContactedCheckbox(Worksheet $sheet, int $firstDataRow, int $highestRow, string $contactedCol): void
@@ -243,7 +338,10 @@ class MemorizersYearlyPaymentExport implements FromCollection, WithHeadings, Wit
         }
     }
 
-    private function setColumnWidths(Worksheet $sheet, string $summaryCol, string $contactedCol, string $contactCol): void
+    /**
+     * @param  array{row_total: string, summary: string, contacted: string, contact: string}  $columns
+     */
+    private function setColumnWidths(Worksheet $sheet, array $columns): void
     {
         $sheet->getColumnDimension('A')->setWidth(5);
         $sheet->getColumnDimension('B')->setWidth(28);
@@ -251,25 +349,45 @@ class MemorizersYearlyPaymentExport implements FromCollection, WithHeadings, Wit
         $sheet->getColumnDimension('D')->setWidth(22);
 
         for ($month = 1; $month <= $this->upToMonth; $month++) {
-            $sheet->getColumnDimension($this->monthColumn($month))->setWidth(10);
+            $sheet->getColumnDimension($this->monthColumn($month))->setWidth(16);
         }
 
-        $sheet->getColumnDimension($summaryCol)->setWidth(12);
-        $sheet->getColumnDimension($contactedCol)->setWidth(8);
-        $sheet->getColumnDimension($contactCol)->setWidth(40);
+        $sheet->getColumnDimension($columns['row_total'])->setWidth(16);
+        $sheet->getColumnDimension($columns['summary'])->setWidth(12);
+        $sheet->getColumnDimension($columns['contacted'])->setWidth(8);
+        $sheet->getColumnDimension($columns['contact'])->setWidth(40);
     }
 
     /**
      * @return array{0: string, 1: string} [fillARGB, textARGB]
      */
-    private function statusColors(?string $value): array
+    private function statusColors(mixed $value): array
     {
+        if (is_numeric($value)) {
+            return self::PALETTE_PAID;
+        }
+
         return match ($value) {
-            self::STATUS_PAID => ['FFC6EFCE', 'FF006100'],
-            self::STATUS_UNPAID => ['FFFFC7CE', 'FF9C0006'],
-            self::STATUS_EXEMPT => ['FFDDEBF7', 'FF0066CC'],
-            default => ['FFF2F2F2', 'FF7F7F7F'],
+            self::STATUS_UNPAID => self::PALETTE_UNPAID,
+            self::STATUS_EXEMPT => self::PALETTE_EXEMPT,
+            default => self::PALETTE_NEUTRAL,
         };
+    }
+
+    /**
+     * @return array{0: string, 1: string} [fillARGB, textARGB]
+     */
+    private function rowTotalColors(mixed $value): array
+    {
+        if ($value === self::STATUS_EXEMPT) {
+            return self::PALETTE_EXEMPT;
+        }
+
+        if (is_numeric($value) && $value > 0) {
+            return self::PALETTE_PARTIAL;
+        }
+
+        return self::PALETTE_NEUTRAL;
     }
 
     /**
@@ -278,17 +396,40 @@ class MemorizersYearlyPaymentExport implements FromCollection, WithHeadings, Wit
     private function summaryColors(?string $value): array
     {
         if ($value === self::STATUS_EXEMPT) {
-            return ['FFDDEBF7', 'FF0066CC'];
+            return self::PALETTE_EXEMPT;
         }
 
         $paidCount = (int) explode('/', (string) $value)[0];
         $ratio = $this->upToMonth > 0 ? $paidCount / $this->upToMonth : 0;
 
         return match (true) {
-            $paidCount >= $this->upToMonth => ['FFC6EFCE', 'FF006100'],
-            $ratio >= 0.75 => ['FFFFF2CC', 'FF8B6914'],
-            default => ['FFFFC7CE', 'FF9C0006'],
+            $paidCount >= $this->upToMonth => self::PALETTE_PAID,
+            $ratio >= 0.75 => self::PALETTE_PARTIAL,
+            default => self::PALETTE_UNPAID,
         };
+    }
+
+    /**
+     * Apply a solid fill, font color, optional bold/size, and centered alignment to a style block.
+     */
+    private function applyBlock(Style $style, string $fill, string $text, bool $bold = false, ?int $size = null): void
+    {
+        $style->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB($fill);
+
+        $font = $style->getFont()->setBold($bold);
+        if ($size !== null) {
+            $font->setSize($size);
+        }
+        $font->getColor()->setARGB($text);
+
+        $style->getAlignment()
+            ->setHorizontal(Alignment::HORIZONTAL_CENTER)
+            ->setVertical(Alignment::VERTICAL_CENTER);
+    }
+
+    private function applyFill(Style $style, string $fill): void
+    {
+        $style->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB($fill);
     }
 
     /**
@@ -297,9 +438,9 @@ class MemorizersYearlyPaymentExport implements FromCollection, WithHeadings, Wit
     private function paintCell(Worksheet $sheet, string $cell, array $colors): void
     {
         [$fill, $text] = $colors;
-
         $style = $sheet->getStyle($cell);
-        $style->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB($fill);
+
+        $this->applyFill($style, $fill);
         $style->getFont()->setBold(true)->getColor()->setARGB($text);
         $style->getAlignment()
             ->setHorizontal(Alignment::HORIZONTAL_CENTER)
@@ -309,21 +450,6 @@ class MemorizersYearlyPaymentExport implements FromCollection, WithHeadings, Wit
     private function monthColumn(int $month): string
     {
         return Coordinate::stringFromColumnIndex(self::FIXED_LEADING_COLUMNS + $month);
-    }
-
-    private function summaryColumn(): string
-    {
-        return Coordinate::stringFromColumnIndex(self::FIXED_LEADING_COLUMNS + $this->upToMonth + 1);
-    }
-
-    private function contactedColumn(): string
-    {
-        return Coordinate::stringFromColumnIndex(self::FIXED_LEADING_COLUMNS + $this->upToMonth + 2);
-    }
-
-    private function contactColumn(): string
-    {
-        return Coordinate::stringFromColumnIndex(self::FIXED_LEADING_COLUMNS + $this->upToMonth + 3);
     }
 
     private function formatPhone(?string $phone): string
