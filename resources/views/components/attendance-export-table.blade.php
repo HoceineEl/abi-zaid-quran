@@ -86,10 +86,22 @@
             text-align: center;
             border-bottom: 4px double var(--gold);
             margin-bottom: 14px;
+            position: relative;
+        }
+        .mushaf-export .masthead-logo {
+            width: 78px;
+            height: 78px;
+            border-radius: 50%;
+            border: 3px solid var(--gold);
+            box-shadow: 0 0 0 2px var(--cream), 0 2px 6px rgba(0, 0, 0, 0.25);
+            background: var(--cream);
+            object-fit: cover;
+            display: block;
+            margin: 0 auto 10px;
         }
         .mushaf-export .masthead-title {
             font-family: 'Amiri', 'Almarai', serif;
-            font-size: 28px;
+            font-size: 34px;
             font-weight: 700;
             margin: 0;
             color: var(--cream);
@@ -97,13 +109,13 @@
         }
         .mushaf-export .hijri {
             font-family: 'Reem Kufi', 'Almarai', sans-serif;
-            font-size: 14px;
-            margin-top: 8px;
+            font-size: 16px;
+            margin-top: 10px;
             color: #e7d9a8;
         }
         .mushaf-export .greg {
-            font-size: 12px;
-            margin-top: 3px;
+            font-size: 14px;
+            margin-top: 4px;
             color: #d4c088;
         }
         .mushaf-export .page-num {
@@ -172,18 +184,19 @@
         .mushaf-export .report-table th {
             background: var(--emerald);
             color: var(--cream);
-            padding: 10px 6px;
+            padding: 12px 6px;
             font-family: 'Reem Kufi', 'Almarai', sans-serif;
             border: 1px solid var(--gold);
             font-weight: 600;
-            font-size: 13px;
+            font-size: 16px;
         }
         .mushaf-export .report-table td {
             border: 1px solid var(--row-border);
             background: rgba(255, 255, 255, 0.55);
             text-align: center;
-            padding: 8px 6px;
+            padding: 9px 6px;
             vertical-align: middle;
+            font-size: 15px;
         }
         .mushaf-export .report-table tr:nth-child(even) td {
             background: rgba(13, 93, 63, 0.04);
@@ -245,7 +258,8 @@
         <div class="table-page" data-page="{{ $pageIndex + 1 }}">
             <div class="report-card">
                 <div class="bismillah-band">
-                    <h1 class="masthead-title">تقرير الحضور والتقييم</h1>
+                    <img src="{{ asset('logo.jpg') }}" alt="شعار الجمعية" class="masthead-logo" crossorigin="anonymous">
+                    <h1 class="masthead-title">تقرير الحضور والتقدير</h1>
                     @if ($hijriDate)
                         <div class="hijri">{{ $hijriDate }}</div>
                     @endif
@@ -269,7 +283,7 @@
                             <th>#</th>
                             <th>الإسم</th>
                             <th>الحضور</th>
-                            <th>التقييم</th>
+                            <th>التقدير</th>
                         </tr>
                     </thead>
                     <tbody>

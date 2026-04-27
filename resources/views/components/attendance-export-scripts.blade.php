@@ -23,6 +23,17 @@
                 }
             }
 
+            async function waitForImages(root) {
+                const images = Array.from(root.querySelectorAll('img'));
+                await Promise.all(images.map(img => {
+                    if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+                    return new Promise(resolve => {
+                        img.addEventListener('load', resolve, { once: true });
+                        img.addEventListener('error', resolve, { once: true });
+                    });
+                }));
+            }
+
             async function generateImages(groupData) {
                 const container = document.createElement('div');
                 container.style.cssText = 'position:absolute;left:-9999px;top:0;width:800px;';
@@ -30,6 +41,7 @@
                 document.body.appendChild(container);
 
                 await waitForFonts();
+                await waitForImages(container);
                 await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
                 const pages = container.querySelectorAll('.table-page');
