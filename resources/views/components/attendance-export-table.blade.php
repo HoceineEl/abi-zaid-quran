@@ -62,6 +62,11 @@
             --row-border: #e7d9a8;
             font-family: 'Almarai', 'Tajawal', sans-serif;
             color: var(--ink);
+            letter-spacing: 0;
+            word-spacing: 0;
+        }
+        .mushaf-export * {
+            letter-spacing: 0 !important;
         }
 
         .mushaf-export .report-card {
@@ -87,7 +92,6 @@
             font-size: 28px;
             font-weight: 700;
             margin: 0;
-            letter-spacing: 1.5px;
             color: var(--cream);
             line-height: 1.2;
         }
@@ -96,7 +100,6 @@
             font-size: 14px;
             margin-top: 8px;
             color: #e7d9a8;
-            letter-spacing: 2px;
         }
         .mushaf-export .greg {
             font-size: 12px;
@@ -112,7 +115,6 @@
             border-radius: 2px;
             font-family: 'Reem Kufi', sans-serif;
             font-size: 11px;
-            letter-spacing: 1px;
             color: var(--cream);
         }
 
@@ -159,7 +161,6 @@
             margin-top: 8px;
             border: 1px solid var(--gold);
             font-family: 'Reem Kufi', 'Almarai', sans-serif;
-            letter-spacing: 1px;
         }
 
         .mushaf-export .report-table {
@@ -174,7 +175,6 @@
             padding: 10px 6px;
             font-family: 'Reem Kufi', 'Almarai', sans-serif;
             border: 1px solid var(--gold);
-            letter-spacing: 1px;
             font-weight: 600;
             font-size: 13px;
         }
@@ -230,7 +230,6 @@
             font-size: 12px;
             color: var(--gold-2);
             font-family: 'Reem Kufi', 'Almarai', sans-serif;
-            letter-spacing: 1px;
         }
         .mushaf-export .footer-signoff .stamp {
             display: block;
