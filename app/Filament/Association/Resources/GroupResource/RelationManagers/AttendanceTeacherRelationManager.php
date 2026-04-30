@@ -21,6 +21,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Table;
+use Filament\Tables\Actions\ActionGroup;
 use Filament\Tables\Actions\BulkAction;
 use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Actions\CreateAction;
@@ -139,13 +140,20 @@ class AttendanceTeacherRelationManager extends RelationManager
                     }),
             ])
             ->actions([
-                SendWhatsAppAction::make(),
-                MarkPresentAction::make(),
-                MarkAbsentAction::make(),
-                ClearAttendanceAction::make(),
-                AddNotesAction::make(),
-                EditAction::make()->slideOver()->iconButton(),
-                JustifyPastAbsenceAction::make(),
+                MarkPresentAction::make()->size(ActionSize::Small),
+                MarkAbsentAction::make()->size(ActionSize::Small),
+                ClearAttendanceAction::make()->size(ActionSize::Small),
+                ActionGroup::make([
+                    AddNotesAction::make(),
+                    SendWhatsAppAction::make(),
+                    EditAction::make()->slideOver()->iconButton(),
+                    JustifyPastAbsenceAction::make(),
+                ])
+                    ->iconButton()
+                    ->icon('heroicon-m-ellipsis-vertical')
+                    ->color('gray')
+                    ->size(ActionSize::Small)
+                    ->tooltip('المزيد'),
             ], ActionsPosition::BeforeColumns)
             ->headerActions([
                 CreateAction::make()->slideOver()->label('إضافة طالب'),
@@ -154,9 +162,9 @@ class AttendanceTeacherRelationManager extends RelationManager
             ->bulkActions([
                 $this->markPresentBulkAction(),
                 $this->markAbsentBulkAction(),
-                BulkAddNotesAction::make(),
-                BulkSendWhatsAppAction::make(),
                 BulkActionGroup::make([
+                    BulkAddNotesAction::make(),
+                    BulkSendWhatsAppAction::make(),
                     $this->revertAttendanceBulkAction(),
                     DeleteBulkAction::make(),
                 ]),
