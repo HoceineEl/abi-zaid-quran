@@ -12,7 +12,9 @@ use App\Filament\Association\Resources\GroupResource\RelationManagers\Memorizers
 use App\Filament\Association\Resources\MemorizerResource\Pages;
 use App\Filament\Association\Resources\MemorizerResource\RelationManagers\PaymentsRelationManager;
 use App\Filament\Association\Resources\MemorizerResource\RelationManagers\ReminderLogsRelationManager;
+use App\Exports\YearlyPaymentExport;
 use App\Services\YearlyPaymentPdfService;
+use Maatwebsite\Excel\Facades\Excel;
 use Carbon\Carbon;
 use App\Filament\Exports\MemorizerExporter;
 use App\Filament\Imports\MemorizerImporter;
@@ -260,9 +262,26 @@ class MemorizerResource extends Resource
                     ->icon('heroicon-o-document-arrow-down')
                     ->color('warning')
                     ->modalHeading('تصدير متابعة أداء الواجب')
-                    ->modalDescription('سيتم تصدير جميع الطلاب مع حالة كل شهر داخل الفترة المحددة (مدفوع / غير مدفوع / معفي) كملف PDF مرتب وقابل للطباعة.')
-                    ->modalSubmitActionLabel('تصدير PDF')
+                    ->modalDescription('سيتم تصدير جميع الطلاب مع حالة كل شهر داخل الفترة المحددة (مدفوع / غير مدفوع / معفي).')
+                    ->modalSubmitActionLabel('تصدير')
                     ->form([
+                        ToggleButtons::make('format')
+                            ->label('صيغة التصدير')
+                            ->options([
+                                'pdf' => 'PDF',
+                                'excel' => 'Excel',
+                            ])
+                            ->icons([
+                                'pdf' => 'heroicon-o-document-text',
+                                'excel' => 'heroicon-o-table-cells',
+                            ])
+                            ->colors([
+                                'pdf' => 'danger',
+                                'excel' => 'success',
+                            ])
+                            ->default('pdf')
+                            ->inline()
+                            ->required(),
                         DatePicker::make('start_date')
                             ->label('تاريخ البداية')
                             ->native(false)
@@ -290,12 +309,22 @@ class MemorizerResource extends Resource
                             return null;
                         }
 
+                        $baseName = "متابعة-أداء-الواجب-{$start->format('Y-m-d')}-إلى-{$end->format('Y-m-d')}";
+
+                        if ($data['format'] === 'excel') {
+                            return Excel::download(
+                                new YearlyPaymentExport($start, $end),
+                                "{$baseName}.xlsx",
+                            );
+                        }
+
                         $pdf = app(YearlyPaymentPdfService::class)->generate($start, $end);
-                        $filename = "متابعة-أداء-الواجب-{$start->format('Y-m-d')}-إلى-{$end->format('Y-m-d')}.pdf";
 
                         return response()->streamDownload(
-                            fn () => print($pdf),
-                            $filename,
+                            function () use ($pdf) {
+                                echo $pdf;
+                            },
+                            "{$baseName}.pdf",
                             ['Content-Type' => 'application/pdf'],
                         );
                     }),
