@@ -61,6 +61,23 @@ class WhatsAppService
         ];
     }
 
+    protected function computeTypingDelayMs(?string $text = null): int
+    {
+        if (! config('whatsapp.typing.enabled', true)) {
+            return 0;
+        }
+
+        $minMs = (int) config('whatsapp.typing.min_ms', 1200);
+        $maxMs = (int) config('whatsapp.typing.max_ms', 5000);
+        $perCharMs = (int) config('whatsapp.typing.per_char_ms', 35);
+        $jitterMs = (int) config('whatsapp.typing.jitter_ms', 350);
+
+        $base = mb_strlen((string) $text) * $perCharMs;
+        $jitter = $jitterMs > 0 ? rand(-$jitterMs, $jitterMs) : 0;
+
+        return max($minMs, min($maxMs, $base + $jitter));
+    }
+
     public function sendMessage($student, ?string $message = null): array
     {
         try {
@@ -139,14 +156,21 @@ class WhatsAppService
     public function sendTextMessage(string $instanceName, string $to, string $message): array
     {
         $formattedPhone = str_replace('+', '', phone($to, 'MA')->formatE164());
+        $typingDelay = $this->computeTypingDelayMs($message);
+
+        $payload = [
+            'number' => $formattedPhone,
+            'text' => $message,
+        ];
+
+        if ($typingDelay > 0) {
+            $payload['delay'] = $typingDelay;
+        }
 
         try {
             $response = Http::withHeaders($this->evolutionHeaders())
-                ->timeout(15)
-                ->post("{$this->baseUrl}/message/sendText/{$instanceName}", [
-                    'number' => $formattedPhone,
-                    'text' => $message,
-                ]);
+                ->timeout(15 + (int) ceil($typingDelay / 1000))
+                ->post("{$this->baseUrl}/message/sendText/{$instanceName}", $payload);
 
             if ($response->successful()) {
                 $result = $response->json();
@@ -174,20 +198,25 @@ class WhatsAppService
     public function sendMediaMessage(string $instanceName, string $to, string $mediaUrl, string $mediaType = 'image', ?string $caption = null): array
     {
         $formattedPhone = str_replace('+', '', phone($to, 'MA')->formatE164());
+        $typingDelay = $this->computeTypingDelayMs($caption);
+
+        $payload = [
+            'number' => $formattedPhone,
+            'mediatype' => $mediaType,
+            'media' => $mediaUrl,
+        ];
+
+        if ($caption) {
+            $payload['caption'] = $caption;
+        }
+
+        if ($typingDelay > 0) {
+            $payload['delay'] = $typingDelay;
+        }
 
         try {
-            $payload = [
-                'number' => $formattedPhone,
-                'mediatype' => $mediaType,
-                'media' => $mediaUrl,
-            ];
-
-            if ($caption) {
-                $payload['caption'] = $caption;
-            }
-
             $response = Http::withHeaders($this->evolutionHeaders())
-                ->timeout(15)
+                ->timeout(15 + (int) ceil($typingDelay / 1000))
                 ->post("{$this->baseUrl}/message/sendMedia/{$instanceName}", $payload);
 
             if ($response->successful()) {
