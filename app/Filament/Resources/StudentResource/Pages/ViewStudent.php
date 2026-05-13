@@ -23,7 +23,7 @@ class ViewStudent extends ViewRecord
         ];
     }
 
-    protected function getHeaderWidgetsColumns(): int|array
+    public function getHeaderWidgetsColumns(): int|array
     {
         return 2;
     }
