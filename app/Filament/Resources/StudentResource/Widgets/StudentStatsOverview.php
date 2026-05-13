@@ -225,7 +225,7 @@ class StudentStatsOverview extends BaseWidget
         // Last 14 active days: 1=absent without reason, 0=present or excused
         // The trailing cluster of 1s visualises the current streak
         $chart = $this->buildDailyChart(
-            $groupActiveDates->takeLast(self::CONSECUTIVE_CHART_DAYS),
+            $groupActiveDates->take(-self::CONSECUTIVE_CHART_DAYS),
             $progressesOnActiveDays,
             fn (?Progress $progress) => $this->isAbsenceMatching($progress, withReason: false),
         );
