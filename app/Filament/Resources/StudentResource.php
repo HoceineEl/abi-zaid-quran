@@ -145,6 +145,8 @@ class StudentResource extends Resource
         return [
             StudentResource\Widgets\StudentStatsOverview::class,
             StudentResource\Widgets\StudentAttendanceChart::class,
+            StudentResource\Widgets\StudentWeeklyProgressChart::class,
+            StudentResource\Widgets\StudentAttendanceSummaryChart::class,
         ];
     }
 
