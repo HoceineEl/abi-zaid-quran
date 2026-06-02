@@ -6,15 +6,15 @@ return [
     'webhook_url' => env('WHATSAPP_WEBHOOK_URL'),
 
     // Anti-ban: Random delay range between messages (in seconds)
-    'delay_min' => env('WHATSAPP_DELAY_MIN', 13),
-    'delay_max' => env('WHATSAPP_DELAY_MAX', 20),
+    'delay_min' => env('WHATSAPP_DELAY_MIN', 15),
+    'delay_max' => env('WHATSAPP_DELAY_MAX', 60),
 
     // Inter-group delay: random pause between each group's batch of messages (in seconds)
     'group_delay_min' => env('WHATSAPP_GROUP_DELAY_MIN', 60),
     'group_delay_max' => env('WHATSAPP_GROUP_DELAY_MAX', 120),
 
     // Rate limit: max messages per minute per session (safety net)
-    'messages_per_minute' => env('WHATSAPP_MESSAGES_PER_MINUTE', 10),
+    'messages_per_minute' => env('WHATSAPP_MESSAGES_PER_MINUTE', 4),
 
     // Typing simulation: passes Evolution API's `delay` (ms) on sendText/sendMedia.
     // Per the Evolution v2 spec, `delay` is the "presence time in ms before sending" — the
