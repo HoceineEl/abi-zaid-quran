@@ -9,7 +9,9 @@ class PaymentReceiptController extends Controller
 {
     public function show(Request $request)
     {
-        $payments = Payment::whereIn('id', explode(',', $request->payments))->get();
+        $payments = Payment::with('memorizer.group')
+            ->whereIn('id', explode(',', $request->payments))
+            ->get();
 
         if ($payments->isEmpty()) {
             abort(404);
@@ -17,7 +19,7 @@ class PaymentReceiptController extends Controller
 
         return view('payments.print-receipt', [
             'payments' => $payments,
-            'autoPrint' => true,
+            'autoPrint' => ! $request->boolean('preview'),
         ]);
     }
 }
