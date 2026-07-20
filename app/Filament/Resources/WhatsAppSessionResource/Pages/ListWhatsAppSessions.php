@@ -106,22 +106,18 @@ class ListWhatsAppSessions extends ListRecords
         }
 
         if ($errorCount >= 5) {
-            $record->update([
-                'status' => WhatsAppConnectionStatus::DISCONNECTED,
-                'last_activity_at' => now(),
-            ]);
-
             cache()->forget("error_count_{$record->id}");
 
+            // Evolution being unreachable does not mean the phone logged out — keep the
+            // session status intact and just slow polling, so sending stays enabled.
             Notification::make()
-                ->title('فقدان الاتصال')
-                ->body('تعذر الاتصال بخادم واتساب. يرجى إعادة تشغيل الجلسة.')
-                ->danger()
-                ->persistent()
+                ->title('تعذر الوصول لخادم واتساب')
+                ->body('سيعاد المحاولة تلقائياً. لم يتم قطع الجلسة.')
+                ->warning()
+                ->duration(4000)
                 ->send();
 
-            $this->dispatch('stop-polling');
-            $this->refreshTable();
+            $this->dispatch('polling-interval-changed', ['interval' => 30000]);
         } else {
             $backoffInterval = min(3000 * pow(2, $errorCount - 1), 30000);
             $this->dispatch('polling-interval-changed', ['interval' => $backoffInterval]);

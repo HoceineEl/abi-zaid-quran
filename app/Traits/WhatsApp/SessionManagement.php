@@ -189,6 +189,8 @@ trait SessionManagement
     {
         $state = $this->resolveApiState($apiResult);
         $modelStatus = WhatsAppConnectionStatus::fromApiStatus($state);
+        $wasConnected = $session->status === WhatsAppConnectionStatus::CONNECTED;
+        $wasPairing = $session->status->canShowQrCode();
 
         Log::info('Updating session from API status', [
             'session_id' => $session->id,
@@ -203,14 +205,20 @@ trait SessionManagement
             return;
         }
 
+        // A connected instance that momentarily reports a non-final state is a transient
+        // blip (phone briefly offline) — never re-pair or downgrade it on a single reading.
+        if ($wasConnected && $modelStatus !== WhatsAppConnectionStatus::DISCONNECTED) {
+            return;
+        }
+
+        // Only mint a fresh QR while genuinely mid-pairing; calling connect on an
+        // established instance forces a re-pair and drops the linked device.
         $qrCode = null;
-        if ($modelStatus->canShowQrCode()) {
+        if ($wasPairing && $modelStatus->canShowQrCode()) {
             try {
                 $connectResult = $this->connectInstance($session->name);
                 $base64Qr = $connectResult['base64'] ?? null;
-                if ($base64Qr) {
-                    $qrCode = $this->cleanQrCodeData($base64Qr);
-                }
+                $qrCode = $base64Qr ? $this->cleanQrCodeData($base64Qr) : null;
             } catch (\Exception $e) {
                 Log::warning('Could not get QR code during status update', [
                     'instance' => $session->name,
