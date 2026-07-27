@@ -5,250 +5,232 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>جمعية إبن أبي زيد القيرواني</title>
+    <link rel="icon" href="{{ asset('favicon.ico') }}">
 
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-
-    <!-- Google Fonts: Cairo (Modern replacement for Tajawal) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-
-    <!-- Custom Configuration for Tailwind -->
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        cairo: ['Cairo', 'sans-serif'],
-                    },
-                    animation: {
-                        'float': 'float 6s ease-in-out infinite',
-                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                    },
-                    keyframes: {
-                        float: {
-                            '0%, 100%': {
-                                transform: 'translateY(0)'
-                            },
-                            '50%': {
-                                transform: 'translateY(-20px)'
-                            },
-                        }
-                    },
-                    backgroundImage: {
-                        'grid-white': "url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32' fill='none' stroke='rgb(255 255 255 / 0.05)'%3e%3cpath d='M0 .5H31.5V32'/%3e%3c/svg%3e\")",
-                    }
-                }
-            }
-        }
-    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+        }
+
+        :root {
+            --ink: #060d12;
+            --gold: #d9b46a;
+            --line: rgba(255, 255, 255, .10);
+        }
+
+        html,
         body {
-            font-family: 'Cairo', sans-serif;
-            background-color: #0f172a;
-            /* Slate 900 */
+            margin: 0;
+            padding: 0;
         }
 
-        /* Spotlight Card Logic */
-        .spotlight-card {
-            position: relative;
-            overflow: hidden;
-            background: rgba(30, 41, 59, 0.4);
-            /* Slate 800/40 */
-            border: 1px solid rgba(255, 255, 255, 0.05);
+        body {
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            font-family: 'Cairo', system-ui, sans-serif;
+            color: #fff;
+            background: var(--ink);
+            background-image:
+                radial-gradient(120% 90% at 88% 4%, #1d6b57 0%, rgba(29, 107, 87, 0) 55%),
+                radial-gradient(110% 85% at 6% 96%, #22346f 0%, rgba(34, 52, 111, 0) 58%),
+                linear-gradient(168deg, #08251f 0%, #0a1626 46%, #060d12 100%);
+            background-attachment: fixed;
+            -webkit-font-smoothing: antialiased;
         }
 
-        .spotlight-card::before {
+        body::after {
             content: "";
-            position: absolute;
-            height: 100%;
-            width: 100%;
-            top: 0;
-            left: 0;
-            background: radial-gradient(800px circle at var(--mouse-x) var(--mouse-y),
-                    rgba(255, 255, 255, 0.06),
-                    transparent 40%);
-            opacity: 0;
-            transition: opacity 0.5s;
+            position: fixed;
+            inset: 0;
             pointer-events: none;
-            z-index: 2;
+            opacity: .25;
+            mix-blend-mode: overlay;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
         }
 
-        .spotlight-card:hover::before {
+        .shell {
+            width: 100%;
+            max-width: 46rem;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+        }
+
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 4.5rem 0 3rem;
+        }
+
+        .mark {
+            width: 3.5rem;
+            height: 3.5rem;
+            border-radius: 999px;
+            object-fit: cover;
+            background: #fff;
+            box-shadow: 0 0 0 1px var(--line);
+        }
+
+        .eyebrow {
+            margin: 1.75rem 0 .5rem;
+            font-size: .75rem;
+            font-weight: 500;
+            letter-spacing: .22em;
+            color: var(--gold);
+        }
+
+        h1 {
+            font-family: 'Amiri', serif;
+            font-weight: 700;
+            font-size: clamp(2.1rem, 7vw, 3.4rem);
+            line-height: 1.35;
+            margin: 0;
+        }
+
+        .lede {
+            margin: 1rem 0 0;
+            max-width: 32ch;
+            font-size: 1rem;
+            font-weight: 300;
+            line-height: 1.9;
+            color: rgba(255, 255, 255, .58);
+        }
+
+        nav {
+            margin-top: 3.25rem;
+            border-top: 1px solid var(--line);
+        }
+
+        .entry {
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+            padding: 1.25rem .25rem;
+            border-bottom: 1px solid var(--line);
+            text-decoration: none;
+            color: inherit;
+            transition: padding-inline .25s ease, background-color .25s ease;
+        }
+
+        .entry:hover,
+        .entry:focus-visible {
+            background: rgba(255, 255, 255, .04);
+            padding-inline: 1rem .5rem;
+            outline: none;
+        }
+
+        .num {
+            font-family: 'Amiri', serif;
+            font-size: .95rem;
+            color: rgba(255, 255, 255, .35);
+        }
+
+        .entry-body {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .entry-title {
+            display: block;
+            font-size: 1.15rem;
+            font-weight: 600;
+        }
+
+        .entry-note {
+            display: block;
+            margin-top: .2rem;
+            font-size: .85rem;
+            font-weight: 300;
+            color: rgba(255, 255, 255, .5);
+        }
+
+        .arrow {
+            flex: none;
+            color: var(--gold);
+            opacity: .45;
+            transform: translateX(6px);
+            transition: opacity .25s ease, transform .25s ease;
+        }
+
+        .entry:hover .arrow,
+        .entry:focus-visible .arrow {
             opacity: 1;
+            transform: translateX(0);
         }
 
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
+        footer {
+            padding: 1.75rem 0 2.25rem;
+            font-size: .8rem;
+            font-weight: 300;
+            color: rgba(255, 255, 255, .35);
         }
 
-        ::-webkit-scrollbar-track {
-            background: #0f172a;
-        }
+        @media (prefers-reduced-motion: reduce) {
 
-        ::-webkit-scrollbar-thumb {
-            background: #334155;
-            border-radius: 4px;
+            .entry,
+            .arrow {
+                transition: none;
+            }
         }
     </style>
 </head>
 
-<body class="min-h-screen text-slate-200 selection:bg-blue-500/30 flex flex-col overflow-x-hidden">
+<body>
+    <main>
+        <div class="shell">
+            <img class="mark" src="{{ asset('logo.jpg') }}" alt="شعار الجمعية">
+            <p class="eyebrow">بوابة الجمعية</p>
+            <h1>جمعية إبن أبي زيد<br>القيرواني</h1>
+            <p class="lede">منصّة واحدة لإدارة الجمعية وبرامجها العلمية ومتابعة الحفظ. اختر وجهتك للمتابعة.</p>
 
-    <!-- Background Effects -->
-    <div class="fixed inset-0 z-0 pointer-events-none">
-        <!-- Grid Pattern -->
-        <div class="absolute inset-0 bg-grid-white/[0.02] bg-[size:50px_50px]"></div>
-        <div class="absolute inset-0 bg-gradient-to-b from-slate-900/0 via-slate-900/80 to-slate-900 pointer-events-none"></div>
+            <nav>
+                <a class="entry" href="/association">
+                    <span class="num">٠١</span>
+                    <span class="entry-body">
+                        <span class="entry-title">إدارة الجمعية</span>
+                        <span class="entry-note">الأعضاء والاشتراكات والتقارير المالية</span>
+                    </span>
+                    <svg class="arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M19 12H5M11 18l-6-6 6-6" />
+                    </svg>
+                </a>
 
-        <!-- Colorful Glows -->
-        <div class="absolute top-[-10%] right-[-5%] w-[600px] h-[600px] bg-blue-600/20 rounded-full blur-[120px] animate-pulse-slow"></div>
-        <div class="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px] animate-pulse-slow" style="animation-delay: 2s;"></div>
-    </div>
+                <a class="entry" href="/quran-program">
+                    <span class="num">٠٢</span>
+                    <span class="entry-body">
+                        <span class="entry-title">البرامج العلمية</span>
+                        <span class="entry-note">الحلقات والمقررات ومتابعة الحفظ</span>
+                    </span>
+                    <svg class="arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M19 12H5M11 18l-6-6 6-6" />
+                    </svg>
+                </a>
 
-    <!-- Navbar -->
-    <nav class="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-slate-900/50 backdrop-blur-xl">
-        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-center md:justify-between h-12 sm:h-16">
-                <div class="flex items-center gap-2 sm:gap-3">
-                    <img src="{{ asset('logo.jpg') }}" alt="شعار الجمعية" class="h-8 w-8 sm:h-10 sm:w-10 rounded-full object-cover border-2 border-blue-500/30 shadow-lg" />
-                    <span class="font-bold text-sm sm:text-lg text-slate-200">بوابة الجمعية</span>
-                </div>
-                <div class="hidden md:flex items-center gap-4">
-                    <span class="text-xs text-slate-500 font-mono">v2.0</span>
-                </div>
-            </div>
+                <a class="entry" href="/teacher">
+                    <span class="num">٠٣</span>
+                    <span class="entry-body">
+                        <span class="entry-title">فضاء المعلمين</span>
+                        <span class="entry-note">الحضور والتقييم اليومي للطلبة</span>
+                    </span>
+                    <svg class="arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M19 12H5M11 18l-6-6 6-6" />
+                    </svg>
+                </a>
+            </nav>
         </div>
-    </nav>
-
-    <!-- Main Content -->
-    <main class="relative z-10 flex-grow flex flex-col items-center justify-center pt-16 sm:pt-24 pb-6 sm:pb-12 px-3 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
-
-        <!-- Hero Section -->
-        <div id="hero" class="text-center max-w-4xl mx-auto mb-8 sm:mb-16 md:mb-20 relative opacity-0 translate-y-10 transition-all duration-1000 ease-out">
-
-            <!-- Main Logo Animation -->
-            <div class="relative mx-auto w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 mb-5 sm:mb-8 md:mb-10 animate-float group cursor-pointer">
-                <div class="absolute inset-0 bg-blue-500/30 rounded-full blur-2xl group-hover:bg-blue-500/50 transition-all duration-500"></div>
-                <div class="relative w-full h-full rounded-full border-2 border-blue-500/30 shadow-2xl ring-1 ring-white/10 overflow-hidden bg-white">
-                    <img src="{{ asset('logo.jpg') }}" alt="شعار الجمعية" class="w-full h-full object-cover">
-                </div>
-            </div>
-
-            <!-- Hero Text -->
-            <h1 class="text-2xl sm:text-4xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white via-slate-200 to-slate-500 tracking-tight leading-tight mb-3 sm:mb-6">
-                مرحباً بكم في جمعية <br />
-                <span class="text-blue-500 inline-block mt-1 sm:mt-2">إبن أبي زيد القيرواني</span>
-            </h1>
-
-            <p class="text-sm sm:text-lg md:text-xl text-slate-400 max-w-2xl mx-auto font-light leading-relaxed">
-                اختر الخدمة التي تريد الوصول إليها
-            </p>
-        </div>
-
-        <!-- Cards Grid -->
-        <div id="cards-grid" class="grid grid-cols-3 gap-3 sm:gap-4 md:gap-6 w-full opacity-0 translate-y-10 transition-all duration-1000 delay-200 ease-out">
-
-            <!-- Card 1: Association Management -->
-            <a href="/association" class="spotlight-card group rounded-2xl sm:rounded-2xl md:rounded-3xl p-4 sm:p-5 md:p-8 h-full transition-all duration-300 hover:-translate-y-1 active:bg-blue-500/10">
-                <div class="relative z-10 flex flex-col h-full items-center text-center">
-                    <div class="w-12 h-12 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-xl sm:rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-3 sm:mb-4 md:mb-6 group-hover:bg-blue-500/20 transition-colors">
-                        <i data-lucide="building-2" class="w-6 h-6 sm:w-6 sm:h-6 md:w-7 md:h-7 text-blue-400"></i>
-                    </div>
-                    <h3 class="text-[11px] sm:text-base md:text-2xl font-bold text-white mb-1 sm:mb-2 md:mb-3 group-hover:text-blue-300 transition-colors leading-tight">إدارة الجمعية</h3>
-                    <p class="text-slate-400 text-[10px] sm:text-xs md:text-sm leading-relaxed hidden sm:block">الوصول إلى لوحة تحكم إدارة الجمعية</p>
-
-                    <div class="mt-auto pt-2 sm:pt-6 md:pt-8 flex items-center justify-center text-blue-400 text-[10px] sm:text-sm font-medium sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-300">
-                        <span>دخول</span>
-                        <i data-lucide="arrow-left" class="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2"></i>
-                    </div>
-                </div>
-            </a>
-
-            <!-- Card 2: Quran/Scientific Programs -->
-            <a href="/quran-program" class="spotlight-card group rounded-2xl sm:rounded-2xl md:rounded-3xl p-4 sm:p-5 md:p-8 h-full transition-all duration-300 hover:-translate-y-1 active:bg-emerald-500/10">
-                <div class="relative z-10 flex flex-col h-full items-center text-center">
-                    <div class="w-12 h-12 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-xl sm:rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-3 sm:mb-4 md:mb-6 group-hover:bg-emerald-500/20 transition-colors">
-                        <i data-lucide="book-open" class="w-6 h-6 sm:w-6 sm:h-6 md:w-7 md:h-7 text-emerald-400"></i>
-                    </div>
-                    <h3 class="text-[11px] sm:text-base md:text-2xl font-bold text-white mb-1 sm:mb-2 md:mb-3 group-hover:text-emerald-300 transition-colors leading-tight">البرامج العلمية</h3>
-                    <p class="text-slate-400 text-[10px] sm:text-xs md:text-sm leading-relaxed hidden sm:block">الوصول إلى منصة البرامج التعليمية</p>
-
-                    <div class="mt-auto pt-2 sm:pt-6 md:pt-8 flex items-center justify-center text-emerald-400 text-[10px] sm:text-sm font-medium sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-300">
-                        <span>دخول</span>
-                        <i data-lucide="arrow-left" class="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2"></i>
-                    </div>
-                </div>
-            </a>
-
-            <!-- Card 3: Teachers -->
-            <a href="/teacher" class="spotlight-card group rounded-2xl sm:rounded-2xl md:rounded-3xl p-4 sm:p-5 md:p-8 h-full transition-all duration-300 hover:-translate-y-1 active:bg-purple-500/10">
-                <div class="relative z-10 flex flex-col h-full items-center text-center">
-                    <div class="w-12 h-12 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-xl sm:rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-3 sm:mb-4 md:mb-6 group-hover:bg-purple-500/20 transition-colors">
-                        <i data-lucide="users" class="w-6 h-6 sm:w-6 sm:h-6 md:w-7 md:h-7 text-purple-400"></i>
-                    </div>
-                    <h3 class="text-[11px] sm:text-base md:text-2xl font-bold text-white mb-1 sm:mb-2 md:mb-3 group-hover:text-purple-300 transition-colors leading-tight">المعلمين</h3>
-                    <p class="text-slate-400 text-[10px] sm:text-xs md:text-sm leading-relaxed hidden sm:block">الوصول إلى لوحة تحكم المعلمين</p>
-
-                    <div class="mt-auto pt-2 sm:pt-6 md:pt-8 flex items-center justify-center text-purple-400 text-[10px] sm:text-sm font-medium sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-300">
-                        <span>دخول</span>
-                        <i data-lucide="arrow-left" class="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2"></i>
-                    </div>
-                </div>
-            </a>
-
-        </div>
-
     </main>
 
-    <!-- Footer -->
-    <footer class="relative z-10 w-full py-4 sm:py-8 border-t border-white/5 bg-slate-900/80 backdrop-blur-md mt-auto">
-        <div class="max-w-7xl mx-auto px-3 sm:px-4 text-center text-xs sm:text-sm text-slate-500">
-            <p class="font-medium">جميع الحقوق محفوظة © <span id="year">2025</span> جمعية إبن أبي زيد القيرواني</p>
-        </div>
+    <footer>
+        <div class="shell">جميع الحقوق محفوظة © {{ date('Y') }} جمعية إبن أبي زيد القيرواني</div>
     </footer>
-
-    <!-- Scripts -->
-    <script>
-        // Initialize Icons
-        lucide.createIcons();
-
-        // Set current year dynamically (Replaces {{ date('Y') }})
-        document.getElementById('year').textContent = new Date().getFullYear();
-
-        // Animation Trigger on Load
-        window.addEventListener('DOMContentLoaded', () => {
-            const hero = document.getElementById('hero');
-            const grid = document.getElementById('cards-grid');
-
-            setTimeout(() => {
-                hero.classList.remove('opacity-0', 'translate-y-10');
-                hero.classList.add('opacity-100', 'translate-y-0');
-
-                grid.classList.remove('opacity-0', 'translate-y-10');
-                grid.classList.add('opacity-100', 'translate-y-0');
-            }, 100);
-
-            // Spotlight Effect Logic
-            const cards = document.querySelectorAll('.spotlight-card');
-            const handleMouseMove = (e) => {
-                cards.forEach(card => {
-                    const rect = card.getBoundingClientRect();
-                    const x = e.clientX - rect.left;
-                    const y = e.clientY - rect.top;
-                    card.style.setProperty('--mouse-x', `${x}px`);
-                    card.style.setProperty('--mouse-y', `${y}px`);
-                });
-            };
-            document.getElementById('cards-grid').addEventListener('mousemove', handleMouseMove);
-        });
-    </script>
 </body>
 
 </html>
