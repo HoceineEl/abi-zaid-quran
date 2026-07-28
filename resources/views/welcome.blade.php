@@ -19,9 +19,11 @@
         }
 
         :root {
-            --ink: #060d12;
-            --gold: #d9b46a;
-            --line: rgba(255, 255, 255, .10);
+            --paper: #faf9f5;
+            --ink: #14191c;
+            --muted: #6b7280;
+            --line: #e4e1d8;
+            --green: #145c43;
         }
 
         html,
@@ -34,32 +36,41 @@
             min-height: 100dvh;
             display: flex;
             flex-direction: column;
+            background: var(--paper);
+            color: var(--ink);
             font-family: 'Cairo', system-ui, sans-serif;
-            color: #fff;
-            background: var(--ink);
-            background-image:
-                radial-gradient(120% 90% at 88% 4%, #1d6b57 0%, rgba(29, 107, 87, 0) 55%),
-                radial-gradient(110% 85% at 6% 96%, #22346f 0%, rgba(34, 52, 111, 0) 58%),
-                linear-gradient(168deg, #08251f 0%, #0a1626 46%, #060d12 100%);
-            background-attachment: fixed;
             -webkit-font-smoothing: antialiased;
-        }
-
-        body::after {
-            content: "";
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            opacity: .25;
-            mix-blend-mode: overlay;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
         }
 
         .shell {
             width: 100%;
-            max-width: 46rem;
+            max-width: 40rem;
             margin: 0 auto;
             padding: 0 1.5rem;
+        }
+
+        header {
+            border-bottom: 1px solid var(--line);
+        }
+
+        .bar {
+            display: flex;
+            align-items: center;
+            gap: .625rem;
+            height: 4rem;
+        }
+
+        .bar img {
+            width: 2rem;
+            height: 2rem;
+            border-radius: 999px;
+            object-fit: cover;
+        }
+
+        .bar span {
+            font-size: .875rem;
+            font-weight: 600;
+            letter-spacing: .01em;
         }
 
         main {
@@ -67,70 +78,52 @@
             display: flex;
             flex-direction: column;
             justify-content: center;
-            padding: 4.5rem 0 3rem;
-        }
-
-        .mark {
-            width: 3.5rem;
-            height: 3.5rem;
-            border-radius: 999px;
-            object-fit: cover;
-            background: #fff;
-            box-shadow: 0 0 0 1px var(--line);
-        }
-
-        .eyebrow {
-            margin: 1.75rem 0 .5rem;
-            font-size: .75rem;
-            font-weight: 500;
-            letter-spacing: .22em;
-            color: var(--gold);
+            padding: 3.5rem 0;
         }
 
         h1 {
             font-family: 'Amiri', serif;
             font-weight: 700;
-            font-size: clamp(2.1rem, 7vw, 3.4rem);
-            line-height: 1.35;
+            font-size: clamp(2rem, 6vw, 2.875rem);
+            line-height: 1.4;
             margin: 0;
         }
 
         .lede {
-            margin: 1rem 0 0;
-            max-width: 32ch;
+            margin: .875rem 0 0;
+            max-width: 34ch;
             font-size: 1rem;
             font-weight: 300;
-            line-height: 1.9;
-            color: rgba(255, 255, 255, .58);
+            line-height: 1.85;
+            color: var(--muted);
         }
 
         nav {
-            margin-top: 3.25rem;
+            margin-top: 3rem;
             border-top: 1px solid var(--line);
         }
 
         .entry {
             display: flex;
             align-items: center;
-            gap: 1.25rem;
-            padding: 1.25rem .25rem;
+            gap: 1.125rem;
+            padding: 1.375rem .5rem;
             border-bottom: 1px solid var(--line);
             text-decoration: none;
             color: inherit;
-            transition: padding-inline .25s ease, background-color .25s ease;
+            transition: background-color .18s ease;
         }
 
         .entry:hover,
         .entry:focus-visible {
-            background: rgba(255, 255, 255, .04);
-            padding-inline: 1rem .5rem;
+            background: #f1efe8;
             outline: none;
         }
 
         .num {
             font-family: 'Amiri', serif;
-            font-size: .95rem;
-            color: rgba(255, 255, 255, .35);
+            font-size: .875rem;
+            color: var(--muted);
         }
 
         .entry-body {
@@ -140,37 +133,36 @@
 
         .entry-title {
             display: block;
-            font-size: 1.15rem;
+            font-size: 1.0625rem;
             font-weight: 600;
         }
 
         .entry-note {
             display: block;
-            margin-top: .2rem;
-            font-size: .85rem;
+            margin-top: .1875rem;
+            font-size: .8125rem;
             font-weight: 300;
-            color: rgba(255, 255, 255, .5);
+            color: var(--muted);
         }
 
         .arrow {
             flex: none;
-            color: var(--gold);
-            opacity: .45;
-            transform: translateX(6px);
-            transition: opacity .25s ease, transform .25s ease;
+            color: var(--green);
+            transform: translateX(4px);
+            transition: transform .18s ease;
         }
 
         .entry:hover .arrow,
         .entry:focus-visible .arrow {
-            opacity: 1;
             transform: translateX(0);
         }
 
         footer {
-            padding: 1.75rem 0 2.25rem;
-            font-size: .8rem;
+            border-top: 1px solid var(--line);
+            padding: 1.5rem 0;
+            font-size: .8125rem;
             font-weight: 300;
-            color: rgba(255, 255, 255, .35);
+            color: var(--muted);
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -184,11 +176,16 @@
 </head>
 
 <body>
+    <header>
+        <div class="shell bar">
+            <img src="{{ asset('logo.jpg') }}" alt="شعار الجمعية">
+            <span>جمعية إبن أبي زيد القيرواني</span>
+        </div>
+    </header>
+
     <main>
         <div class="shell">
-            <img class="mark" src="{{ asset('logo.jpg') }}" alt="شعار الجمعية">
-            <p class="eyebrow">بوابة الجمعية</p>
-            <h1>جمعية إبن أبي زيد<br>القيرواني</h1>
+            <h1>بوابة الجمعية</h1>
             <p class="lede">منصّة واحدة لإدارة الجمعية وبرامجها العلمية ومتابعة الحفظ. اختر وجهتك للمتابعة.</p>
 
             <nav>
