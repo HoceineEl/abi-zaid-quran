@@ -55,6 +55,21 @@ class Memorizer extends Model
         return $query->where('exempt', false);
     }
 
+    public function scopeAgeBetween(Builder $query, ?int $minAge, ?int $maxAge): Builder
+    {
+        return $query
+            ->whereNotNull('birth_date')
+            ->when($minAge !== null, fn (Builder $q) => $q->whereDate('birth_date', '<=', now()->subYears($minAge)->toDateString()))
+            ->when($maxAge !== null, fn (Builder $q) => $q->whereDate('birth_date', '>', now()->subYears($maxAge + 1)->toDateString()));
+    }
+
+    public function age(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->birth_date ? \Carbon\Carbon::parse($this->birth_date)->age : null,
+        );
+    }
+
     public function scopeUnpaidForMonth(Builder $query, int $year, int $month): Builder
     {
         return $query->whereDoesntHave('payments', fn ($q) =>

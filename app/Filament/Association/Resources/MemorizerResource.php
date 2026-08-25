@@ -12,6 +12,7 @@ use App\Filament\Association\Resources\GroupResource\RelationManagers\Memorizers
 use App\Filament\Association\Resources\MemorizerResource\Pages;
 use App\Filament\Association\Resources\MemorizerResource\RelationManagers\PaymentsRelationManager;
 use App\Filament\Association\Resources\MemorizerResource\RelationManagers\ReminderLogsRelationManager;
+use App\Exports\MemorizersFilteredExport;
 use App\Exports\YearlyPaymentExport;
 use App\Services\YearlyPaymentPdfService;
 use Maatwebsite\Excel\Facades\Excel;
@@ -217,6 +218,13 @@ class MemorizerResource extends Resource
                         'female' => 'أنثى',
                         default => 'ذكر',
                     }),
+                TextColumn::make('age')
+                    ->label('العمر')
+                    ->badge()
+                    ->color('gray')
+                    ->toggleable()
+                    ->placeholder('—')
+                    ->sortable(query: fn ($query, string $direction) => $query->orderBy('birth_date', $direction === 'asc' ? 'desc' : 'asc')),
 
 
 
@@ -326,6 +334,37 @@ class MemorizerResource extends Resource
                             },
                             "{$baseName}.pdf",
                             ['Content-Type' => 'application/pdf'],
+                        );
+                    }),
+
+                Action::make('export_filtered_memorizers')
+                    ->label('تصدير اللائحة المفلترة Excel')
+                    ->icon('heroicon-o-table-cells')
+                    ->color('success')
+                    ->modalHeading('تصدير اللائحة المفلترة')
+                    ->modalDescription('سيتم تصدير الطلاب الظاهرين حاليا حسب الفلاتر والبحث المطبقين.')
+                    ->modalSubmitActionLabel('تصدير')
+                    ->form([
+                        TextInput::make('heading')
+                            ->label('عنوان الملف')
+                            ->default('لائحة الطلاب')
+                            ->required(),
+                    ])
+                    ->action(function (array $data, Component $livewire) {
+                        $query = $livewire->getFilteredSortedTableQuery();
+
+                        if (! $query->clone()->exists()) {
+                            Notification::make()
+                                ->title('لا يوجد طلاب مطابقون للفلاتر المحددة')
+                                ->warning()
+                                ->send();
+
+                            return null;
+                        }
+
+                        return Excel::download(
+                            new MemorizersFilteredExport($query, $data['heading']),
+                            $data['heading'] . '-' . now()->format('Y-m-d') . '.xlsx',
                         );
                     }),
 
@@ -480,6 +519,59 @@ class MemorizerResource extends Resource
                                 $query->where('teacher_id', $data['value']);
                             });
                         });
+                    }),
+
+                Filter::make('age')
+                    ->label('العمر')
+                    ->form([
+                        Select::make('ages')
+                            ->label('أعمار محددة')
+                            ->multiple()
+                            ->options(array_combine(range(3, 40), range(3, 40)))
+                            ->helperText('اختر عمرا أو أكثر (بالسنوات الكاملة)'),
+                        TextInput::make('min_age')
+                            ->label('من عمر')
+                            ->numeric()
+                            ->minValue(0),
+                        TextInput::make('max_age')
+                            ->label('إلى عمر')
+                            ->numeric()
+                            ->minValue(0),
+                    ])
+                    ->columns(3)
+                    ->query(function (Builder $query, array $data): Builder {
+                        $ages = array_map('intval', array_filter($data['ages'] ?? [], fn ($age) => filled($age)));
+
+                        return $query
+                            ->when($ages, fn (Builder $q) => $q->whereNotNull('birth_date')->where(
+                                fn (Builder $q) => collect($ages)->each(fn (int $age) => $q->orWhere(
+                                    fn (Builder $q) => $q->ageBetween($age, $age),
+                                )),
+                            ))
+                            ->when(
+                                filled($data['min_age'] ?? null) || filled($data['max_age'] ?? null),
+                                fn (Builder $q) => $q->ageBetween(
+                                    filled($data['min_age'] ?? null) ? (int) $data['min_age'] : null,
+                                    filled($data['max_age'] ?? null) ? (int) $data['max_age'] : null,
+                                ),
+                            );
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+
+                        if (filled($data['ages'] ?? [])) {
+                            $indicators[] = 'العمر: ' . implode('، ', $data['ages']);
+                        }
+
+                        if (filled($data['min_age'] ?? null)) {
+                            $indicators[] = 'من عمر ' . $data['min_age'];
+                        }
+
+                        if (filled($data['max_age'] ?? null)) {
+                            $indicators[] = 'إلى عمر ' . $data['max_age'];
+                        }
+
+                        return $indicators;
                     }),
 
                 TernaryFilter::make('exempt')
