@@ -2,6 +2,7 @@
 
 namespace App\Filament\Association\Pages;
 
+use App\Enums\PaymentType;
 use App\Models\Memorizer;
 use App\Models\Payment;
 use Carbon\Carbon;
@@ -48,7 +49,7 @@ class MonthlyPaymentsTracker extends Page implements HasTable
         9 => 'شتنبر', 10 => 'أكتوبر', 11 => 'نونبر', 12 => 'دجنبر',
     ];
 
-    public ?string $preset = 'current_year';
+    public ?string $preset = 'school_year';
 
     public ?string $dateFrom = null;
 
@@ -81,15 +82,15 @@ class MonthlyPaymentsTracker extends Page implements HasTable
 
     public function mount(): void
     {
-        $this->applyPreset('current_year');
+        $this->applyPreset('school_year');
     }
 
     /** @return array<string, string> */
     public function presets(): array
     {
         return [
-            'current_year' => 'هذه السنة',
             'school_year' => 'السنة الدراسية',
+            'current_year' => 'هذه السنة',
             'last_12' => 'آخر 12 شهر',
             'last_year' => 'السنة الماضية',
             'all' => 'الكل',
@@ -105,7 +106,7 @@ class MonthlyPaymentsTracker extends Page implements HasTable
             case 'school_year':
                 $startYear = $now->month >= 9 ? $now->year : $now->year - 1;
                 $this->dateFrom = Carbon::create($startYear, 9, 1)->startOfMonth()->toDateString();
-                $this->dateTo = $now->copy()->endOfMonth()->toDateString();
+                $this->dateTo = Carbon::create($startYear + 1, 8, 31)->endOfMonth()->toDateString();
                 break;
 
             case 'last_12':
@@ -194,6 +195,7 @@ class MonthlyPaymentsTracker extends Page implements HasTable
                 'key' => $cursor->format('Y-m'),
                 'label' => self::ARABIC_MONTHS[$month].' '.$year,
                 'short' => self::ARABIC_MONTHS[$month].' '.$cursor->format('y'),
+                'type' => PaymentType::MONTHLY,
             ];
         }
 
@@ -204,18 +206,66 @@ class MonthlyPaymentsTracker extends Page implements HasTable
         return $months;
     }
 
+    /** @return array{0: Carbon, 1: Carbon} */
+    public function schoolYearBounds(): array
+    {
+        $reference = Carbon::parse($this->dateTo ?? now());
+        $startYear = $reference->month >= 9 ? $reference->year : $reference->year - 1;
+
+        return [
+            Carbon::create($startYear, 9, 1)->startOfDay(),
+            Carbon::create($startYear + 1, 8, 31)->endOfDay(),
+        ];
+    }
+
+    /**
+     * @return array{year:int, month:null, key:string, label:string, short:string, type:PaymentType}
+     */
+    public function feeSlot(PaymentType $type): array
+    {
+        [$start] = $this->schoolYearBounds();
+        $schoolYear = $start->year.'/'.($start->year + 1);
+
+        return [
+            'year' => $start->year,
+            'month' => null,
+            'key' => $type->value,
+            'label' => $type->getLabel().' '.$schoolYear,
+            'short' => $type === PaymentType::REGISTRATION ? 'التسجيل' : 'الدورة الصيفية',
+            'type' => $type,
+        ];
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $months
+     * @return array<int, array<string, mixed>>
+     */
+    public function paymentSlots(array $months): array
+    {
+        return [
+            $this->feeSlot(PaymentType::REGISTRATION),
+            ...$months,
+            $this->feeSlot(PaymentType::SUMMER_SESSION),
+        ];
+    }
+
     public function table(Table $table): Table
     {
         $months = $this->monthsInRange();
         $rangeStart = Carbon::parse($months[0]['key'].'-01')->startOfMonth();
         $rangeEnd = Carbon::parse(end($months)['key'].'-01')->endOfMonth();
+        [$schoolYearStart, $schoolYearEnd] = $this->schoolYearBounds();
 
         return $table
             ->query(
                 Memorizer::query()->with([
                     'group:id,name,price',
                     'guardian:id,name,phone',
-                    'payments' => fn ($query) => $query->whereBetween('payment_date', [$rangeStart, $rangeEnd]),
+                    'payments' => fn ($query) => $query
+                        ->where(fn (Builder $query) => $query->monthly()->whereBetween('payment_date', [$rangeStart, $rangeEnd]))
+                        ->orWhere(fn (Builder $query) => $query
+                            ->whereNot('type', PaymentType::MONTHLY)
+                            ->whereBetween('payment_date', [$schoolYearStart, $schoolYearEnd])),
                 ])
             )
             ->defaultSort('name')
@@ -244,7 +294,7 @@ class MonthlyPaymentsTracker extends Page implements HasTable
                         });
                     }),
 
-                ...$this->buildMonthColumns($months),
+                ...$this->buildMonthColumns($this->paymentSlots($months)),
 
                 TextColumn::make('summary')
                     ->label('الملخص')
@@ -274,10 +324,12 @@ class MonthlyPaymentsTracker extends Page implements HasTable
                     ->falseLabel('لم يدفع الشهر الحالي')
                     ->queries(
                         true: fn (Builder $query) => $query->whereHas('payments', fn (Builder $q) => $q
+                            ->monthly()
                             ->whereYear('payment_date', now()->year)
                             ->whereMonth('payment_date', now()->month)),
                         false: fn (Builder $query) => $query->where('exempt', false)
                             ->whereDoesntHave('payments', fn (Builder $q) => $q
+                                ->monthly()
                                 ->whereYear('payment_date', now()->year)
                                 ->whereMonth('payment_date', now()->month)),
                     ),
@@ -357,7 +409,21 @@ class MonthlyPaymentsTracker extends Page implements HasTable
     protected function paymentsFor(Memorizer $record, array $month): Collection
     {
         return $record->payments->filter(
-            fn (Payment $payment): bool => $payment->payment_date?->format('Y-m') === $month['key']
+            fn (Payment $payment): bool => $payment->type === $month['type']
+                && ($month['month'] === null || $payment->payment_date?->format('Y-m') === $month['key'])
+        );
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $months
+     */
+    protected function monthlyPaymentsIn(Memorizer $record, array $months): Collection
+    {
+        $keys = collect($months)->pluck('key');
+
+        return $record->payments->filter(
+            fn (Payment $payment): bool => $payment->type === PaymentType::MONTHLY
+                && $keys->contains($payment->payment_date?->format('Y-m'))
         );
     }
 
@@ -370,11 +436,7 @@ class MonthlyPaymentsTracker extends Page implements HasTable
             return 0.0;
         }
 
-        $keys = collect($months)->pluck('key');
-
-        return (float) $record->payments
-            ->filter(fn (Payment $payment): bool => $keys->contains($payment->payment_date?->format('Y-m')))
-            ->sum('amount');
+        return (float) $this->monthlyPaymentsIn($record, $months)->sum('amount');
     }
 
     /**
@@ -382,14 +444,22 @@ class MonthlyPaymentsTracker extends Page implements HasTable
      */
     protected function paidMonthsCount(Memorizer $record, array $months): int
     {
-        $keys = collect($months)->pluck('key');
-
-        return $record->payments
-            ->filter(fn (Payment $payment): bool => $keys->contains($payment->payment_date?->format('Y-m')))
+        return $this->monthlyPaymentsIn($record, $months)
             ->pluck('payment_date')
             ->map(fn ($date) => $date?->format('Y-m'))
             ->unique()
             ->count();
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $months
+     * @return array<int, array<string, mixed>>
+     */
+    protected function dueMonths(array $months): array
+    {
+        $currentKey = now()->format('Y-m');
+
+        return array_values(array_filter($months, fn (array $month): bool => $month['key'] <= $currentKey));
     }
 
     /**
@@ -401,7 +471,9 @@ class MonthlyPaymentsTracker extends Page implements HasTable
             return 'معفى';
         }
 
-        return $this->paidMonthsCount($record, $months).' / '.count($months);
+        $dueMonths = $this->dueMonths($months);
+
+        return $this->paidMonthsCount($record, $dueMonths).' / '.count($dueMonths);
     }
 
     /**
@@ -413,8 +485,9 @@ class MonthlyPaymentsTracker extends Page implements HasTable
             return 'gray';
         }
 
-        $total = count($months);
-        $paid = $this->paidMonthsCount($record, $months);
+        $dueMonths = $this->dueMonths($months);
+        $total = count($dueMonths);
+        $paid = $this->paidMonthsCount($record, $dueMonths);
 
         return match (true) {
             $total === 0 => 'gray',
@@ -432,6 +505,12 @@ class MonthlyPaymentsTracker extends Page implements HasTable
     protected function paymentDateFor(array $month): Carbon
     {
         $now = now();
+
+        if ($month['month'] === null) {
+            [$start, $end] = $this->schoolYearBounds();
+
+            return $now->between($start, $end) ? $now : $start;
+        }
 
         if ($month['year'] === $now->year && $month['month'] === $now->month) {
             return $now;
@@ -452,7 +531,7 @@ class MonthlyPaymentsTracker extends Page implements HasTable
             ->modalWidth('md')
             ->hidden(fn (Memorizer $record): bool => $record->exempt)
             ->fillForm(fn (Memorizer $record): array => [
-                'amount' => $record->group?->price ?? 70,
+                'amount' => $month['type'] === PaymentType::MONTHLY ? ($record->group?->price ?? 70) : null,
                 'payment_date' => $this->paymentDateFor($month)->toDateString(),
             ])
             ->form(function (Memorizer $record) use ($month): array {
@@ -463,7 +542,9 @@ class MonthlyPaymentsTracker extends Page implements HasTable
                 return [
                     Placeholder::make('hint')
                         ->hiddenLabel()
-                        ->content('سجّل دفعة الشهر ثم اطبع الإيصال.'),
+                        ->content($month['type'] === PaymentType::MONTHLY
+                            ? 'سجّل دفعة الشهر ثم اطبع الإيصال.'
+                            : 'سجّل '.$month['type']->getLabel().' ثم اطبع الإيصال.'),
                     TextInput::make('amount')
                         ->label('المبلغ (درهم)')
                         ->numeric()
@@ -508,7 +589,7 @@ class MonthlyPaymentsTracker extends Page implements HasTable
                         ->icon('heroicon-o-trash')
                         ->color('danger')
                         ->requiresConfirmation()
-                        ->modalHeading('حذف دفعة الشهر')
+                        ->modalHeading('حذف الدفعة')
                         ->action(function () use ($record, $month): void {
                             $this->paymentsFor($record, $month)->each->delete();
 
@@ -526,6 +607,7 @@ class MonthlyPaymentsTracker extends Page implements HasTable
                 }
 
                 $payment = $record->payments()->create([
+                    'type' => $month['type'],
                     'amount' => $data['amount'],
                     'payment_date' => $data['payment_date'],
                 ]);
@@ -554,7 +636,7 @@ class MonthlyPaymentsTracker extends Page implements HasTable
             ->form(function ($livewire) use ($months): array {
                 $records = $livewire->getSelectedTableRecords();
 
-                $monthOptions = collect($months)
+                $monthOptions = collect($this->paymentSlots($months))
                     ->mapWithKeys(fn (array $month): array => [$month['key'] => $month['label']])
                     ->toArray();
 
@@ -574,7 +656,7 @@ class MonthlyPaymentsTracker extends Page implements HasTable
 
                 return [
                     Select::make('month_key')
-                        ->label('الشهر')
+                        ->label('الشهر أو الواجب')
                         ->options($monthOptions)
                         ->default($currentKey)
                         ->required()
@@ -604,15 +686,24 @@ class MonthlyPaymentsTracker extends Page implements HasTable
             })
             ->action(function (Collection $records, array $data): void {
                 $monthKey = $data['month_key'];
-                [$year, $month] = array_map('intval', explode('-', $monthKey));
+                $feeType = PaymentType::tryFrom($monthKey);
 
-                $paymentDate = $this->paymentDateFor([
-                    'year' => $year,
-                    'month' => $month,
-                    'key' => $monthKey,
-                    'label' => '',
-                    'short' => '',
-                ]);
+                if ($feeType) {
+                    $slot = $this->feeSlot($feeType);
+                } else {
+                    [$year, $month] = array_map('intval', explode('-', $monthKey));
+                    $slot = [
+                        'year' => $year,
+                        'month' => $month,
+                        'key' => $monthKey,
+                        'label' => self::ARABIC_MONTHS[$month].' '.$year,
+                        'short' => '',
+                        'type' => PaymentType::MONTHLY,
+                    ];
+                }
+
+                [$schoolYearStart, $schoolYearEnd] = $this->schoolYearBounds();
+                $paymentDate = $this->paymentDateFor($slot);
 
                 $amounts = collect($data['students'] ?? [])
                     ->mapWithKeys(fn (array $row): array => [(int) $row['id'] => (float) ($row['amount'] ?? 0)]);
@@ -626,8 +717,12 @@ class MonthlyPaymentsTracker extends Page implements HasTable
                     }
 
                     $alreadyPaid = $record->payments()
-                        ->whereYear('payment_date', $year)
-                        ->whereMonth('payment_date', $month)
+                        ->ofType($slot['type'])
+                        ->when(
+                            $feeType,
+                            fn (Builder $query) => $query->whereBetween('payment_date', [$schoolYearStart, $schoolYearEnd]),
+                            fn (Builder $query) => $query->whereYear('payment_date', $slot['year'])->whereMonth('payment_date', $slot['month']),
+                        )
                         ->exists();
 
                     if ($alreadyPaid) {
@@ -637,6 +732,7 @@ class MonthlyPaymentsTracker extends Page implements HasTable
                     }
 
                     $created->push($record->payments()->create([
+                        'type' => $slot['type'],
                         'amount' => $amounts->get($record->id, $record->group?->price ?? 70),
                         'payment_date' => $paymentDate,
                     ]));
@@ -652,7 +748,7 @@ class MonthlyPaymentsTracker extends Page implements HasTable
                     return;
                 }
 
-                $body = 'تم تسجيل '.$created->count().' دفعة لشهر '.(self::ARABIC_MONTHS[$month].' '.$year).'.';
+                $body = 'تم تسجيل '.$created->count().' دفعة: '.$slot['label'].'.';
                 if ($skipped !== []) {
                     $body .= ' تم تجاهل (مدفوع مسبقاً): '.implode('، ', $skipped).'.';
                 }

@@ -27,6 +27,11 @@ class ListMemorizers extends ListRecords
                 ->icon('heroicon-o-users')
                 ->badge(fn() => $this->getModel()::count())
                 ->query(fn(Builder $query) => $query),
+            'without_group' => Tab::make('بدون مجموعة')
+                ->icon('heroicon-o-user-minus')
+                ->badgeColor('warning')
+                ->badge(fn () => $this->getModel()::withoutGroup()->count() ?: null)
+                ->query(fn (Builder $query) => $query->withoutGroup()),
             'males' => Tab::make('الذكور')
                 ->icon('heroicon-o-user')
                 ->badgeColor('blue')

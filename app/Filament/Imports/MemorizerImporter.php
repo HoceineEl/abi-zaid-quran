@@ -2,11 +2,10 @@
 
 namespace App\Filament\Imports;
 
-use App\Models\Memorizer;
+use App\Enums\SchoolLevel;
 use App\Models\MemoGroup;
+use App\Models\Memorizer;
 use App\Models\Teacher;
-use App\Models\Guardian;
-use App\Models\Round;
 use App\Models\User;
 use Filament\Actions\Imports\ImportColumn;
 use Filament\Actions\Imports\Importer;
@@ -29,8 +28,6 @@ class MemorizerImporter extends Importer
                 ->rules(['required', 'string'])
                 ->guess(['الاسم الكامل', 'الاسم', 'اسم الطالب']),
 
-
-
             ImportColumn::make('group')
                 ->label('الفئة')
                 ->rules(['nullable', 'string'])
@@ -39,10 +36,11 @@ class MemorizerImporter extends Importer
                     // If group_id option is set, ALWAYS use it (ignore file's group column)
                     if (isset($options['group_id'])) {
                         $record->memo_group_id = $options['group_id'];
+
                         return;
                     }
 
-                    if (!$state) {
+                    if (! $state) {
                         return;
                     }
 
@@ -51,7 +49,7 @@ class MemorizerImporter extends Importer
                     $groupName = trim($state);
 
                     // Try to find or create teacher
-                    if (!$teacherId) {
+                    if (! $teacherId) {
                         $teacherName = null;
 
                         // Extract teacher name from group name if it contains "-"
@@ -72,33 +70,33 @@ class MemorizerImporter extends Importer
                                 ->where('sex', $defaultSex)
                                 ->where(function ($query) use ($teacherName, $normalizedName) {
                                     $query->where('name', $teacherName)
-                                        ->orWhere('name', 'like', $teacherName . '%')
-                                        ->orWhere('name', 'like', $normalizedName . '%')
-                                        ->orWhere('name', 'like', '%' . $teacherName . '%');
+                                        ->orWhere('name', 'like', $teacherName.'%')
+                                        ->orWhere('name', 'like', $normalizedName.'%')
+                                        ->orWhere('name', 'like', '%'.$teacherName.'%');
                                 })
                                 ->first();
 
                             // Second: if not found, search any teacher with matching name
-                            if (!$teacher) {
+                            if (! $teacher) {
                                 $teacher = User::where('role', 'teacher')
                                     ->where(function ($query) use ($teacherName, $normalizedName) {
                                         $query->where('name', $teacherName)
-                                            ->orWhere('name', 'like', $teacherName . '%')
-                                            ->orWhere('name', 'like', $normalizedName . '%')
-                                            ->orWhere('name', 'like', '%' . $teacherName . '%');
+                                            ->orWhere('name', 'like', $teacherName.'%')
+                                            ->orWhere('name', 'like', $normalizedName.'%')
+                                            ->orWhere('name', 'like', '%'.$teacherName.'%');
                                     })
                                     ->first();
                             }
 
                             // Third: if still not found, create one with the chosen sex
-                            if (!$teacher) {
+                            if (! $teacher) {
                                 $teacher = User::create([
                                     'name' => $teacherName,
                                     'role' => 'teacher',
                                     'phone' => '0666666666',
                                     'sex' => $defaultSex,
                                     'password' => bcrypt('teacher'),
-                                    'email' => Str::slug($teacherName) . rand(100, 999) . '@abi-zaid.com',
+                                    'email' => Str::slug($teacherName).rand(100, 999).'@abi-zaid.com',
                                 ]);
                             }
 
@@ -112,7 +110,7 @@ class MemorizerImporter extends Importer
                     );
 
                     // Update teacher if group exists but has no teacher
-                    if (!$group->teacher_id && $teacherId) {
+                    if (! $group->teacher_id && $teacherId) {
                         $group->update(['teacher_id' => $teacherId]);
                     }
 
@@ -125,12 +123,12 @@ class MemorizerImporter extends Importer
                 ->guess(['الأستاذ', 'المعلم', 'المدرس', 'أستاذ'])
                 ->fillRecordUsing(function (Memorizer $record, ?string $state, array $options) {
                     // Skip if no group or no teacher state/option
-                    if (!$record->memo_group_id || (!$state && !isset($options['teacher_id']))) {
+                    if (! $record->memo_group_id || (! $state && ! isset($options['teacher_id']))) {
                         return;
                     }
 
                     $group = MemoGroup::find($record->memo_group_id);
-                    if (!$group || $group->teacher_id) {
+                    if (! $group || $group->teacher_id) {
                         // Skip if group already has a teacher (assigned by group column)
                         return;
                     }
@@ -143,12 +141,11 @@ class MemorizerImporter extends Importer
                             'phone' => '0666666666',
                             'sex' => $defaultSex,
                             'password' => bcrypt('teacher'),
-                            'email' => Str::slug($state) . rand(100, 999) . '@abi-zaid.com',
+                            'email' => Str::slug($state).rand(100, 999).'@abi-zaid.com',
                         ]);
                         $group->update(['teacher_id' => $teacher->id]);
                     }
                 }),
-
 
             ImportColumn::make('phone')
                 ->label('رقم الهاتف الخاص')
@@ -172,6 +169,25 @@ class MemorizerImporter extends Importer
                 })
                 ->example('2000-01-01'),
 
+            ImportColumn::make('school_level')
+                ->label('المستوى الدراسي')
+                ->rules(['nullable', 'string'])
+                ->guess(['المستوى الدراسي', 'المستوى'])
+                ->castStateUsing(fn (?string $state): ?SchoolLevel => blank($state) ? null : SchoolLevel::fromValueOrLabel(trim($state)))
+                ->example('الثالث ابتدائي'),
+
+            ImportColumn::make('memorized_hizbs')
+                ->label('المحفوظ الإجمالي (حزب)')
+                ->numeric()
+                ->rules(['nullable', 'integer', 'min:0', 'max:60'])
+                ->guess(['المحفوظ الإجمالي', 'المحفوظ', 'عدد الأحزاب'])
+                ->example('5'),
+
+            ImportColumn::make('attended_summer_session')
+                ->label('حضر الدورة الصيفية')
+                ->guess(['حضر الدورة الصيفية', 'الدورة الصيفية'])
+                ->castStateUsing(fn (?string $state): bool => in_array(mb_strtolower(trim((string) $state)), ['نعم', '1', 'true', 'yes'], true)),
+
             ImportColumn::make('exempt')
                 ->label('معفى')
                 ->rules(['nullable', 'boolean'])
@@ -180,6 +196,7 @@ class MemorizerImporter extends Importer
                     if ($state === null || $state === '') {
                         return false;
                     }
+
                     return in_array(mb_strtolower(trim($state)), ['نعم', 'معفى', 'معفي', '1', 'true', 'yes'], true);
                 }),
 
@@ -190,7 +207,7 @@ class MemorizerImporter extends Importer
     {
         $name = $this->data['name'] ?? null;
 
-        if (!$name) {
+        if (! $name) {
             return null;
         }
 
@@ -203,7 +220,7 @@ class MemorizerImporter extends Importer
             return null;
         }
 
-        return new Memorizer();
+        return new Memorizer;
     }
 
     protected function beforeSave(): void
@@ -221,7 +238,7 @@ class MemorizerImporter extends Importer
         // Ensure the group has a teacher assigned (for sex derivation)
         if ($this->record->memo_group_id && isset($this->options['teacher_id'])) {
             $group = MemoGroup::find($this->record->memo_group_id);
-            if ($group && !$group->teacher_id) {
+            if ($group && ! $group->teacher_id) {
                 $group->update(['teacher_id' => $this->options['teacher_id']]);
             }
         }
@@ -231,7 +248,7 @@ class MemorizerImporter extends Importer
     {
         return match (trim(strtolower($sex))) {
             'ذكر', 'رجل', 'صبي', 'ولد' => 'male',
-            'أنثى', 'مرأة'  => 'female',
+            'أنثى', 'مرأة' => 'female',
             default => 'male',
         };
     }
@@ -241,7 +258,7 @@ class MemorizerImporter extends Importer
         return [
             Select::make('group_id')
                 ->label('المجموعة')
-                ->options(fn() => MemoGroup::all()->pluck('name', 'id'))
+                ->options(fn () => MemoGroup::all()->pluck('name', 'id'))
                 ->searchable()
                 ->preload()
                 ->placeholder('اختر المجموعة (اختياري)')
@@ -249,7 +266,7 @@ class MemorizerImporter extends Importer
 
             Select::make('teacher_id')
                 ->label('الأستاذ(ة)')
-                ->options(fn() => User::where('role', 'teacher')->pluck('name', 'id'))
+                ->options(fn () => User::where('role', 'teacher')->pluck('name', 'id'))
                 ->placeholder('اختر الأستاذ(ة) (اختياري)')
                 ->helperText('إذا تم تحديد أستاذ(ة)، سيتم تجاهل عمود الأستاذ(ة) في ملف الاستيراد'),
 
@@ -266,12 +283,13 @@ class MemorizerImporter extends Importer
                 ->label('تحديث السجلات الموجودة'),
         ];
     }
+
     public static function getCompletedNotificationBody(Import $import): string
     {
-        $body = 'تم استيراد ' . number_format($import->successful_rows) . ' ' . str('سجل')->plural($import->successful_rows) . ' بنجاح.';
+        $body = 'تم استيراد '.number_format($import->successful_rows).' '.str('سجل')->plural($import->successful_rows).' بنجاح.';
 
         if ($failedRowsCount = $import->getFailedRowsCount()) {
-            $body .= ' فشل استيراد ' . number_format($failedRowsCount) . ' ' . str('سجل')->plural($failedRowsCount) . '.';
+            $body .= ' فشل استيراد '.number_format($failedRowsCount).' '.str('سجل')->plural($failedRowsCount).'.';
         }
 
         return $body;

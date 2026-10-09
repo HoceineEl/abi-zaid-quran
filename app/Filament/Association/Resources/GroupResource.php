@@ -3,30 +3,31 @@
 namespace App\Filament\Association\Resources;
 
 use App\Enums\Days;
+use App\Exports\GroupStudentsPaymentExport;
 use App\Filament\Association\Resources\GroupResource\Pages;
 use App\Filament\Association\Resources\GroupResource\RelationManagers\AttendancesRelationManager;
 use App\Filament\Association\Resources\GroupResource\RelationManagers\AttendancesScoreRelationManager;
+use App\Filament\Association\Resources\GroupResource\RelationManagers\AttendanceTeacherRelationManager;
+use App\Filament\Association\Resources\GroupResource\RelationManagers\ManageStudentsRelationManager;
 use App\Filament\Association\Resources\GroupResource\RelationManagers\MemorizersRelationManager;
 use App\Filament\Association\Resources\GroupResource\RelationManagers\PaymentsRelationManager;
-use App\Filament\Association\Resources\GroupResource\RelationManagers\AttendanceTeacherRelationManager;
 use App\Models\MemoGroup;
-use App\Exports\GroupStudentsPaymentExport;
+use App\Models\User;
 use App\Services\AttendanceExcelExportService;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\ToggleButtons;
-use Filament\Notifications\Notification;
 use Filament\Forms\Form;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Infolist;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
-use Filament\Tables\Table;
 use Filament\Tables\Actions\Action;
+use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use App\Models\User;
 use Maatwebsite\Excel\Facades\Excel;
 
 class GroupResource extends Resource
@@ -45,6 +46,11 @@ class GroupResource extends Resource
     {
         return $form
             ->schema([
+                TextInput::make('number')
+                    ->label('رقم الحلقة')
+                    ->numeric()
+                    ->minValue(1)
+                    ->unique(ignoreRecord: true),
                 TextInput::make('name')
                     ->label('الإسم')
                     ->required(),
@@ -54,15 +60,16 @@ class GroupResource extends Resource
                     ->default(70)
                     ->required(),
                 Select::make('teacher_id')
-                    ->options(fn() => User::where('role', 'teacher')->pluck('name', 'id'))
-                    ->label('المدرس')
+                    ->options(fn () => User::where('role', 'teacher')->pluck('name', 'id'))
+                    ->label('الأستاذ')
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->required(),
                 ToggleButtons::make('days')
                     ->multiple()
                     ->inline()
                     ->options(Days::class)
-                    ->label('الأيام')
+                    ->label('الأيام'),
             ]);
     }
 
@@ -70,12 +77,16 @@ class GroupResource extends Resource
     {
         return $infolist
             ->schema([
+                TextEntry::make('number')
+                    ->label('رقم الحلقة')
+                    ->prefix('#')
+                    ->placeholder('—'),
                 TextEntry::make('name')
                     ->label('الإسم'),
                 TextEntry::make('teacher.name')
-                    ->label('المدرس'),
+                    ->label('الأستاذ'),
                 TextEntry::make('arabic_days')
-                    ->label('الأيام')
+                    ->label('الأيام'),
             ]);
     }
 
@@ -83,12 +94,18 @@ class GroupResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('number')
+                    ->label('الرقم')
+                    ->prefix('#')
+                    ->placeholder('—')
+                    ->searchable()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('name')
                     ->searchable(query: function ($query, string $search) {
                         return $query->where(function ($query) use ($search) {
-                            $query->where('name', 'like', '%' . $search . '%')
+                            $query->where('name', 'like', '%'.$search.'%')
                                 ->orWhereHas('memorizers', function ($query) use ($search) {
-                                    $query->where('name', 'like', '%' . $search . '%');
+                                    $query->where('name', 'like', '%'.$search.'%');
                                 });
                         });
                     })
@@ -106,23 +123,27 @@ class GroupResource extends Resource
 
                 Tables\Columns\TextColumn::make('memorizers_count')
                     ->searchable(false)
-                    ->getStateUsing(fn($record) => $record->memorizers_count)
+                    ->getStateUsing(fn ($record) => $record->memorizers_count)
                     ->label('عدد الطلاب')
                     ->sortable(false),
             ])
             ->filters([
-                //
+                Tables\Filters\Filter::make('today')
+                    ->label('مجموعات اليوم فقط')
+                    ->toggle()
+                    ->default(fn (): bool => auth()->user()->isTeacher())
+                    ->query(fn (Builder $query): Builder => $query->whereJsonContains('days', strtolower(now()->format('l')))),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
                     ->slideOver()
-                    ->hidden(fn() => auth()->user()->isTeacher()),
+                    ->hidden(fn () => auth()->user()->isTeacher()),
                 Tables\Actions\ViewAction::make(),
                 Action::make('export_students_payment')
                     ->label('تصدير Excel')
                     ->icon('heroicon-o-document-arrow-down')
                     ->color('success')
-                    ->hidden(fn() => auth()->user()->isTeacher())
+                    ->hidden(fn () => auth()->user()->isTeacher())
                     ->form([
                         Select::make('selected_month')
                             ->label('الشهر المختار')
@@ -144,8 +165,8 @@ class GroupResource extends Resource
                             ->required(),
                     ])
                     ->action(function (MemoGroup $record, array $data) {
-                        $fileName = 'قائمة_طلاب_' . str_replace(' ', '_', $record->name) . '_' . now()->format('Y-m-d') . '.xlsx';
-                        
+                        $fileName = 'قائمة_طلاب_'.str_replace(' ', '_', $record->name).'_'.now()->format('Y-m-d').'.xlsx';
+
                         return Excel::download(
                             new GroupStudentsPaymentExport($record, $data['selected_month']),
                             $fileName
@@ -155,15 +176,15 @@ class GroupResource extends Resource
                     ->label('تصدير حضور وتقييم Excel')
                     ->icon('heroicon-o-table-cells')
                     ->color('primary')
-                    ->hidden(fn() => auth()->user()->isTeacher())
+                    ->hidden(fn () => auth()->user()->isTeacher())
                     ->form(static::getAttendanceExportFormSchema())
-                    ->action(fn(MemoGroup $record, array $data) => static::exportAttendanceWorkbook($record, $data)),
+                    ->action(fn (MemoGroup $record, array $data) => static::exportAttendanceWorkbook($record, $data)),
             ])
-            ->recordUrl(fn($record) => GroupResource::getUrl('view', ['record' => $record->id]))
+            ->recordUrl(fn ($record) => GroupResource::getUrl('view', ['record' => $record->id]))
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()
-                        ->hidden(fn() => auth()->user()->isTeacher()),
+                        ->hidden(fn () => auth()->user()->isTeacher()),
                 ]),
             ]);
     }
@@ -173,12 +194,14 @@ class GroupResource extends Resource
         if (auth()->check() && auth()->user()->isTeacher()) {
             return [
                 AttendanceTeacherRelationManager::class,
+                ManageStudentsRelationManager::class,
                 AttendancesScoreRelationManager::class,
             ];
         }
 
         return [
             MemorizersRelationManager::class,
+            ManageStudentsRelationManager::class,
             AttendancesRelationManager::class,
             AttendancesScoreRelationManager::class,
             PaymentsRelationManager::class,
@@ -192,12 +215,7 @@ class GroupResource extends Resource
             ->withCount('memorizers');
 
         if (auth()->user()->isTeacher()) {
-            $today = strtolower(now()->format('l'));
-
-            return $query->where(function ($q) use ($today) {
-                $q->where('teacher_id', auth()->user()->id)
-                    ->whereJsonContains('days', $today);
-            });
+            return $query->where('teacher_id', auth()->id());
         }
 
         return $query;

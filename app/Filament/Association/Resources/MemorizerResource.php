@@ -2,33 +2,27 @@
 
 namespace App\Filament\Association\Resources;
 
-use App\Classes\Core;
-use App\Enums\Days;
-use App\Enums\WhatsAppMessageStatus;
+use App\Enums\SchoolLevel;
+use App\Exports\MemorizersFilteredExport;
+use App\Exports\YearlyPaymentExport;
 use App\Filament\Association\Actions\SendPaymentRemindersAction;
 use App\Filament\Association\Actions\SendPaymentRemindersBulkAction;
-use App\Models\WhatsAppMessageHistory;
 use App\Filament\Association\Resources\GroupResource\RelationManagers\MemorizersRelationManager;
 use App\Filament\Association\Resources\MemorizerResource\Pages;
 use App\Filament\Association\Resources\MemorizerResource\RelationManagers\PaymentsRelationManager;
 use App\Filament\Association\Resources\MemorizerResource\RelationManagers\ReminderLogsRelationManager;
-use App\Exports\MemorizersFilteredExport;
-use App\Exports\YearlyPaymentExport;
-use App\Services\YearlyPaymentPdfService;
-use Maatwebsite\Excel\Facades\Excel;
-use Carbon\Carbon;
 use App\Filament\Exports\MemorizerExporter;
 use App\Filament\Imports\MemorizerImporter;
 use App\Models\MemoGroup;
 use App\Models\Memorizer;
-use App\Models\Round;
 use App\Models\User;
+use App\Models\WhatsAppMessageHistory;
+use App\Services\YearlyPaymentPdfService;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
-use Filament\Actions\Action as ActionsAction;
-use Filament\Forms\Components\CheckboxList;
+use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Section;
@@ -39,9 +33,7 @@ use Filament\Forms\Components\ToggleButtons;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Support\Assets\Js;
 use Filament\Support\Enums\FontWeight;
-use Filament\Support\Facades\FilamentAsset;
 use Filament\Tables;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\ActionGroup;
@@ -51,18 +43,15 @@ use Filament\Tables\Actions\ImportAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Enums\ActionsPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\HtmlString;
-use Illuminate\Validation\Rules\File;
 use Livewire\Component;
+use Maatwebsite\Excel\Facades\Excel;
 use Mpdf\Mpdf;
-
-use function GuzzleHttp\default_ca_bundle;
+use Ysfkaya\FilamentPhoneInput\Forms\PhoneInput;
 
 class MemorizerResource extends Resource
 {
@@ -92,16 +81,14 @@ class MemorizerResource extends Resource
                         TextInput::make('address')
                             ->label('العنوان'),
 
-                        DatePicker::make('birth_date')
-                            ->label('تاريخ الميلاد'),
+                        ...static::studentProfileFields(),
                         Select::make('memo_group_id')
                             ->label('المجموعة')
                             ->hiddenOn(MemorizersRelationManager::class)
                             ->relationship('group', 'name')
+                            ->placeholder('بدون مجموعة')
                             ->searchable()
-                            ->preload()
-                            ->required(),
-
+                            ->preload(),
 
                         TextInput::make('city')
                             ->label('المدينة')
@@ -120,6 +107,56 @@ class MemorizerResource extends Resource
                             ->default(false),
                     ])->columns(),
             ]);
+    }
+
+    /** @return array<int, \Filament\Forms\Components\Component> */
+    public static function groupStudentFormSchema(): array
+    {
+        return [
+            TextInput::make('name')
+                ->label('الإسم الكامل')
+                ->required()
+                ->columnSpanFull(),
+            ...static::studentProfileFields(),
+            PhoneInput::make('phone')
+                ->label('هاتف ولي الأمر')
+                ->initialCountry('ma')
+                ->defaultCountry('MA')
+                ->formatAsYouType()
+                ->showFlags(),
+            TextInput::make('address')
+                ->label('العنوان'),
+            TextInput::make('city')
+                ->label('المدينة')
+                ->default('أسفي'),
+        ];
+    }
+
+    /** @return array<int, \Filament\Forms\Components\Field> */
+    public static function studentProfileFields(): array
+    {
+        return [
+            DatePicker::make('birth_date')
+                ->label('تاريخ الازدياد')
+                ->maxDate(now())
+                ->required(),
+            Select::make('school_level')
+                ->label('المستوى الدراسي')
+                ->options(SchoolLevel::class)
+                ->required(),
+            TextInput::make('memorized_hizbs')
+                ->label('المحفوظ الإجمالي')
+                ->numeric()
+                ->minValue(0)
+                ->maxValue(60)
+                ->suffix('حزب')
+                ->helperText('عدد الأحزاب التي يحفظها الطالب، من 0 إلى 60.')
+                ->required(),
+            Toggle::make('attended_summer_session')
+                ->label('حضر الدورة الصيفية')
+                ->inline(false)
+                ->default(false),
+        ];
     }
 
     public static function table(Table $table): Table
@@ -153,7 +190,6 @@ class MemorizerResource extends Resource
                             return 'heroicon-o-exclamation-circle';
                         }
 
-
                         return null;
                     })
                     ->searchable()
@@ -175,11 +211,12 @@ class MemorizerResource extends Resource
                     ->searchable()
                     ->toggleable()
                     ->badge()
+                    ->placeholder('بدون مجموعة')
                     ->color('indigo')
                     ->sortable()
                     ->label('المجموعة'),
                 TextColumn::make('phone')
-                    ->searchable(query: fn($query, string $search) => $query->where(function ($query) use ($search) {
+                    ->searchable(query: fn ($query, string $search) => $query->where(function ($query) use ($search) {
                         $query->where('phone', $search)
                             ->orWhereHas('guardian', function ($query) use ($search) {
                                 $query->where('phone', $search);
@@ -194,15 +231,15 @@ class MemorizerResource extends Resource
                     ->sortable(false)
                     ->label('الهاتف')
                     ->html()
-                    ->description(fn($record) => $record->city),
+                    ->description(fn ($record) => $record->city),
                 TextColumn::make('number')
                     ->label('الرقم')
-                    ->searchable(query: fn($query, string $search) => $query->where(function ($query) use ($search) {
+                    ->searchable(query: fn ($query, string $search) => $query->where(function ($query) use ($search) {
                         $query->whereRaw("CONCAT(DATE_FORMAT(memorizers.created_at, '%y%m%d'), LPAD(memorizers.id, 2, '0')) = ?", [$search]);
                     }))
                     ->toggleable()
                     ->sortable(
-                        query: fn($query, string $direction) => $query->orderByRaw("CONCAT(DATE_FORMAT(created_at, '%y%m%d'), LPAD(id, 2, '0')) $direction")
+                        query: fn ($query, string $direction) => $query->orderByRaw("CONCAT(DATE_FORMAT(created_at, '%y%m%d'), LPAD(id, 2, '0')) $direction")
                     )
                     ->copyable()
                     ->copyMessage('تم نسخ الرقم')
@@ -213,7 +250,7 @@ class MemorizerResource extends Resource
                     ->toggleable()
                     ->sortable()
                     ->label('تاريخ الإزدياد')
-                    ->description(fn(Memorizer $record) => match ($record->sex) {
+                    ->description(fn (Memorizer $record) => match ($record->sex) {
                         'male' => 'ذكر',
                         'female' => 'أنثى',
                         default => 'ذكر',
@@ -225,8 +262,24 @@ class MemorizerResource extends Resource
                     ->toggleable()
                     ->placeholder('—')
                     ->sortable(query: fn ($query, string $direction) => $query->orderBy('birth_date', $direction === 'asc' ? 'desc' : 'asc')),
-
-
+                TextColumn::make('school_level')
+                    ->label('المستوى الدراسي')
+                    ->badge()
+                    ->color('info')
+                    ->toggleable()
+                    ->sortable()
+                    ->placeholder('—'),
+                TextColumn::make('memorized_hizbs')
+                    ->label('المحفوظ الإجمالي')
+                    ->suffix(' حزب')
+                    ->toggleable()
+                    ->sortable()
+                    ->placeholder('—'),
+                IconColumn::make('attended_summer_session')
+                    ->label('الدورة الصيفية')
+                    ->boolean()
+                    ->toggleable()
+                    ->sortable(),
 
             ])
 
@@ -364,7 +417,7 @@ class MemorizerResource extends Resource
 
                         return Excel::download(
                             new MemorizersFilteredExport($query, $data['heading']),
-                            $data['heading'] . '-' . now()->format('Y-m-d') . '.xlsx',
+                            $data['heading'].'-'.now()->format('Y-m-d').'.xlsx',
                         );
                     }),
 
@@ -396,7 +449,7 @@ class MemorizerResource extends Resource
                         );
                         $writer = new Writer($renderer);
                         $svg = $writer->writeString($data);
-                        $qrCode = 'data:image/svg+xml;base64,' . base64_encode($svg);
+                        $qrCode = 'data:image/svg+xml;base64,'.base64_encode($svg);
 
                         // Generate Badge HTML
                         $badgeHtml = view('badges.student', [
@@ -447,9 +500,6 @@ class MemorizerResource extends Resource
                             ->limit(20)
                             ->get()],
                     )),
-
-
-
 
             ], ActionsPosition::BeforeColumns)
             ->bulkActions([
@@ -560,20 +610,54 @@ class MemorizerResource extends Resource
                         $indicators = [];
 
                         if (filled($data['ages'] ?? [])) {
-                            $indicators[] = 'العمر: ' . implode('، ', $data['ages']);
+                            $indicators[] = 'العمر: '.implode('، ', $data['ages']);
                         }
 
                         if (filled($data['min_age'] ?? null)) {
-                            $indicators[] = 'من عمر ' . $data['min_age'];
+                            $indicators[] = 'من عمر '.$data['min_age'];
                         }
 
                         if (filled($data['max_age'] ?? null)) {
-                            $indicators[] = 'إلى عمر ' . $data['max_age'];
+                            $indicators[] = 'إلى عمر '.$data['max_age'];
                         }
 
                         return $indicators;
                     }),
 
+                Tables\Filters\SelectFilter::make('school_level')
+                    ->label('المستوى الدراسي')
+                    ->options(SchoolLevel::class)
+                    ->multiple(),
+                Filter::make('memorized_hizbs')
+                    ->label('المحفوظ الإجمالي')
+                    ->form([
+                        TextInput::make('min_hizbs')
+                            ->label('من حزب')
+                            ->numeric()
+                            ->minValue(0)
+                            ->maxValue(60),
+                        TextInput::make('max_hizbs')
+                            ->label('إلى حزب')
+                            ->numeric()
+                            ->minValue(0)
+                            ->maxValue(60),
+                    ])
+                    ->columns(2)
+                    ->query(fn (Builder $query, array $data): Builder => $query
+                        ->when(filled($data['min_hizbs'] ?? null), fn (Builder $q) => $q->where('memorized_hizbs', '>=', (int) $data['min_hizbs']))
+                        ->when(filled($data['max_hizbs'] ?? null), fn (Builder $q) => $q->where('memorized_hizbs', '<=', (int) $data['max_hizbs'])))
+                    ->indicateUsing(fn (array $data): array => array_values(array_filter([
+                        filled($data['min_hizbs'] ?? null) ? 'من حزب '.$data['min_hizbs'] : null,
+                        filled($data['max_hizbs'] ?? null) ? 'إلى حزب '.$data['max_hizbs'] : null,
+                    ]))),
+                TernaryFilter::make('attended_summer_session')
+                    ->label('الدورة الصيفية')
+                    ->trueLabel('حضر الدورة الصيفية')
+                    ->falseLabel('لم يحضر الدورة الصيفية')
+                    ->queries(
+                        true: fn (Builder $query) => $query->attendedSummerSession(),
+                        false: fn (Builder $query) => $query->attendedSummerSession(false),
+                    ),
                 TernaryFilter::make('exempt')
                     ->label('معفي')
                     ->options([
@@ -592,12 +676,11 @@ class MemorizerResource extends Resource
                             $query->where(function ($query) {
                                 $query->where('exempt', false)
                                     ->whereDoesntHave('payments', function ($query) {
-                                        $query->whereYear('payment_date', now()->year)->whereMonth('payment_date', now()->month);
+                                        $query->monthly()->whereYear('payment_date', now()->year)->whereMonth('payment_date', now()->month);
                                     });
                             });
                         }
                     }),
-
 
                 Tables\Filters\SelectFilter::make('sex')
                     ->label('الجنس')
@@ -662,25 +745,25 @@ class MemorizerResource extends Resource
     public static function getWhatsAppUrl(Memorizer $record)
     {
         // Determine if we should contact parent or student
-        $isParent = !$record->phone && $record->guardian?->phone;
+        $isParent = ! $record->phone && $record->guardian?->phone;
         $phone = $isParent ? $record->guardian?->phone : $record->phone;
 
         // Return null if no phone number available
-        if (!$phone) {
+        if (! $phone) {
             return null;
         }
 
         // Format phone number
         $phone = preg_replace('/[^0-9]/', '', $phone);
         if (strlen($phone) === 9 && in_array(substr($phone, 0, 1), ['6', '7'])) {
-            $phone = '+212' . $phone;
+            $phone = '+212'.$phone;
         } elseif (strlen($phone) === 10 && in_array(substr($phone, 0, 2), ['06', '07'])) {
-            $phone = '+212' . substr($phone, 1);
+            $phone = '+212'.substr($phone, 1);
         } elseif (strlen($phone) === 12 && substr($phone, 0, 3) === '212') {
-            $phone = '+' . $phone;
+            $phone = '+'.$phone;
         }
 
-        $message = <<<MSG
+        $message = <<<'MSG'
         السلام عليكم ورحمة الله وبركاته 
         معكم إدارة جمعية بن ابي زيد القرواني  (دار القرآن الكريم)
         نذكركم بأداء الواجب الشهري 
@@ -690,7 +773,7 @@ class MemorizerResource extends Resource
         return $phone ? route('memorizer-whatsapp', [
             'number' => $phone,
             'message' => $message,
-            'memorizer_id' => $record->id
+            'memorizer_id' => $record->id,
         ]) : null;
     }
 }

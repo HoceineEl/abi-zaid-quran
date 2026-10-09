@@ -40,6 +40,9 @@ class MemorizersFilteredExport implements FromCollection, ShouldAutoSize, WithEv
                     'sex' => $memorizer->sex === 'female' ? 'أنثى' : 'ذكر',
                     'birth_date' => $birthDate?->format('Y-m-d') ?? '',
                     'age' => $birthDate?->age ?? '',
+                    'school_level' => $memorizer->school_level?->getLabel() ?? '',
+                    'memorized_hizbs' => $memorizer->memorized_hizbs ?? '',
+                    'attended_summer_session' => $memorizer->attended_summer_session ? 'نعم' : 'لا',
                     'phone' => $memorizer->phone ?: '',
                     'guardian_name' => $memorizer->guardian?->name ?? '',
                     'guardian_phone' => $memorizer->guardian?->phone ?? '',
@@ -68,6 +71,9 @@ class MemorizersFilteredExport implements FromCollection, ShouldAutoSize, WithEv
             'الجنس',
             'تاريخ الإزدياد',
             'العمر',
+            'المستوى الدراسي',
+            'المحفوظ الإجمالي (حزب)',
+            'حضر الدورة الصيفية',
             'الهاتف',
             'اسم ولي الأمر',
             'هاتف ولي الأمر',
@@ -94,7 +100,7 @@ class MemorizersFilteredExport implements FromCollection, ShouldAutoSize, WithEv
                 $sheet = $event->sheet->getDelegate();
                 $sheet->setRightToLeft(true);
 
-                $lastCol = 'Q';
+                $lastCol = 'T';
                 $sheet->insertNewRowBefore(1, 2);
 
                 $sheet->mergeCells("A1:{$lastCol}1");
@@ -105,7 +111,7 @@ class MemorizersFilteredExport implements FromCollection, ShouldAutoSize, WithEv
                 $sheet->getRowDimension(1)->setRowHeight(35);
 
                 $sheet->mergeCells("A2:{$lastCol}2");
-                $sheet->setCellValue('A2', 'عدد الطلاب: ' . $this->rowsCount . '  |  تاريخ التصدير: ' . now()->format('Y-m-d H:i'));
+                $sheet->setCellValue('A2', 'عدد الطلاب: '.$this->rowsCount.'  |  تاريخ التصدير: '.now()->format('Y-m-d H:i'));
                 $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
                 $headerRow = 3;
@@ -122,7 +128,7 @@ class MemorizersFilteredExport implements FromCollection, ShouldAutoSize, WithEv
                         ->getAllBorders()
                         ->setBorderStyle(Border::BORDER_THIN);
 
-                    $sheet->getStyle("A" . ($headerRow + 1) . ":{$lastCol}{$lastRow}")
+                    $sheet->getStyle('A'.($headerRow + 1).":{$lastCol}{$lastRow}")
                         ->getAlignment()
                         ->setHorizontal(Alignment::HORIZONTAL_CENTER)
                         ->setVertical(Alignment::VERTICAL_CENTER);
@@ -130,7 +136,7 @@ class MemorizersFilteredExport implements FromCollection, ShouldAutoSize, WithEv
                     $sheet->setAutoFilter("A{$headerRow}:{$lastCol}{$lastRow}");
                 }
 
-                $sheet->freezePane("A" . ($headerRow + 1));
+                $sheet->freezePane('A'.($headerRow + 1));
             },
         ];
     }

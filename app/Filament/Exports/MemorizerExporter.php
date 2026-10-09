@@ -24,27 +24,35 @@ class MemorizerExporter extends Exporter
                 ->label('العنوان'),
             ExportColumn::make('birth_date')
                 ->label('تاريخ الميلاد'),
+            ExportColumn::make('school_level')
+                ->label('المستوى الدراسي')
+                ->state(fn (Memorizer $record) => $record->school_level?->getLabel()),
+            ExportColumn::make('memorized_hizbs')
+                ->label('المحفوظ الإجمالي (حزب)'),
+            ExportColumn::make('attended_summer_session')
+                ->label('حضر الدورة الصيفية')
+                ->state(fn (Memorizer $record) => $record->attended_summer_session ? 'نعم' : 'لا'),
             ExportColumn::make('parent_name')
                 ->label('اسم الولي'),
             ExportColumn::make('sex')
                 ->label('الجنس')
-                ->state(fn(Memorizer $record) => $record->sex === 'male' ? 'ذكر' : 'أنثى'),
+                ->state(fn (Memorizer $record) => $record->sex === 'male' ? 'ذكر' : 'أنثى'),
             ExportColumn::make('city')
                 ->label('المدينة'),
             ExportColumn::make('group.name')
                 ->label('المجموعة'),
             ExportColumn::make('exempt')
                 ->label('معفى')
-                ->state(fn(Memorizer $record) => $record->exempt ? 'نعم' : 'لا'),
+                ->state(fn (Memorizer $record) => $record->exempt ? 'نعم' : 'لا'),
         ];
     }
 
     public static function getCompletedNotificationBody(Export $export): string
     {
-        $body = 'تم تصدير ' . number_format($export->successful_rows) . ' ' . str('صف')->plural($export->successful_rows) . ' بنجاح.';
+        $body = 'تم تصدير '.number_format($export->successful_rows).' '.str('صف')->plural($export->successful_rows).' بنجاح.';
 
         if ($failedRowsCount = $export->getFailedRowsCount()) {
-            $body .= ' فشل تصدير ' . number_format($failedRowsCount) . ' ' . str('صف')->plural($failedRowsCount) . '.';
+            $body .= ' فشل تصدير '.number_format($failedRowsCount).' '.str('صف')->plural($failedRowsCount).'.';
         }
 
         return $body;

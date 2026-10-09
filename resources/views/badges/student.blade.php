@@ -136,7 +136,7 @@
             </div>
             <div>
                 <div class="student-info">رقم الهاتف: {{ $memorizer->phone }}</div>
-                <div class="student-info">المجموعة: {{ $memorizer->group->name }}</div>
+                <div class="student-info">المجموعة: {{ $memorizer->group?->name ?? "—" }}</div>
             </div>
             <div class="qr-code">
                 <img src="{{ $qrCode }}" alt="QR Code">

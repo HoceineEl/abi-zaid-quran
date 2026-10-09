@@ -20,25 +20,38 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Style;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class YearlyPaymentExport implements FromArray, WithHeadings, WithTitle, WithEvents
+class YearlyPaymentExport implements FromArray, WithEvents, WithHeadings, WithTitle
 {
     private const STATUS_UNPAID = 'غير مدفوع';
+
     private const STATUS_EXEMPT = 'معفي';
+
     private const CHECKBOX_OFF = '☐';
+
     private const CHECKBOX_ON = '☑';
+
     private const PAID_FORMAT = '"مدفوع · "#,##0';
+
     private const CURRENCY_FORMAT = '#,##0 "د.م"';
 
     private const COLOR_WHITE = 'FFFFFFFF';
+
     private const COLOR_EMERALD = 'FF0D5D3F';
+
     private const COLOR_GOLD = 'FFB8860B';
+
     private const COLOR_CREAM = 'FFFAF4E3';
+
     private const COLOR_GOLD_TEXT = 'FF8B6914';
 
     private const PALETTE_PAID = ['FFC6EFCE', 'FF006100'];
+
     private const PALETTE_UNPAID = ['FFFFC7CE', 'FF9C0006'];
+
     private const PALETTE_EXEMPT = ['FFDDEBF7', 'FF0066CC'];
+
     private const PALETTE_NEUTRAL = ['FFF2F2F2', 'FF7F7F7F'];
+
     private const PALETTE_PARTIAL = ['FFFFF2CC', 'FF8B6914'];
 
     private const ARABIC_MONTHS = [
@@ -50,6 +63,7 @@ class YearlyPaymentExport implements FromArray, WithHeadings, WithTitle, WithEve
     private const FIXED_LEADING_COLUMNS = 4;
 
     private array $months;
+
     private array $rows;
 
     public function __construct(
@@ -421,7 +435,7 @@ class YearlyPaymentExport implements FromArray, WithHeadings, WithTitle, WithEve
             ->with([
                 'group:id,name',
                 'guardian:id,phone',
-                'payments' => fn ($q) => $q->whereBetween('payment_date', [
+                'payments' => fn ($q) => $q->monthly()->whereBetween('payment_date', [
                     $this->startDate->copy()->startOfDay(),
                     $this->endDate->copy()->endOfDay(),
                 ]),
@@ -440,6 +454,7 @@ class YearlyPaymentExport implements FromArray, WithHeadings, WithTitle, WithEve
             foreach ($this->months as $month) {
                 if ($memorizer->exempt) {
                     $cells[$month['key']] = ['type' => 'exempt'];
+
                     continue;
                 }
 

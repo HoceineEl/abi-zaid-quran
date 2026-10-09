@@ -58,6 +58,7 @@ class SendPaymentRemindersBulkAction extends BulkAction
             ->load(['group:id,name', 'guardian:id,phone'])
             ->reject(fn (Memorizer $m) => $m->exempt)
             ->reject(fn (Memorizer $m) => $m->payments()
+                ->monthly()
                 ->whereYear('payment_date', $year)
                 ->whereMonth('payment_date', $month)
                 ->exists()
@@ -89,7 +90,7 @@ class SendPaymentRemindersBulkAction extends BulkAction
         $body = "تم جدولة {$queued} تذكير للإرسال عبر واتساب من أصل {$records->count()} طالب محدد.";
 
         if (! empty($skipped)) {
-            $body .= "\n\nلم يُرسَل إليهم (لا يوجد رقم هاتف): " . implode('، ', $skipped);
+            $body .= "\n\nلم يُرسَل إليهم (لا يوجد رقم هاتف): ".implode('، ', $skipped);
         }
 
         Notification::make()

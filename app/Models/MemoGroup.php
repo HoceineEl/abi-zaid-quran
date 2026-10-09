@@ -12,7 +12,7 @@ class MemoGroup extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'price', 'teacher_id', 'days'];
+    protected $fillable = ['number', 'name', 'price', 'teacher_id', 'days'];
 
     protected $casts = [
         'days' => 'array',
@@ -30,12 +30,12 @@ class MemoGroup extends Model
 
     public function getArabicDaysAttribute(): string
     {
-        if (!$this->days) {
+        if (! $this->days) {
             return '';
         }
 
         $arabicDays = array_map(
-            fn($day) => Days::from($day)->getLabel(),
+            fn ($day) => Days::from($day)->getLabel(),
             $this->days
         );
 

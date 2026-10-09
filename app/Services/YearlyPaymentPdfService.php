@@ -80,7 +80,7 @@ class YearlyPaymentPdfService
             ->with([
                 'group:id,name',
                 'guardian:id,phone',
-                'payments' => fn ($q) => $q->whereBetween('payment_date', [
+                'payments' => fn ($q) => $q->monthly()->whereBetween('payment_date', [
                     $startDate->copy()->startOfDay(),
                     $endDate->copy()->endOfDay(),
                 ]),

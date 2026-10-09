@@ -6,32 +6,30 @@ use App\Enums\AttendanceStatus;
 use App\Filament\Actions\Attendance\AddNotesAction;
 use App\Filament\Actions\Attendance\BulkAddNotesAction;
 use App\Filament\Actions\Attendance\ClearAttendanceAction;
-use App\Filament\Actions\Attendance\EditStudentAction;
 use App\Filament\Actions\Attendance\JustifyPastAbsenceAction;
 use App\Filament\Actions\Attendance\MarkAbsentAction;
 use App\Filament\Actions\Attendance\MarkPresentAction;
 use App\Filament\Actions\Attendance\SendWhatsAppAction;
+use App\Filament\Association\Resources\MemorizerResource;
 use App\Models\Attendance;
 use App\Models\Memorizer;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\TextInput;
-use Ysfkaya\FilamentPhoneInput\Forms\PhoneInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Tables\Table;
+use Filament\Support\Enums\ActionSize;
+use Filament\Support\Enums\FontWeight;
+use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\BulkAction;
 use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Actions\CreateAction;
+use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Actions\EditAction;
-use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Notifications\Notification;
-use Illuminate\Database\Eloquent\Model;
 use Filament\Tables\Enums\ActionsPosition;
-use Filament\Tables\Actions\Action;
-use Filament\Support\Enums\ActionSize;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class AttendanceTeacherRelationManager extends RelationManager
 {
@@ -59,24 +57,7 @@ class AttendanceTeacherRelationManager extends RelationManager
 
     public function form(Form $form): Form
     {
-        return $form->schema([
-            TextInput::make('name')
-                ->label('الإسم')
-                ->required(),
-            PhoneInput::make('phone')
-                ->label('الهاتف')
-                ->initialCountry('ma')
-                ->defaultCountry('MA')
-                ->formatAsYouType()
-                ->showFlags(),
-            TextInput::make('address')
-                ->label('العنوان'),
-            DatePicker::make('birth_date')
-                ->label('تاريخ الميلاد'),
-            TextInput::make('city')
-                ->label('المدينة')
-                ->default('أسفي'),
-        ])->columns(2);
+        return $form->schema(MemorizerResource::groupStudentFormSchema())->columns(2);
     }
 
     public function table(Table $table): Table
@@ -110,6 +91,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                             return $status->getLabel(); // full: "غائب غير مبرر" not short "غائب"
                         }
                         $score = \App\Enums\MemorizationScore::tryFrom($state);
+
                         return $score ? $score->getLabel() : $state;
                     })
                     ->color(fn (string $state): string|array|null => AttendanceStatus::getDisplayColor($state))
@@ -144,6 +126,7 @@ class AttendanceTeacherRelationManager extends RelationManager
                 ClearAttendanceAction::make(),
                 AddNotesAction::make(),
                 EditAction::make()->slideOver()->iconButton(),
+                DeleteAction::make()->iconButton(),
                 JustifyPastAbsenceAction::make(),
             ], ActionsPosition::BeforeColumns)
             ->headerActions([

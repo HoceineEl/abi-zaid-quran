@@ -6,6 +6,9 @@
         9 => 'شتنبر', 10 => 'أكتوبر', 11 => 'نونبر', 12 => 'دجنبر',
     ];
     $monthLabel = fn ($date) => $date ? ($arabicMonths[(int) $date->format('n')].' '.$date->format('Y')) : '—';
+    $paymentLabel = fn ($payment) => $payment->type === \App\Enums\PaymentType::MONTHLY
+        ? $monthLabel($payment->payment_date)
+        : $payment->type->getLabel();
     $first = $payments->first();
     $count = $payments->count();
     $total = (float) $payments->sum('amount');
@@ -449,13 +452,13 @@
                             <tr>
                                 <th class="num">#</th>
                                 <th>الطالب</th>
-                                <th>الشهر</th>
+                                <th>البيان</th>
                                 <th>المبلغ</th>
                             </tr>
                         @else
                             <tr>
                                 <th class="num">#</th>
-                                <th>الشهر</th>
+                                <th>البيان</th>
                                 <th>تاريخ الدفع</th>
                                 <th>المبلغ</th>
                             </tr>
@@ -470,13 +473,13 @@
                                         <div class="student">{{ $payment->memorizer->name }}</div>
                                         <div class="muted">{{ $payment->memorizer->group->name ?? '—' }}</div>
                                     </td>
-                                    <td>{{ $monthLabel($payment->payment_date) }}</td>
+                                    <td>{{ $paymentLabel($payment) }}</td>
                                     <td class="amount">{{ number_format((float) $payment->amount, 0) }} درهم</td>
                                 </tr>
                             @else
                                 <tr>
                                     <td class="num">{{ $index + 1 }}</td>
-                                    <td>{{ $monthLabel($payment->payment_date) }}</td>
+                                    <td>{{ $paymentLabel($payment) }}</td>
                                     <td class="ltr">{{ $payment->payment_date?->format('Y-m-d') }}</td>
                                     <td class="amount">{{ number_format((float) $payment->amount, 0) }} درهم</td>
                                 </tr>
