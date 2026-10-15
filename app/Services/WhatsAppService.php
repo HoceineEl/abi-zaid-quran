@@ -10,6 +10,8 @@ use App\Traits\WhatsApp\SessionManagement;
 use App\Traits\WhatsApp\UtilityOperations;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
+use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -21,7 +23,9 @@ class WhatsAppService
 
     protected string $baseUrl;
 
-    protected ?string $apiKey;
+    protected ?string $username;
+
+    protected ?string $password;
 
     protected ?string $apiUrl;
 
@@ -35,30 +39,70 @@ class WhatsAppService
         $this->apiUrl = config('services.whatsapp.api_url');
         $this->accessToken = config('services.whatsapp.access_token');
 
-        // Evolution API configuration
-        $this->baseUrl = rtrim(config('whatsapp.api_url', 'http://localhost:8080'), '/');
-        $this->apiKey = config('whatsapp.api_key', '');
+        $this->baseUrl = rtrim(config('whatsapp.api_url', 'http://localhost:3000'), '/');
+        $this->username = config('whatsapp.username');
+        $this->password = config('whatsapp.password');
 
-        if (empty($this->apiKey)) {
-            Log::warning('WhatsApp API key is not configured. Check whatsapp.api_key config.');
+        if (! $this->hasCredentials()) {
+            Log::warning('WhatsApp API credentials are not configured. Check whatsapp.username and whatsapp.password config.');
         }
     }
 
-    protected function getApiKey(): string
+    protected function hasCredentials(): bool
     {
-        if (empty($this->apiKey)) {
-            throw new \RuntimeException('WhatsApp API key is not configured.');
-        }
-
-        return $this->apiKey;
+        return ! empty($this->username) && ! empty($this->password);
     }
 
-    protected function evolutionHeaders(): array
+    protected function gowa(?string $instanceName = null, int $timeout = 15): PendingRequest
     {
-        return [
-            'apikey' => $this->getApiKey(),
-            'Content-Type' => 'application/json',
-        ];
+        if (! $this->hasCredentials()) {
+            throw new \RuntimeException('WhatsApp API credentials are not configured.');
+        }
+
+        return Http::baseUrl($this->baseUrl)
+            ->withBasicAuth($this->username, $this->password)
+            ->acceptJson()
+            ->timeout($timeout)
+            ->when($instanceName, fn (PendingRequest $request) => $request->withHeaders([
+                'X-Device-Id' => $this->deviceId($instanceName),
+            ]));
+    }
+
+    public function deviceId(string $instanceName): string
+    {
+        return 'session-'.substr(md5($instanceName), 0, 16);
+    }
+
+    protected function results(Response $response): mixed
+    {
+        if ($response->failed() || $response->json('code') !== 'SUCCESS') {
+            throw new \RuntimeException("HTTP {$response->status()}: ".$response->body());
+        }
+
+        return $response->json('results');
+    }
+
+    protected function toJid(string $phone): string
+    {
+        return str_contains($phone, '@') ? $phone : "{$phone}@s.whatsapp.net";
+    }
+
+    protected function simulateTyping(string $instanceName, string $phone, int $delayMs): void
+    {
+        if ($delayMs <= 0) {
+            return;
+        }
+
+        try {
+            $this->gowa($instanceName, 5)->post('/send/chat-presence', [
+                'phone' => $this->toJid($phone),
+                'action' => 'start',
+            ]);
+        } catch (\Exception) {
+            return;
+        }
+
+        usleep($delayMs * 1000);
     }
 
     protected function computeTypingDelayMs(?string $text = null): int
@@ -158,33 +202,21 @@ class WhatsAppService
         $formattedPhone = str_replace('+', '', phone($to, 'MA')->formatE164());
         $typingDelay = $this->computeTypingDelayMs($message);
 
-        $payload = [
-            'number' => $formattedPhone,
-            'text' => $message,
-        ];
-
-        if ($typingDelay > 0) {
-            $payload['delay'] = $typingDelay;
-        }
-
         try {
-            $response = Http::withHeaders($this->evolutionHeaders())
-                ->timeout(15 + (int) ceil($typingDelay / 1000))
-                ->post("{$this->baseUrl}/message/sendText/{$instanceName}", $payload);
+            $this->simulateTyping($instanceName, $formattedPhone, $typingDelay);
 
-            if ($response->successful()) {
-                $result = $response->json();
+            $result = $this->results($this->gowa($instanceName)->post('/send/message', [
+                'phone' => $this->toJid($formattedPhone),
+                'message' => $message,
+            ]));
 
-                Log::info('WhatsApp message sent', [
-                    'instance' => $instanceName,
-                    'to' => $formattedPhone,
-                    'message_id' => $result['key']['id'] ?? null,
-                ]);
+            Log::info('WhatsApp message sent', [
+                'instance' => $instanceName,
+                'to' => $formattedPhone,
+                'message_id' => $result['message_id'] ?? null,
+            ]);
 
-                return $result;
-            }
-
-            throw new \RuntimeException("HTTP {$response->status()}: ".$response->body());
+            return $result;
         } catch (\Exception $e) {
             Log::error('Failed to send WhatsApp message', [
                 'instance' => $instanceName,
@@ -200,39 +232,28 @@ class WhatsAppService
         $formattedPhone = str_replace('+', '', phone($to, 'MA')->formatE164());
         $typingDelay = $this->computeTypingDelayMs($caption);
 
-        $payload = [
-            'number' => $formattedPhone,
-            'mediatype' => $mediaType,
-            'media' => $mediaUrl,
-        ];
-
-        if ($caption) {
-            $payload['caption'] = $caption;
-        }
-
-        if ($typingDelay > 0) {
-            $payload['delay'] = $typingDelay;
-        }
+        $mediaField = match ($mediaType) {
+            'image', 'video', 'audio' => $mediaType,
+            default => 'file',
+        };
 
         try {
-            $response = Http::withHeaders($this->evolutionHeaders())
-                ->timeout(15 + (int) ceil($typingDelay / 1000))
-                ->post("{$this->baseUrl}/message/sendMedia/{$instanceName}", $payload);
+            $this->simulateTyping($instanceName, $formattedPhone, $typingDelay);
 
-            if ($response->successful()) {
-                $result = $response->json();
+            $result = $this->results($this->gowa($instanceName, 60)->asMultipart()->post("/send/{$mediaField}", array_filter([
+                'phone' => $this->toJid($formattedPhone),
+                "{$mediaField}_url" => $mediaUrl,
+                'caption' => $mediaField === 'audio' ? null : $caption,
+            ])));
 
-                Log::info('WhatsApp media message sent', [
-                    'instance' => $instanceName,
-                    'to' => $formattedPhone,
-                    'media_type' => $mediaType,
-                    'message_id' => $result['key']['id'] ?? null,
-                ]);
+            Log::info('WhatsApp media message sent', [
+                'instance' => $instanceName,
+                'to' => $formattedPhone,
+                'media_type' => $mediaType,
+                'message_id' => $result['message_id'] ?? null,
+            ]);
 
-                return $result;
-            }
-
-            throw new \RuntimeException("HTTP {$response->status()}: ".$response->body());
+            return $result;
         } catch (\Exception $e) {
             Log::error('Failed to send WhatsApp media message', [
                 'instance' => $instanceName,
@@ -275,11 +296,7 @@ class WhatsAppService
     public function refreshQrCode(WhatsAppSession $session): void
     {
         try {
-            $response = Http::withHeaders($this->evolutionHeaders())
-                ->timeout(15)
-                ->get("{$this->baseUrl}/instance/connect/{$session->name}");
-
-            $base64Qr = $response->successful() ? ($response->json()['base64'] ?? null) : null;
+            $base64Qr = $this->connectInstance($session->name)['base64'] ?? null;
 
             if ($base64Qr) {
                 $session->updateQrCode($base64Qr);

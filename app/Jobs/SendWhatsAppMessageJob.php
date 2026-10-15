@@ -109,7 +109,7 @@ class SendWhatsAppMessageJob implements ShouldQueue
 
             $this->updateMessageHistory(
                 WhatsAppMessageStatus::SENT,
-                whatsappMessageId: $result['key']['id'] ?? null,
+                whatsappMessageId: $result['message_id'] ?? null,
             );
 
             $this->onSuccess();

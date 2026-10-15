@@ -4,7 +4,7 @@ namespace App\Traits\WhatsApp;
 
 use App\Enums\WhatsAppConnectionStatus;
 use App\Models\WhatsAppSession;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 trait SessionManagement
@@ -12,19 +12,9 @@ trait SessionManagement
     public function createInstance(string $instanceName): array
     {
         try {
-            $response = Http::withHeaders($this->evolutionHeaders())
-                ->timeout(15)
-                ->post("{$this->baseUrl}/instance/create", [
-                    'instanceName' => $instanceName,
-                    'qrcode' => true,
-                    'integration' => 'WHATSAPP-BAILEYS',
-                ]);
-
-            if ($response->successful()) {
-                return $response->json();
-            }
-
-            throw new \RuntimeException("HTTP {$response->status()}: ".$response->body());
+            return $this->results($this->gowa()->post('/devices', [
+                'device_id' => $this->deviceId($instanceName),
+            ]));
         } catch (\Exception $e) {
             Log::error('Failed to create WhatsApp instance', [
                 'instance' => $instanceName,
@@ -37,16 +27,27 @@ trait SessionManagement
 
     public function connectInstance(string $instanceName): array
     {
-        try {
-            $response = Http::withHeaders($this->evolutionHeaders())
-                ->timeout(15)
-                ->get("{$this->baseUrl}/instance/connect/{$instanceName}");
+        $cacheKey = $this->qrCacheKey($instanceName);
 
-            if ($response->successful()) {
-                return $response->json();
+        try {
+            $cached = Cache::get($cacheKey);
+            if ($cached) {
+                return $cached;
             }
 
-            throw new \RuntimeException("HTTP {$response->status()}: ".$response->body());
+            $login = $this->results($this->gowa()->get('/devices/'.$this->deviceId($instanceName).'/login'));
+            $qrPath = parse_url($login['qr_link'] ?? '', PHP_URL_PATH);
+
+            $result = [
+                ...$login,
+                'base64' => $qrPath ? $this->fetchQrImage($qrPath) : null,
+            ];
+
+            if ($result['base64']) {
+                Cache::put($cacheKey, $result, now()->addSeconds(max(5, ($login['qr_duration'] ?? 30) - 5)));
+            }
+
+            return $result;
         } catch (\Exception $e) {
             Log::error('Failed to connect WhatsApp instance', [
                 'instance' => $instanceName,
@@ -57,18 +58,26 @@ trait SessionManagement
         }
     }
 
+    protected function qrCacheKey(string $instanceName): string
+    {
+        return 'whatsapp_qr_'.$this->deviceId($instanceName);
+    }
+
+    protected function fetchQrImage(string $path): ?string
+    {
+        $response = $this->gowa()->accept('image/png')->get($path);
+
+        return $response->successful()
+            ? 'data:image/png;base64,'.base64_encode($response->body())
+            : null;
+    }
+
     public function getAllInstances(): array
     {
         try {
-            $response = Http::withHeaders($this->evolutionHeaders())
-                ->timeout(15)
-                ->get("{$this->baseUrl}/instance/fetchInstances");
-
-            if ($response->successful()) {
-                return $response->json();
-            }
-
-            throw new \RuntimeException("HTTP {$response->status()}: ".$response->body());
+            return collect($this->results($this->gowa()->get('/devices')) ?? [])
+                ->map(fn (array $device) => $this->toInstanceStatus($device['id'] ?? 'unknown', $device))
+                ->all();
         } catch (\Exception $e) {
             Log::error('Failed to get all WhatsApp instances', [
                 'error' => $e->getMessage(),
@@ -81,15 +90,9 @@ trait SessionManagement
     public function getInstanceStatus(string $instanceName): array
     {
         try {
-            $response = Http::withHeaders($this->evolutionHeaders())
-                ->timeout(15)
-                ->get("{$this->baseUrl}/instance/connectionState/{$instanceName}");
+            $device = $this->results($this->gowa()->get('/devices/'.$this->deviceId($instanceName)));
 
-            if ($response->successful()) {
-                return $response->json();
-            }
-
-            throw new \RuntimeException("HTTP {$response->status()}: ".$response->body());
+            return $this->toInstanceStatus($instanceName, $device);
         } catch (\Exception $e) {
             Log::error('Failed to get WhatsApp instance status', [
                 'instance' => $instanceName,
@@ -98,6 +101,22 @@ trait SessionManagement
 
             throw $e;
         }
+    }
+
+    protected function toInstanceStatus(string $instanceName, array $device): array
+    {
+        return [
+            'instance' => [
+                'instanceName' => $instanceName,
+                'state' => match ($device['state'] ?? null) {
+                    'logged_in' => 'open',
+                    'connected', 'connecting' => 'connecting',
+                    default => 'close',
+                },
+                'ownerJid' => $device['jid'] ?? null,
+            ],
+            'device' => $device,
+        ];
     }
 
     protected function resolveApiState(array $apiResult): string
@@ -238,17 +257,11 @@ trait SessionManagement
     public function deleteInstance(string $instanceName): array
     {
         try {
-            $response = Http::withHeaders($this->evolutionHeaders())
-                ->timeout(15)
-                ->delete("{$this->baseUrl}/instance/delete/{$instanceName}");
+            $result = $this->results($this->gowa()->delete('/devices/'.$this->deviceId($instanceName)));
 
-            if ($response->successful()) {
-                Log::info('WhatsApp instance deleted', ['instance' => $instanceName]);
+            Log::info('WhatsApp instance deleted', ['instance' => $instanceName]);
 
-                return $response->json();
-            }
-
-            throw new \RuntimeException("HTTP {$response->status()}: ".$response->body());
+            return (array) $result;
         } catch (\Exception $e) {
             Log::error('Failed to delete WhatsApp instance', [
                 'instance' => $instanceName,
@@ -262,17 +275,11 @@ trait SessionManagement
     public function logoutInstance(string $instanceName): array
     {
         try {
-            $response = Http::withHeaders($this->evolutionHeaders())
-                ->timeout(15)
-                ->delete("{$this->baseUrl}/instance/logout/{$instanceName}");
+            $result = $this->results($this->gowa()->post('/devices/'.$this->deviceId($instanceName).'/logout'));
 
-            if ($response->successful()) {
-                Log::info('WhatsApp instance logged out', ['instance' => $instanceName]);
+            Log::info('WhatsApp instance logged out', ['instance' => $instanceName]);
 
-                return $response->json();
-            }
-
-            throw new \RuntimeException("HTTP {$response->status()}: ".$response->body());
+            return (array) $result;
         } catch (\Exception $e) {
             Log::error('Failed to logout WhatsApp instance', [
                 'instance' => $instanceName,
@@ -288,6 +295,7 @@ trait SessionManagement
         $instanceName = $session->name;
 
         $session->markAsDisconnected();
+        Cache::forget($this->qrCacheKey($instanceName));
 
         try {
             $this->logoutInstance($instanceName);

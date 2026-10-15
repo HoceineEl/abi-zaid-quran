@@ -1,8 +1,9 @@
 <?php
 
 return [
-    'api_url' => env('WHATSAPP_API_URL', 'http://localhost:8080'),
-    'api_key' => env('WHATSAPP_API_KEY'),
+    'api_url' => env('WHATSAPP_API_URL', 'http://localhost:3000'),
+    'username' => env('WHATSAPP_API_USERNAME'),
+    'password' => env('WHATSAPP_API_PASSWORD'),
     'webhook_url' => env('WHATSAPP_WEBHOOK_URL'),
 
     // Anti-ban: Random delay range between messages (in seconds)
@@ -16,11 +17,8 @@ return [
     // Rate limit: max messages per minute per session (safety net)
     'messages_per_minute' => env('WHATSAPP_MESSAGES_PER_MINUTE', 4),
 
-    // Typing simulation: passes Evolution API's `delay` (ms) on sendText/sendMedia.
-    // Per the Evolution v2 spec, `delay` is the "presence time in ms before sending" — the
-    // server displays the "composing" indicator for that duration, then delivers the message.
-    // Computed as (per_char_ms * message length) + random jitter, clamped to [min_ms, max_ms].
-    // Runs server-side, so the queue worker is not blocked.
+    // Typing simulation: shows the "composing" indicator for (per_char_ms * length) + jitter,
+    // clamped to [min_ms, max_ms], before each send. Runs inside the queue worker.
     'typing' => [
         'enabled' => env('WHATSAPP_TYPING_ENABLED', true),
         'min_ms' => env('WHATSAPP_TYPING_MIN_MS', 1200),
