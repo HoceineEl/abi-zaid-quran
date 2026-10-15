@@ -28,7 +28,7 @@ class RegistrationFormsImportService
         'guardian_name' => 'اسم ولي الأمر',
         'phone' => 'رقم الواتساب',
         'registration_paid' => 'أدى واجب التسجيل',
-        'october_paid' => 'أدى واجب شهر أكتوبر',
+        'first_month_paid' => 'أدى واجب شهر',
         'exempt' => 'معفى',
         'notes' => 'ملاحظات',
     ];
@@ -172,9 +172,8 @@ class RegistrationFormsImportService
         $this->seenInUpload[$duplicateKey] = true;
 
         $exempt = $this->isYes($data['exempt']);
-        $hizbs = is_numeric($data['memorized_hizbs']) ? (int) $data['memorized_hizbs'] : null;
 
-        DB::transaction(function () use ($data, $name, $phone, $birthDate, $exempt, $hizbs): void {
+        DB::transaction(function () use ($data, $name, $phone, $birthDate, $exempt): void {
             $guardian = filled($data['guardian_name'])
                 ? Guardian::firstOrCreate(['phone' => $phone], ['name' => $data['guardian_name']])
                 : null;
@@ -184,32 +183,44 @@ class RegistrationFormsImportService
                 'phone' => $phone,
                 'birth_date' => $birthDate,
                 'school_level' => filled($data['school_level']) ? SchoolLevel::fromValueOrLabel($data['school_level']) : null,
-                'memorized_hizbs' => $hizbs !== null && $hizbs >= 0 && $hizbs <= 60 ? $hizbs : null,
+                'memorized_hizbs' => $this->parseHizbs($data['memorized_hizbs']),
                 'exempt' => $exempt,
                 'notes' => $data['notes'],
                 'guardian_id' => $guardian?->id,
             ]);
 
             if ($this->isYes($data['registration_paid'])) {
-                $memorizer->payments()->create([
-                    'type' => PaymentType::REGISTRATION,
-                    'amount' => self::REGISTRATION_FEE,
-                    'payment_date' => now(),
-                ]);
+                $this->recordPayment($memorizer, PaymentType::REGISTRATION, self::REGISTRATION_FEE);
                 $this->registrationPayments++;
             }
 
-            if (! $exempt && $this->isYes($data['october_paid'])) {
-                $memorizer->payments()->create([
-                    'type' => PaymentType::MONTHLY,
-                    'amount' => self::MONTHLY_FEE,
-                    'payment_date' => $this->octoberOfSchoolYear(),
-                ]);
+            if (! $exempt && $this->isYes($data['first_month_paid'])) {
+                $this->recordPayment($memorizer, PaymentType::MONTHLY, self::MONTHLY_FEE);
                 $this->monthlyPayments++;
             }
 
             $this->created++;
         });
+    }
+
+    protected function recordPayment(Memorizer $memorizer, PaymentType $type, int $amount): void
+    {
+        $memorizer->payments()->create([
+            'type' => $type,
+            'amount' => $amount,
+            'payment_date' => $this->septemberOfSchoolYear(),
+        ]);
+    }
+
+    protected function parseHizbs(mixed $value): ?int
+    {
+        if (! is_numeric($value)) {
+            return null;
+        }
+
+        $hizbs = (int) $value;
+
+        return $hizbs >= 0 && $hizbs <= 60 ? $hizbs : null;
     }
 
     protected function formatPhone(mixed $value): ?string
@@ -260,11 +271,11 @@ class RegistrationFormsImportService
         return $date->isPast() ? $date->toDateString() : null;
     }
 
-    protected function octoberOfSchoolYear(): Carbon
+    protected function septemberOfSchoolYear(): Carbon
     {
         $startYear = now()->month >= 9 ? now()->year : now()->year - 1;
 
-        return Carbon::create($startYear, 10, 1);
+        return Carbon::create($startYear, 9, 1);
     }
 
     protected function isYes(mixed $value): bool
@@ -274,7 +285,13 @@ class RegistrationFormsImportService
 
     protected function clean(mixed $value): mixed
     {
-        return is_string($value) ? (trim($value) === '' ? null : trim($value)) : $value;
+        if (! is_string($value)) {
+            return $value;
+        }
+
+        $value = trim($value);
+
+        return $value === '' ? null : $value;
     }
 
     protected function fail(string $file, ?int $row, string $name, string $reason): void

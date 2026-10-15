@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use App\Models\ReminderLog;
 use App\Http\Controllers\PaymentReceiptController;
+use App\Http\Controllers\RegistrationImportFailuresController;
 
 Route::view('/', 'welcome');
 
@@ -106,4 +107,8 @@ Route::middleware('auth')->group(function () {
     })->name('memorizer-late-whatsapp');
 
     Route::get('payments/receipt', [PaymentReceiptController::class, 'show'])->name('payments.receipt');
+    Route::get('registration-imports/failures/{file}', [RegistrationImportFailuresController::class, 'show'])
+        ->whereUuid('file')
+        ->middleware('signed')
+        ->name('registration-imports.failures');
 });

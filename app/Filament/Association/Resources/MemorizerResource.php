@@ -34,6 +34,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Forms\Form;
+use Filament\Notifications\Actions\Action as NotificationAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Support\Enums\FontWeight;
@@ -52,6 +53,8 @@ use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 use Livewire\Component;
 use Maatwebsite\Excel\Facades\Excel;
 use Mpdf\Mpdf;
@@ -474,27 +477,30 @@ class MemorizerResource extends Resource
                         $disk->delete($data['files']);
 
                         $failedCount = count($result['failures']);
+                        $failuresFile = null;
+
+                        if ($failedCount) {
+                            $failuresFile = (string) Str::uuid();
+                            Excel::store(new RegistrationImportFailuresExport($result['failures']), "registration-imports/failures/{$failuresFile}.xlsx", 'local');
+                        }
 
                         Notification::make()
                             ->title("تم استيراد {$result['created']} تلميذ")
                             ->body(collect([
-                                "واجب التسجيل: {$result['registration_payments']} — شهر أكتوبر: {$result['monthly_payments']}",
+                                "واجب التسجيل: {$result['registration_payments']} — شهر شتنبر: {$result['monthly_payments']}",
                                 $result['duplicates'] ? "مكرر تم تجاهله: {$result['duplicates']}" : null,
-                                $failedCount ? "أسطر لم تُستورد: {$failedCount} (تم تحميل ملف بالأسباب)" : null,
+                                $failedCount ? "أسطر لم تُستورد: {$failedCount}" : null,
                             ])->filter()->implode('<br>'))
                             ->color($failedCount ? 'warning' : 'success')
                             ->icon($failedCount ? 'heroicon-o-exclamation-triangle' : 'heroicon-o-check-circle')
+                            ->actions($failuresFile ? [
+                                NotificationAction::make('download_failures')
+                                    ->label('تحميل الأسطر غير المستوردة')
+                                    ->button()
+                                    ->url(URL::temporarySignedRoute('registration-imports.failures', now()->addDay(), ['file' => $failuresFile]), shouldOpenInNewTab: true),
+                            ] : [])
                             ->persistent()
                             ->send();
-
-                        if ($failedCount) {
-                            return Excel::download(
-                                new RegistrationImportFailuresExport($result['failures']),
-                                'أسطر-غير-مستوردة-'.now()->format('Y-m-d-His').'.xlsx',
-                            );
-                        }
-
-                        return null;
                     }),
 
                 ImportAction::make()
