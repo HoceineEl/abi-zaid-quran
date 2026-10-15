@@ -4,6 +4,7 @@ namespace App\Filament\Association\Resources;
 
 use App\Enums\SchoolLevel;
 use App\Exports\MemorizersFilteredExport;
+use App\Exports\RegistrationImportFailuresExport;
 use App\Exports\YearlyPaymentExport;
 use App\Filament\Association\Actions\SendPaymentRemindersAction;
 use App\Filament\Association\Actions\SendPaymentRemindersBulkAction;
@@ -17,6 +18,7 @@ use App\Models\MemoGroup;
 use App\Models\Memorizer;
 use App\Models\User;
 use App\Models\WhatsAppMessageHistory;
+use App\Services\RegistrationFormsImportService;
 use App\Services\YearlyPaymentPdfService;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
@@ -27,6 +29,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\ToggleButtons;
@@ -48,6 +51,7 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
 use Maatwebsite\Excel\Facades\Excel;
 use Mpdf\Mpdf;
@@ -105,6 +109,9 @@ class MemorizerResource extends Resource
                         Toggle::make('exempt')
                             ->label('معفى من الدفع')
                             ->default(false),
+                        Textarea::make('notes')
+                            ->label('ملاحظات')
+                            ->columnSpanFull(),
                     ])->columns(),
             ]);
     }
@@ -425,6 +432,70 @@ class MemorizerResource extends Resource
                     ->label('تصدير البيانات')
                     ->icon('heroicon-o-arrow-up-tray')
                     ->exporter(MemorizerExporter::class),
+
+                Action::make('import_registration_forms')
+                    ->label('استيراد استمارات التسجيل')
+                    ->icon('heroicon-o-document-arrow-up')
+                    ->color('primary')
+                    ->modalHeading('استيراد استمارات التسجيل')
+                    ->modalDescription('ارفع ملف أو عدة ملفات مملوءة من نموذج التسجيل. التلاميذ المكررون (نفس الاسم ورقم الواتساب) يُتجاهلون تلقائيًا.')
+                    ->modalSubmitActionLabel('استيراد')
+                    ->form([
+                        FileUpload::make('files')
+                            ->label('ملفات Excel')
+                            ->multiple()
+                            ->required()
+                            ->disk('local')
+                            ->directory('registration-imports')
+                            ->storeFileNamesIn('file_names')
+                            ->acceptedFileTypes([
+                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                                'application/vnd.ms-excel',
+                            ])
+                            ->maxSize(10240),
+                    ])
+                    ->extraModalFooterActions([
+                        Action::make('download_registration_template')
+                            ->label('تحميل نموذج التسجيل')
+                            ->icon('heroicon-o-arrow-down-tray')
+                            ->color('gray')
+                            ->action(fn () => response()->download(
+                                resource_path(RegistrationFormsImportService::TEMPLATE_PATH),
+                                'نموذج-تسجيل-التلاميذ.xlsx',
+                            )),
+                    ])
+                    ->action(function (array $data, RegistrationFormsImportService $importer) {
+                        $disk = Storage::disk('local');
+                        $files = collect($data['files'])
+                            ->mapWithKeys(fn (string $path): array => [$disk->path($path) => $data['file_names'][$path] ?? basename($path)])
+                            ->all();
+
+                        $result = $importer->import($files);
+                        $disk->delete($data['files']);
+
+                        $failedCount = count($result['failures']);
+
+                        Notification::make()
+                            ->title("تم استيراد {$result['created']} تلميذ")
+                            ->body(collect([
+                                "واجب التسجيل: {$result['registration_payments']} — شهر أكتوبر: {$result['monthly_payments']}",
+                                $result['duplicates'] ? "مكرر تم تجاهله: {$result['duplicates']}" : null,
+                                $failedCount ? "أسطر لم تُستورد: {$failedCount} (تم تحميل ملف بالأسباب)" : null,
+                            ])->filter()->implode('<br>'))
+                            ->color($failedCount ? 'warning' : 'success')
+                            ->icon($failedCount ? 'heroicon-o-exclamation-triangle' : 'heroicon-o-check-circle')
+                            ->persistent()
+                            ->send();
+
+                        if ($failedCount) {
+                            return Excel::download(
+                                new RegistrationImportFailuresExport($result['failures']),
+                                'أسطر-غير-مستوردة-'.now()->format('Y-m-d-His').'.xlsx',
+                            );
+                        }
+
+                        return null;
+                    }),
 
                 ImportAction::make()
                     ->label('استيراد البيانات')

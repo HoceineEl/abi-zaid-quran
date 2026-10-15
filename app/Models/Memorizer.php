@@ -28,6 +28,7 @@ class Memorizer extends Model
         'city',
         'photo',
         'exempt',
+        'notes',
         'memo_group_id',
         'teacher_id',
         'guardian_id',
