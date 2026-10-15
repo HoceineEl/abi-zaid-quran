@@ -90,9 +90,13 @@ trait SessionManagement
     public function getInstanceStatus(string $instanceName): array
     {
         try {
-            $device = $this->results($this->gowa()->get('/devices/'.$this->deviceId($instanceName)));
+            $response = $this->gowa()->get('/devices/'.$this->deviceId($instanceName));
 
-            return $this->toInstanceStatus($instanceName, $device);
+            if ($response->failed() && str_contains((string) $response->json('message'), 'not found')) {
+                return $this->toInstanceStatus($instanceName, ['state' => 'disconnected']);
+            }
+
+            return $this->toInstanceStatus($instanceName, $this->results($response));
         } catch (\Exception $e) {
             Log::error('Failed to get WhatsApp instance status', [
                 'instance' => $instanceName,
@@ -139,6 +143,11 @@ trait SessionManagement
 
             try {
                 $connectionState = $this->getInstanceStatus($instanceName);
+
+                if (empty($connectionState['device']['id'])) {
+                    throw new \RuntimeException("Device for {$instanceName} not found");
+                }
+
                 $state = $this->resolveApiState($connectionState);
                 $modelStatus = WhatsAppConnectionStatus::fromApiStatus($state);
 

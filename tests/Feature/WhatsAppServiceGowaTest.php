@@ -72,6 +72,22 @@ it('maps device states to the connection status enum', function (string $gowaSta
     ['disconnected', WhatsAppConnectionStatus::DISCONNECTED],
 ]);
 
+it('reports a missing device as disconnected instead of failing', function () {
+    $service = new WhatsAppService;
+
+    Http::fake([
+        'gowa.test/devices/*' => Http::response([
+            'code' => 'INTERNAL_SERVER_ERROR',
+            'message' => 'device '.$service->deviceId('Old Evolution Session').' not found',
+        ], 500),
+    ]);
+
+    $status = $service->getInstanceStatus('Old Evolution Session');
+
+    expect(WhatsAppConnectionStatus::fromApiStatus($status['instance']['state']))
+        ->toBe(WhatsAppConnectionStatus::DISCONNECTED);
+});
+
 it('creates a device and stores the QR image when starting a new session', function () {
     $session = WhatsAppSession::create([
         'user_id' => User::factory()->create()->id,
