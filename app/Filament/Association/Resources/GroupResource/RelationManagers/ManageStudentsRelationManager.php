@@ -215,7 +215,7 @@ class ManageStudentsRelationManager extends RelationManager
     protected function poolOptionLabel(Memorizer $memorizer): string
     {
         $details = collect([
-            $memorizer->display_phone ? '📞 <span dir="ltr">'.e($memorizer->display_phone).'</span>' : null,
+            $memorizer->display_phone ? "📞 \u{2066}".e($memorizer->display_phone)."\u{2069}" : null,
             $memorizer->birth_date ? '🎂 '.e(Carbon::parse($memorizer->birth_date)->format('d/m/Y')).' ('.$memorizer->age.' سنة)' : null,
             $memorizer->school_level ? e($memorizer->school_level->getLabel()) : null,
             $memorizer->memorized_hizbs !== null ? e($memorizer->memorized_hizbs).' حزب' : null,
