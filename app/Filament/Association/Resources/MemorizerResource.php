@@ -489,6 +489,7 @@ class MemorizerResource extends Resource
                             ->body(collect([
                                 "واجب التسجيل: {$result['registration_payments']} — شهر شتنبر: {$result['monthly_payments']}",
                                 $result['duplicates'] ? "مكرر تم تجاهله: {$result['duplicates']}" : null,
+                                $result['needs_review'] ? "يحتاجون مراجعة (انظر الملاحظات): {$result['needs_review']}" : null,
                                 $failedCount ? "أسطر لم تُستورد: {$failedCount}" : null,
                             ])->filter()->implode('<br>'))
                             ->color($failedCount ? 'warning' : 'success')

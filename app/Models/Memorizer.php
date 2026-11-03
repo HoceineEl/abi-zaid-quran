@@ -22,6 +22,7 @@ class Memorizer extends Model
         'phone',
         'address',
         'birth_date',
+        'sex',
         'school_level',
         'memorized_hizbs',
         'attended_summer_session',
@@ -70,6 +71,13 @@ class Memorizer extends Model
     public function scopeWithoutGroup(Builder $query): Builder
     {
         return $query->whereNull('memo_group_id');
+    }
+
+    public function scopeOfSex(Builder $query, string $sex): Builder
+    {
+        return $query->where(fn (Builder $query) => $query
+            ->whereRelation('teacher', 'sex', $sex)
+            ->orWhere(fn (Builder $query) => $query->withoutGroup()->where('sex', $sex)));
     }
 
     public function scopeAttendedSummerSession(Builder $query, bool $attended = true): Builder
@@ -209,7 +217,7 @@ class Memorizer extends Model
     public function sex(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->group?->teacher?->sex ?? 'male',
+            get: fn (?string $value) => $this->group?->teacher?->sex ?? $value ?? 'male',
         );
     }
 

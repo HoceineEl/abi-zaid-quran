@@ -35,13 +35,13 @@ class ListMemorizers extends ListRecords
             'males' => Tab::make('الذكور')
                 ->icon('heroicon-o-user')
                 ->badgeColor('blue')
-                ->badge(fn() => $this->getModel()::whereHas('teacher', fn($q) => $q->where('sex', 'male'))->count())
-                ->query(fn(Builder $query) => $query->whereHas('teacher', fn($query) => $query->where('sex', 'male'))),
+                ->badge(fn() => $this->getModel()::ofSex('male')->count())
+                ->query(fn(Builder $query) => $query->ofSex('male')),
             'females' => Tab::make('الإناث')
                 ->icon('heroicon-o-user')
                 ->badgeColor('pink')
-                ->badge(fn() => $this->getModel()::whereHas('teacher', fn($q) => $q->where('sex', 'female'))->count())
-                ->query(fn(Builder $query) => $query->whereHas('teacher', fn($query) => $query->where('sex', 'female'))),
+                ->badge(fn() => $this->getModel()::ofSex('female')->count())
+                ->query(fn(Builder $query) => $query->ofSex('female')),
             'troublemakers' => Tab::make('المشاغبون')
                 ->icon('heroicon-o-exclamation-triangle')
                 ->badgeColor('danger')

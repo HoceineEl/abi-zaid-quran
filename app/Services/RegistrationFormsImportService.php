@@ -31,6 +31,7 @@ class RegistrationFormsImportService
         'first_month_paid' => 'أدى واجب شهر',
         'exempt' => 'معفى',
         'notes' => 'ملاحظات',
+        'sex' => 'الجنس',
     ];
 
     protected int $created = 0;
@@ -41,6 +42,8 @@ class RegistrationFormsImportService
 
     protected int $monthlyPayments = 0;
 
+    protected int $needsReview = 0;
+
     /** @var array<int, array{file: string, row: int|null, name: string, reason: string}> */
     protected array $failures = [];
 
@@ -49,7 +52,7 @@ class RegistrationFormsImportService
 
     /**
      * @param  array<string, string>  $files  absolute path => original file name
-     * @return array{created: int, duplicates: int, registration_payments: int, monthly_payments: int, failures: array<int, array{file: string, row: int|null, name: string, reason: string}>}
+     * @return array{created: int, duplicates: int, registration_payments: int, monthly_payments: int, needs_review: int, failures: array<int, array{file: string, row: int|null, name: string, reason: string}>}
      */
     public function import(array $files): array
     {
@@ -62,6 +65,7 @@ class RegistrationFormsImportService
             'duplicates' => $this->duplicates,
             'registration_payments' => $this->registrationPayments,
             'monthly_payments' => $this->monthlyPayments,
+            'needs_review' => $this->needsReview,
             'failures' => $this->failures,
         ];
     }
@@ -76,6 +80,8 @@ class RegistrationFormsImportService
             return;
         }
 
+        $fileSex = $this->parseSex($fileName);
+
         foreach ($sheets as $rows) {
             $columns = $this->mapColumns($rows[0] ?? []);
 
@@ -84,7 +90,7 @@ class RegistrationFormsImportService
             }
 
             foreach (array_slice($rows, 1, preserve_keys: true) as $index => $row) {
-                $this->importRow($this->extract($row, $columns), $fileName, $index + 1);
+                $this->importRow($this->extract($row, $columns), $fileName, $index + 1, $fileSex);
             }
 
             return;
@@ -131,7 +137,7 @@ class RegistrationFormsImportService
     /**
      * @param  array<string, mixed>  $data
      */
-    protected function importRow(array $data, string $fileName, int $rowNumber): void
+    protected function importRow(array $data, string $fileName, int $rowNumber, ?string $fileSex): void
     {
         $name = preg_replace('/\s+/u', ' ', (string) $data['name']);
 
@@ -145,20 +151,22 @@ class RegistrationFormsImportService
             return;
         }
 
+        $issues = [];
         $phone = $this->formatPhone($data['phone']);
 
         if (! $phone) {
-            $this->fail($fileName, $rowNumber, $name, 'رقم الواتساب فارغ أو غير صحيح: '.($data['phone'] ?? '—'));
-
-            return;
+            $issues[] = blank($data['phone'])
+                ? 'رقم الواتساب غير موجود في ورقة التسجيل، يُرجى إضافته.'
+                : "رقم الواتساب المكتوب ({$data['phone']}) غير صحيح، يُرجى تصحيحه.";
         }
 
         $birthDate = $this->parseDate($data['birth_date']);
 
         if (filled($data['birth_date']) && ! $birthDate) {
-            $this->fail($fileName, $rowNumber, $name, 'تاريخ الازدياد غير صحيح: '.$data['birth_date'].'. اكتبه هكذا 15/03/2016.');
-
-            return;
+            $birthDate = $this->repairDate((string) $data['birth_date']);
+            $issues[] = $birthDate
+                ? "تاريخ الازدياد كُتب ({$data['birth_date']}) فاعتُمد ".Carbon::parse($birthDate)->format('d/m/Y').'، يُرجى التأكد منه.'
+                : "تاريخ الازدياد المكتوب ({$data['birth_date']}) غير صحيح، يُرجى تصحيحه.";
         }
 
         $duplicateKey = mb_strtolower($name).'|'.$phone;
@@ -172,9 +180,15 @@ class RegistrationFormsImportService
         $this->seenInUpload[$duplicateKey] = true;
 
         $exempt = $this->isYes($data['exempt']);
+        $notes = collect([$data['notes'], ...$issues])->filter()->implode("\n") ?: null;
+        $sex = $this->parseSex((string) $data['sex']) ?? $fileSex;
 
-        DB::transaction(function () use ($data, $name, $phone, $birthDate, $exempt): void {
-            $guardian = filled($data['guardian_name'])
+        if ($issues) {
+            $this->needsReview++;
+        }
+
+        DB::transaction(function () use ($data, $name, $phone, $birthDate, $exempt, $notes, $sex): void {
+            $guardian = filled($data['guardian_name']) && $phone
                 ? Guardian::firstOrCreate(['phone' => $phone], ['name' => $data['guardian_name']])
                 : null;
 
@@ -182,10 +196,11 @@ class RegistrationFormsImportService
                 'name' => $name,
                 'phone' => $phone,
                 'birth_date' => $birthDate,
+                'sex' => $sex,
                 'school_level' => filled($data['school_level']) ? SchoolLevel::fromValueOrLabel($data['school_level']) : null,
                 'memorized_hizbs' => $this->parseHizbs($data['memorized_hizbs']),
                 'exempt' => $exempt,
-                'notes' => $data['notes'],
+                'notes' => $notes,
                 'guardian_id' => $guardian?->id,
             ]);
 
@@ -269,6 +284,32 @@ class RegistrationFormsImportService
         $date = Carbon::create((int) $year, (int) $month, (int) $day);
 
         return $date->isPast() ? $date->toDateString() : null;
+    }
+
+    protected function repairDate(string $value): ?string
+    {
+        $parts = preg_split('#[/\\\\.\- ]+#', preg_replace('#[^\d/\\\\.\- ]#u', '', $value), flags: PREG_SPLIT_NO_EMPTY);
+
+        if (count($parts) !== 3) {
+            return null;
+        }
+
+        [$day, $month, $year] = array_map('intval', $parts);
+
+        if ($month > 12 && $day <= 12) {
+            [$day, $month] = [$month, $day];
+        }
+
+        return $this->parseDate(sprintf('%02d/%02d/%04d', $day, $month, $year));
+    }
+
+    protected function parseSex(string $value): ?string
+    {
+        return match (true) {
+            (bool) preg_match('/ذكور|ذكر/u', $value) => 'male',
+            (bool) preg_match('/بنات|إناث|اناث|أنثى|انثى/u', $value) => 'female',
+            default => null,
+        };
     }
 
     protected function septemberOfSchoolYear(): Carbon
