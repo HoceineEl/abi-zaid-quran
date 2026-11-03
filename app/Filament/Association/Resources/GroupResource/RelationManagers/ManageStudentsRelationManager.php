@@ -4,6 +4,7 @@ namespace App\Filament\Association\Resources\GroupResource\RelationManagers;
 
 use App\Filament\Association\Resources\MemorizerResource;
 use App\Models\Memorizer;
+use Carbon\Carbon;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
@@ -87,6 +88,7 @@ class ManageStudentsRelationManager extends RelationManager
                     ->label('إضافة طالب جديد')
                     ->icon('heroicon-o-user-plus')
                     ->modalHeading('إضافة طالب جديد إلى الحلقة')
+                    ->color('gray')
                     ->slideOver()
                     ->createAnother(true)
                     ->successNotificationTitle('تمت إضافة الطالب'),
@@ -134,9 +136,11 @@ class ManageStudentsRelationManager extends RelationManager
             ->emptyStateHeading('لا يوجد طلبة في هذه الحلقة بعد')
             ->emptyStateDescription('أضف طالبا جديدا، أو اختر طلبة مسجلين من لائحة «بدون مجموعة».')
             ->emptyStateActions([
+                $this->pickFromPoolAction()->name('pick_first_from_pool'),
                 CreateAction::make('create_first')
                     ->label('إضافة طالب جديد')
                     ->icon('heroicon-o-user-plus')
+                    ->color('gray')
                     ->slideOver(),
             ])
             ->paginated(false);
@@ -145,11 +149,12 @@ class ManageStudentsRelationManager extends RelationManager
     protected function pickFromPoolAction(): Action
     {
         return Action::make('pick_from_pool')
-            ->label('إضافة طالب مسجل')
-            ->icon('heroicon-o-user-group')
-            ->color('gray')
+            ->label('إضافة طلبة مسجلين')
+            ->icon('heroicon-o-magnifying-glass-plus')
+            ->modalIcon('heroicon-o-user-group')
+            ->modalWidth('2xl')
             ->modalHeading('إضافة طلبة مسجلين إلى الحلقة')
-            ->modalDescription('ابحث عن طلبة مسجلين في الجمعية وليسوا في أي حلقة، ثم أضفهم إلى هذه الحلقة.')
+            ->modalDescription('ابحث عن طلبتك بالاسم أو رقم الهاتف أو اسم ولي الأمر أو تاريخ الازدياد، واختر منهم من شئت دفعة واحدة.')
             ->modalSubmitActionLabel('إضافة إلى الحلقة')
             ->form([
                 Select::make('memorizer_ids')
@@ -157,17 +162,25 @@ class ManageStudentsRelationManager extends RelationManager
                     ->multiple()
                     ->searchable()
                     ->required()
-                    ->options(fn (): array => Memorizer::withoutGroup()
+                    ->allowHtml()
+                    ->optionsLimit(30)
+                    ->searchDebounce(300)
+                    ->getSearchResultsUsing(fn (string $search): array => $this->poolOptions($this->poolQuery()
+                        ->matching($search)
+                        ->with('guardian')
                         ->orderBy('name')
-                        ->get()
-                        ->mapWithKeys(fn (Memorizer $memorizer): array => [$memorizer->id => $this->poolOptionLabel($memorizer)])
-                        ->all())
-                    ->searchPrompt('اكتب اسم الطالب للبحث')
-                    ->noSearchResultsMessage('لا يوجد طالب بهذا الاسم في لائحة «بدون مجموعة».')
-                    ->helperText(fn (): string => 'عدد الطلبة بدون مجموعة: '.Memorizer::withoutGroup()->count()),
+                        ->limit(30)
+                        ->get()))
+                    ->getOptionLabelsUsing(fn (array $values): array => $this->poolOptions(Memorizer::with('guardian')
+                        ->whereKey($values)
+                        ->get()))
+                    ->searchPrompt('اكتب الاسم أو الهاتف (مثل 0661…) أو سنة الازدياد')
+                    ->searchingMessage('جارٍ البحث…')
+                    ->noSearchResultsMessage('لا يوجد طالب مطابق في لائحة «بدون مجموعة».')
+                    ->helperText(fn (): string => 'الطلبة المتاحون لهذه الحلقة: '.$this->poolQuery()->count()),
             ])
             ->action(function (array $data): void {
-                $count = Memorizer::withoutGroup()
+                $count = $this->poolQuery()
                     ->whereKey($data['memorizer_ids'])
                     ->update(['memo_group_id' => $this->getOwnerRecord()->getKey()]);
 
@@ -178,12 +191,42 @@ class ManageStudentsRelationManager extends RelationManager
             });
     }
 
+    protected function poolQuery(): Builder
+    {
+        $sex = $this->getOwnerRecord()->teacher?->sex;
+
+        return Memorizer::withoutGroup()
+            ->when($sex, fn (Builder $query) => $query->where(fn (Builder $query) => $query
+                ->where('sex', $sex)
+                ->orWhereNull('sex')));
+    }
+
+    /**
+     * @param  Collection<int, Memorizer>  $memorizers
+     * @return array<int, string>
+     */
+    protected function poolOptions(Collection $memorizers): array
+    {
+        return $memorizers
+            ->mapWithKeys(fn (Memorizer $memorizer): array => [$memorizer->id => $this->poolOptionLabel($memorizer)])
+            ->all();
+    }
+
     protected function poolOptionLabel(Memorizer $memorizer): string
     {
-        return collect([
-            $memorizer->name,
-            $memorizer->age ? $memorizer->age.' سنة' : null,
-            $memorizer->display_phone,
+        $details = collect([
+            $memorizer->display_phone ? '📞 <span dir="ltr">'.e($memorizer->display_phone).'</span>' : null,
+            $memorizer->birth_date ? '🎂 '.e(Carbon::parse($memorizer->birth_date)->format('d/m/Y')).' ('.$memorizer->age.' سنة)' : null,
+            $memorizer->school_level ? e($memorizer->school_level->getLabel()) : null,
+            $memorizer->memorized_hizbs !== null ? e($memorizer->memorized_hizbs).' حزب' : null,
+            $memorizer->guardian?->name ? 'ولي الأمر: '.e($memorizer->guardian->name) : null,
         ])->filter()->join(' · ');
+
+        $needsReview = str_contains((string) $memorizer->notes, 'يُرجى')
+            ? ' <span style="color:#b45309;font-size:.75rem">● يحتاج مراجعة</span>'
+            : '';
+
+        return '<div style="line-height:1.4"><div style="font-weight:700">'.e($memorizer->name).$needsReview.'</div>'
+            .'<div style="font-size:.8rem;color:#6b7280">'.($details ?: 'لا توجد معلومات إضافية').'</div></div>';
     }
 }

@@ -73,6 +73,36 @@ class Memorizer extends Model
         return $query->whereNull('memo_group_id');
     }
 
+    public function scopeMatching(Builder $query, string $term): Builder
+    {
+        $term = trim($term);
+        $phoneDigits = ltrim(preg_replace('/\D/', '', $term), '0');
+        $isBirthYear = preg_match('/^\d{4}$/', $term) === 1;
+        $birthDate = static::parseBirthDate($term);
+
+        return $query->where(fn (Builder $query) => $query
+            ->where('name', 'like', "%{$term}%")
+            ->orWhereRelation('guardian', 'name', 'like', "%{$term}%")
+            ->when(strlen($phoneDigits) >= 3, fn (Builder $query) => $query->orWhereRaw("REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', '') LIKE ?", ["%{$phoneDigits}%"]))
+            ->when($isBirthYear, fn (Builder $query) => $query->orWhereYear('birth_date', $term))
+            ->when($birthDate, fn (Builder $query) => $query->orWhereDate('birth_date', $birthDate)));
+    }
+
+    protected static function parseBirthDate(string $term): ?string
+    {
+        if (! preg_match('#^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$#', $term, $matches)) {
+            return null;
+        }
+
+        [, $day, $month, $year] = array_map('intval', $matches);
+
+        if (! checkdate($month, $day, $year)) {
+            return null;
+        }
+
+        return sprintf('%04d-%02d-%02d', $year, $month, $day);
+    }
+
     public function scopeOfSex(Builder $query, string $sex): Builder
     {
         return $query->where(fn (Builder $query) => $query
