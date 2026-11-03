@@ -4,6 +4,7 @@ namespace App\Filament\Association\Resources;
 
 use App\Enums\PaymentType;
 use App\Filament\Association\Resources\PaymentResource\Pages;
+use App\Models\MemoGroup;
 use App\Models\Memorizer;
 use App\Models\Payment;
 use Filament\Forms\Components\DatePicker;
@@ -18,9 +19,11 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Actions\ActionGroup;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Contracts\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 
 class PaymentResource extends Resource
 {
@@ -105,6 +108,7 @@ class PaymentResource extends Resource
                     ->sortable()
                     ->label('المبلغ'),
                 TextColumn::make('payment_date')
+                    ->date('Y-m-d')
                     ->searchable()
                     ->sortable()
                     ->label('تاريخ الدفع'),
@@ -112,7 +116,54 @@ class PaymentResource extends Resource
             ->filters([
                 SelectFilter::make('type')
                     ->label('نوع الواجب')
-                    ->options(PaymentType::class),
+                    ->options(PaymentType::class)
+                    ->multiple(),
+                SelectFilter::make('memo_group_id')
+                    ->label('المجموعة')
+                    ->options(fn () => MemoGroup::orderBy('name')->pluck('name', 'id'))
+                    ->multiple()
+                    ->preload()
+                    ->query(fn (Builder $query, array $data) => $query->when($data['values'], fn (Builder $query, array $groupIds) => $query->whereHas('memorizer', fn (Builder $query) => $query->whereIn('memo_group_id', $groupIds)))),
+                SelectFilter::make('sex')
+                    ->label('الجنس')
+                    ->options(['male' => 'ذكور', 'female' => 'إناث'])
+                    ->query(fn (Builder $query, array $data) => $query->when($data['value'], fn (Builder $query, string $sex) => $query->whereHas('memorizer', fn (Builder $query) => $query->ofSex($sex)))),
+                Filter::make('amount')
+                    ->label('المبلغ')
+                    ->form([
+                        TextInput::make('min_amount')
+                            ->label('المبلغ من')
+                            ->numeric()
+                            ->minValue(0),
+                        TextInput::make('max_amount')
+                            ->label('المبلغ إلى')
+                            ->numeric()
+                            ->minValue(0),
+                    ])
+                    ->columns(2)
+                    ->query(fn (Builder $query, array $data): Builder => $query
+                        ->when(filled($data['min_amount'] ?? null), fn (Builder $q) => $q->where('amount', '>=', (float) $data['min_amount']))
+                        ->when(filled($data['max_amount'] ?? null), fn (Builder $q) => $q->where('amount', '<=', (float) $data['max_amount'])))
+                    ->indicateUsing(fn (array $data): array => array_values(array_filter([
+                        filled($data['min_amount'] ?? null) ? 'المبلغ من '.$data['min_amount'] : null,
+                        filled($data['max_amount'] ?? null) ? 'المبلغ إلى '.$data['max_amount'] : null,
+                    ]))),
+                Filter::make('payment_date')
+                    ->label('تاريخ الدفع')
+                    ->form([
+                        DatePicker::make('from')
+                            ->label('من تاريخ'),
+                        DatePicker::make('until')
+                            ->label('إلى تاريخ'),
+                    ])
+                    ->columns(2)
+                    ->query(fn (Builder $query, array $data): Builder => $query
+                        ->when($data['from'] ?? null, fn (Builder $q, string $date) => $q->whereDate('payment_date', '>=', $date))
+                        ->when($data['until'] ?? null, fn (Builder $q, string $date) => $q->whereDate('payment_date', '<=', $date)))
+                    ->indicateUsing(fn (array $data): array => array_values(array_filter([
+                        filled($data['from'] ?? null) ? 'من '.$data['from'] : null,
+                        filled($data['until'] ?? null) ? 'إلى '.$data['until'] : null,
+                    ]))),
                 SelectFilter::make('month')
                     ->options(function () {
                         return collect(range(1, 12))->mapWithKeys(function ($month) {
@@ -172,6 +223,40 @@ class PaymentResource extends Resource
             ->emptyStateIcon('heroicon-o-banknotes')
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\BulkAction::make('bulk_edit')
+                        ->label('تعديل المحدد')
+                        ->icon('heroicon-o-pencil-square')
+                        ->modalDescription('اترك الحقل فارغًا إذا لم ترد تغييره.')
+                        ->form([
+                            Select::make('type')
+                                ->label('نوع الواجب')
+                                ->options(PaymentType::class)
+                                ->native(false),
+                            TextInput::make('amount')
+                                ->label('المبلغ')
+                                ->numeric()
+                                ->minValue(0),
+                            DatePicker::make('payment_date')
+                                ->label('تاريخ الدفع'),
+                        ])
+                        ->action(function (Collection $records, array $data) {
+                            $changes = array_filter($data, 'filled');
+
+                            if (! $changes) {
+                                return;
+                            }
+
+                            $records->each(function (Payment $payment) use ($changes) {
+                                $payment->update($changes);
+                                $payment->memorizer?->clearPaymentCache();
+                            });
+
+                            Notification::make()
+                                ->title("تم تعديل {$records->count()} دفعة بنجاح")
+                                ->success()
+                                ->send();
+                        })
+                        ->deselectRecordsAfterCompletion(),
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
