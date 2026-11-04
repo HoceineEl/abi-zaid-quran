@@ -131,7 +131,6 @@ class GroupResource extends Resource
                 Tables\Filters\Filter::make('today')
                     ->label('مجموعات اليوم فقط')
                     ->toggle()
-                    ->default(fn (): bool => auth()->user()->isTeacher())
                     ->query(fn (Builder $query): Builder => $query->whereJsonContains('days', strtolower(now()->format('l')))),
             ])
             ->actions([
